@@ -1,0 +1,7 @@
+; $Id$
+name = Faceted Search UI
+description = "User interface for searching and browsing through multiple facets."
+dependencies = faceted_search
+package = Faceted Search
+version = "$Name$"
+

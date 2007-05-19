@@ -1,0 +1,10 @@
+<?php
+// $Id$
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function faceted_search_uninstall() {
+  db_query("DELETE FROM {variable} WHERE name LIKE 'faceted_search_%'");
+  cache_clear_all('variables', 'cache');
+}

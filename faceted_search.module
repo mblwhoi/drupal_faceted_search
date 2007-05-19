@@ -1,0 +1,251 @@
+<?php
+// $Id$
+
+/**
+ * @file
+ * An API for performing faceted searches.
+ */
+
+require_once('./'. drupal_get_path('module', 'faceted_search') .'/faceted_search.inc');
+
+/**
+ * Implementation of hook_help().
+ */
+function faceted_search_help($section) {
+  switch ($section) {
+    case 'admin/help#faceted_search':
+      return '<p>'. t('A faceted search interface allows users to browse content in such a way that they can rapidly get acquainted with the scope and nature of the content without ever feeling lost. Such system relies on metadata (such as !categories) usually built specifically for !classification.', array('!categories' => l(t('categories'), 'admin/help/taxonomy'), '!classification' => l(t('faceted classification'), 'http://en.wikipedia.org/wiki/Faceted_classification'))) .'</p><p>'. t('Introductory information is provided in !article about when to use &mdash; and how to build &mdash; a faceted classification.', array('!article' => l(t('this article'), 'http://www.miskatonic.org/library/facet-web-howto.html'))) .'</p>';
+  }
+}
+
+/**
+ * Implementation of hook_menu().
+ */
+function faceted_search_menu($may_cache) {
+  $items = array();
+  if ($may_cache) {
+    $items[] = array(
+      'path' => 'admin/settings/faceted_search',
+      'title' => t('Faceted search'),
+      'callback' => 'drupal_get_form',
+      'callback arguments' => array('faceted_search_admin_settings_form'),
+      'access' => user_access('administer site configuration'),
+      'description' => t('Configure faceted search settings.'),
+      'type' => MENU_NORMAL_ITEM,
+    );
+    $items[] = array(
+      'path' => 'admin/settings/faceted_search/general',
+      'title' => t('Settings'),
+      'weight' => -1000,
+      'callback' => 'drupal_get_form',
+      'callback arguments' => array('faceted_search_admin_settings_form'),
+      'access' => user_access('administer site configuration'),
+      'type' => MENU_DEFAULT_LOCAL_TASK,
+    );
+  }
+  
+  return $items;
+}
+
+/**
+ * Implementation of hook_faceted_search_list().
+ *
+ * Return faceted_search's built-in "keyword" facets.
+ */
+function faceted_search_faceted_search_list() {
+  return array(
+    new faceted_search_keyword_and_facet(),
+    new faceted_search_keyword_phrase_facet(),
+    new faceted_search_keyword_or_facet(),
+    new faceted_search_keyword_not_facet()
+  );
+}
+
+/**
+ * Administration page callback.
+ */
+function faceted_search_admin_settings_form() {
+  $display_settings = variable_get('faceted_search_display', array());
+  $form['display'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Facet display'),
+    '#description' => t('In listings, the heavier facets will sink and the lighter facets will be positioned nearer the top.'),
+  );
+  $form['display']['faceted_search_display'] = array(
+    '#theme' => 'faceted_search_display_settings',
+    '#tree' => TRUE,
+  );
+  // Gather every possible facet into form
+  foreach (module_implements('faceted_search_list') as $module) {
+    $facets = _faceted_search_list($module);
+
+    // Create settings form for each facet
+    foreach ($facets as $facet) {
+      _faceted_search_add_display_settings($form['display']['faceted_search_display'], $display_settings, $module, $facet);
+    }
+  }
+
+  return system_settings_form($form);
+}
+
+/**
+ * Build a search text from the specified array of facets.
+ *
+ * This can be seen as the opposite of class faceted_search's constructor, where
+ * a search text is parsed to build facets.
+ */
+function faceted_search_build_text($facets) {
+  $texts_per_key = array();
+  foreach ($facets as $facet) {
+    if ($text = $facet->get_text()) {
+      $texts_per_key[$facet->get_key()][] = $text;
+    }
+  }
+  // Build the combined search text
+  $text = '';
+  foreach ($texts_per_key as $key => $texts) {
+    if ($text) {
+      $text .= ' ';
+    }
+    if ($key == 'keyword') {
+      // Keywords are a special case where the facet's key do not appear in text
+      $text .= implode(' ', $texts);
+    }
+    else {
+      // TODO: It is really modules that should build this text since they are
+      // responsible for parsing it. Or maybe it should be both built and parsed
+      // for them.
+      $text .= $key .':'. implode(',', $texts); 
+    }
+  }
+  return trim($text);
+}
+
+function theme_faceted_search_display_settings($form) {
+  uasort($form, '_element_sort');
+
+  $output = '';
+  $header = array(t('Facet'), t('Weight'), t('Number of categories in facet preview'));
+  $rows = array();
+  foreach (element_children($form) as $key) {
+    $rows[] = array(
+      check_plain($form[$key]['#title']),
+      drupal_render($form[$key]['weight']),
+      drupal_render($form[$key]['max']),
+    );
+  }
+  
+  $output .= theme('table', $header, $rows);
+  $output .= drupal_render($form);
+  return $output;
+}
+
+function theme_faceted_search_keyword_and_label($keyword) {
+  return $keyword;
+}
+
+function theme_faceted_search_keyword_or_label($keywords) {
+  return implode(' <em>OR</em> ', $keywords);
+}
+
+function theme_faceted_search_keyword_not_label($keyword) {
+  return '-'. $keyword;
+}
+  
+function theme_faceted_search_keyword_phrase_label($phrase) {
+  return $phrase;
+}  
+
+// --------------------------------------------------------------------------
+// Internal stuff
+
+/**
+ * Utility class to store and build search queries.
+ */
+class _faceted_search_query {
+  var $select = '';
+  var $from = '';
+  var $joins = array();
+  var $wheres = array();
+  var $arguments = array();
+  var $groupby = array();
+  var $having = array();
+  var $orderby = '';
+
+  /**
+   * Insert the specified parts into the query.
+   *
+   * @param $parts
+   *   A structured array with the following items:
+   *
+   *   'joins' => Array of JOIN clauses.
+   *
+   *   'wheres' => Array of WHERE clauses.
+   *
+   *   'arguments' => Array of values to later pass as argument to
+   *   db_query(). Use this whenever possible (instead of putting values
+   *   directly in 'wheres', to make sure that arguments are escaped properly.
+   *
+   *   'groupby' => Array of GROUP BY clauses.
+   *
+   *   'having' => Array of HAVING clauses.
+   */
+  function build($parts) {
+    // TODO: Have a limit on the maximum number of joins
+    // TODO: Have a threshold for join operation (at some point, STRAIGHT_JOIN
+    // becomes faster than INNER JOIN. Probably requires to split join op, join
+    // table and join cond
+    foreach ($parts as $key => $array) {
+      $this->$key = array_merge($this->$key, $array);
+    }
+  }
+
+  /**
+   * Build the actual SQL query text.
+   */
+  function sql() {
+    return 'SELECT '. $this->select .' FROM '. $this->from .' '. implode(' ', $this->joins) . (count($this->wheres) ? ' WHERE '. implode(' AND ', $this->wheres) : '') . (count($this->groupby) ? ' GROUP BY '. implode(', ', $this->groupby) : '') . (count($this->having) ? ' HAVING '. implode(', ', $this->having) : '') . ($this->orderby ? ' ORDER BY '. $this->orderby : '');
+  }
+}
+
+/**
+ * Add a facet's display settings to a form.
+ *
+ * @param $form The form to modify.
+ * @param $settings The default display settings of the facet.
+ * @param $module The facet's creator module.
+ * @param $facet The facet object.
+ */
+function _faceted_search_add_display_settings(&$form, $settings, $module, $facet) {
+  $key = $module .'_'. $facet->get_id();
+  $weight = isset($settings[$key]['weight']) ? $settings[$key]['weight'] : $facet->get_default_weight();
+  $form[$key] = array(
+    '#title' => $facet->get_label(),
+    '#weight' => $weight,
+  );
+  $form[$key]['weight'] = array(
+    '#type' => 'weight',
+    '#delta' => 20,
+    '#default_value' => $weight,
+  );
+  $max_categories = isset($settings[$key]['max']) ? $settings[$key]['max'] : $facet->get_default_max_categories();
+  $form[$key]['max'] = array(
+    '#type' => 'select',
+    '#options' => array(
+      0 => t('All categories'),
+      5 => t('Up to 5 categories'),
+      10 => t('Up to 10 categories'),
+      15 => t('Up to 15 categories'),
+      20 => t('Up to 20 categories'),
+      25 => t('Up to 25 categories'),
+      30 => t('Up to 30 categories'),
+      40 => t('Up to 40 categories'),
+      50 => t('Up to 50 categories'),
+      100 => t('Up to 100 categories'),
+    ),
+    '#default_value' => $max_categories,
+  );
+
+  return $form;
+}
+

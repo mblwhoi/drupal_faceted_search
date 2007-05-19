@@ -1,0 +1,459 @@
+<?php
+// $Id$
+
+/**
+ * @file
+ * Provides facets based on taxonomy (categories).
+ */
+
+require_once('./'. drupal_get_path('module', 'faceted_search') .'/faceted_search.inc');
+
+/**
+ * Implementation of hook_menu().
+ */
+function taxonomy_facets_menu($may_cache) {
+  $items = array();
+  if ($may_cache) {
+    $items[] = array(
+      'path' => 'admin/settings/faceted_search/taxonomy_facets',
+      'title' => t('Taxonomy Facets'),
+      'callback' => 'drupal_get_form',
+      'callback arguments' => array('taxonomy_facets_admin_settings_form'),
+      'access' => user_access('administer site configuration'),
+      'type' => MENU_LOCAL_TASK,
+    );
+    $items[] = array(
+      'path' => 'admin/settings/faceted_search/taxonomy_facets/rebuild',
+      'callback' => 'taxonomy_facets_rebuild_term_node',
+      'access' => user_access('administer site configuration'),
+      'type' => MENU_CALLBACK,
+    );
+  }
+  
+  return $items;
+}
+
+/**
+ * Implementation of hook_nodeapi().
+ */
+function taxonomy_facets_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
+  switch ($op) {
+    case 'delete':
+      _taxonomy_facets_clear_term_node($node);
+      break;
+
+    case 'insert':
+      if ($node->status) {
+        _taxonomy_facets_update_term_node($node);
+      }
+      break;
+      
+    case 'update':
+      if ($node->status) {
+        _taxonomy_facets_update_term_node($node);
+      }
+      else {
+        _taxonomy_facets_clear_term_node($node);
+      }
+      break;
+  }
+}
+
+/**
+ * Implementation of hook_faceted_search_list().
+ *
+ * @return
+ *   Array of available facets. Must be indexed by facet id!
+ */
+function taxonomy_facets_faceted_search_list() {
+  $facets = array();
+
+  $vocabularies = taxonomy_facets_get_vocabularies();
+  foreach ($vocabularies as $vocabulary) {
+    $facets[] = new taxonomy_facet($vocabulary);
+  }
+  
+  return $facets;
+}
+
+/**
+ * Implementation of hook_faceted_search_parse().
+ *
+ * Scan the given search text for a 'taxonomy:{path,path,path,...}' token, and
+ * extract facets from it.
+ *
+ * @param &$text
+ *   Text to parse. Once the desired token has been extracted, it is removed
+ *   from the text.
+ *
+ * @return
+ *   Array of facets.
+ */
+function taxonomy_facets_faceted_search_parse(&$text) {
+  $facets = array();
+  $vocabularies = taxonomy_facets_get_vocabularies();
+
+  if ($found_text = search_query_extract($text, 'taxonomy')) {
+    // Extract separate facets
+    $paths = explode(',', $found_text);
+    foreach ($paths as $path_index => $tids) {
+      $tids = explode('.', $tids); // Extract path of tids
+      $path = array(); // Array to collect path of categories
+      $previous_tid = 0;
+      foreach ($tids as $tid) {
+        if (!is_numeric($tid) || $tid <= 0) {
+          break; // Invalid tid
+        }
+        $term = taxonomy_get_term($tid);
+        if (!$term) {
+          break; // No term for tid
+        }
+        if (!isset($vocabularies[$term->vid])) {
+          break; // Term's vocabulary not enabled for faceted search
+        }
+        if ($previous_tid != 0) {
+          $parents = taxonomy_get_parents($tid);
+          if (!isset($parents[$previous_tid])) {
+            break; // Term is not a child of the previous term in path
+          }
+        }
+        // TODO: Fix potential problem if parents of the first tid have been omitted from $tids
+        $path[] = new taxonomy_facet_category($term); // Add category to current path
+        $previous_tid = $tid;
+      }
+      // If found some categories in the current path of tids, build a facet
+      if (count($path) > 0) {
+        $last = array_pop($path);
+        $facets[] = new taxonomy_facet($vocabularies[$last->term->vid], $last, $path);
+      }
+    }
+
+    // Remove the parsed text
+    $text = search_query_insert($text, 'taxonomy');
+  }
+
+  return $facets;
+}
+
+/**
+ * Menu callback for the administration settings.
+ */
+function taxonomy_facets_admin_settings_form() {
+  $vocabularies = array();
+  foreach (taxonomy_get_vocabularies() as $vocabulary) {
+    $vocabularies[$vocabulary->vid] = $vocabulary->name;
+  }
+  if (count($vocabularies)) {
+    $form['taxonomy_facets_status'] = array(
+      '#type' => 'checkboxes',
+      '#title' => t('Vocabularies to use as facets'),
+      '#description' => t('Check the vocabularies that are allowed to be used in faceted searches. Note that the default weight of each facet will equal the weight of the corresponding vocabulary.'),
+      '#options' => $vocabularies,
+      '#default_value' => variable_get('taxonomy_facets_status', array()),
+    );
+    $form['indexing'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Indexing'),
+    );
+    // TODO: provide some status on the taxonomy facets index (whether or not it
+    // needs to be rebuilt). Or better, detect the condition and just do it when
+    // the module becomes enabled.
+    $form['indexing']['taxonomy_facets_rebuild'] = array(
+      '#type' => 'markup',
+      '#value' => t('You must !rebuild if some content was added while the Taxonomy Facets module was disabled. This is not necessary after enabling the module for the first time.', array('!rebuild' => l(t('rebuild the Taxonomy Facets index'), 'admin/settings/faceted_search/taxonomy_facets/rebuild'))),
+    );
+    $form['#submit']['taxonomy_facets_admin_settings_form_submit'] = array(); // Must be called first
+    $form['#submit']['system_settings_form_submit'] = array();
+  }
+  else {
+    $form['message'] = array(
+      '#value' => '<p>'. t('There are currently no vocabularies. Go to the !page first to create vocabularies.', array('!page' => l(t('Categories page'), 'admin/content/taxonomy'))) .'</p>',
+    );
+  }
+  return system_settings_form($form);
+}
+
+/**
+ * Submit callback for the administration settings.
+ */
+function taxonomy_facets_admin_settings_form_submit($form_id, $form_values) {
+  $old_status = variable_get('taxonomy_facets_status', array());
+  if (count($form_values['taxonomy_facets_status'])) {
+    foreach ($form_values['taxonomy_facets_status'] as $vid => $status) {
+      if ($old_status[$vid] != $status) {
+        $vocabulary = taxonomy_get_vocabulary($vid);
+        if ($status) {
+          _taxonomy_facets_update_term_node_vid($vid);
+          drupal_set_message(t('The Taxonomy Facets index has been updated for the %vocabulary vocabulary.', array('%vocabulary' => $vocabulary->name)));
+        }
+        else {
+          _taxonomy_facets_clear_term_node_vid($vid);
+          drupal_set_message(t('The Taxonomy Facets index has been cleared for the %vocabulary vocabulary.', array('%vocabulary' => $vocabulary->name)));
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Menu callback for rebuilding the taxonomy_facets_term_node table.
+ */
+function taxonomy_facets_rebuild_term_node() {
+  $vocabularies = taxonomy_facets_get_vocabularies();
+  foreach ($vocabularies as $vid => $vocabulary) {
+    _taxonomy_facets_update_term_node_vid($vid);
+  }
+  drupal_set_message(t('The Taxonomy Facets index has been updated.'));
+  drupal_goto('admin/settings/faceted_search/taxonomy_facets');
+}
+
+/**
+ * Return an array of all vocabulary objects that have been enabled for use in
+ * faceted searches.
+ */
+function taxonomy_facets_get_vocabularies() {
+  $facet_vocabularies = array();
+  $settings = variable_get('taxonomy_facets_status', array());
+  $vocabularies = taxonomy_get_vocabularies();
+  foreach ($vocabularies as $vocabulary) {
+    if ($settings[$vocabulary->vid]) {
+      $facet_vocabularies[$vocabulary->vid] = $vocabulary;
+    }
+  }
+  return $facet_vocabularies;
+}
+
+/**
+ * A taxonomy-based facet.
+ *
+ * @see taxonomy_facet_category
+ */
+class taxonomy_facet extends faceted_search_facet {
+  /**
+   * The vocabulary used by this facet. 
+   */
+  var $_vocabulary = NULL;
+
+  /**
+   * Constructor. 
+   */
+  function taxonomy_facet($vocabulary, $active_category = NULL, $active_path = array()) {
+    parent::faceted_search_facet('taxonomy', $active_category, $active_path);
+    $this->_vocabulary = $vocabulary;
+  }
+
+  /**
+   * Return the id of this facet.
+   */
+  function get_id() {
+    return $this->_vocabulary->vid;
+  }
+
+  /**
+   * Return the label of this facet.
+   */
+  function get_label() {
+    return $this->_vocabulary->name;
+  }
+
+  /**
+   * Return the default weight of this facet.
+   */
+  function get_default_weight() {
+    return $this->_vocabulary->weight;
+  }
+
+  /**
+   * Return the search text for this facet, taking into account this facet's
+   * active category and active path.
+   */
+  function get_text() {
+    if ($category = $this->get_active_category()) {
+      $path = $this->get_active_path();
+      if (count($path) > 0) {
+        $path[] = $category;
+        return implode('.', array_map('_taxonomy_facets_get_category_tid', $path));
+      }
+      return $category->term->tid;
+    }
+    return '';
+  }
+  
+  /**
+   * Return the root categories of this facet.
+   */
+  function get_root_categories() {
+    $terms = taxonomy_get_children(0, $this->_vocabulary->vid);
+    if (!$terms) {
+      return array();
+    }
+
+    $children = array();
+    foreach ($terms as $term) {
+      $children[] = new taxonomy_facet_category($term);
+    }      
+
+    return $children;
+  }
+}
+
+/**
+ * A category for taxonomy-based facets. 
+ *
+ * @see taxonomy_facet
+ */
+class taxonomy_facet_category extends faceted_search_category {
+  /**
+   * The taxonomy term corresponding to this facet category.
+   */
+  var $term = NULL;
+
+  /**
+   * Constructor. Build this facet category from a taxonomy term.
+   */
+  function taxonomy_facet_category($term) {
+    parent::faceted_search_category();
+    $this->term = $term;
+  }
+
+  /**
+   * Return the label of this category.
+   */
+  function get_label() {
+    return $this->term->name;
+  }
+
+  /**
+   * Return the subcategories, if any.
+   */
+  function get_subcategories() {
+    $terms = taxonomy_get_children($this->term->tid, $this->term->vid);
+    if (!$terms) {
+      return array();
+    }
+
+    $children = array();
+    foreach ($terms as $term) {
+      $children[] = new taxonomy_facet_category($term);
+    }
+
+    return $children;
+  }
+
+  /**
+   * Returns query elements required to search nodes matching this category.
+   *
+   * @return
+   *   Structured array as expected by _faceted_search_query::build(), with
+   *   appropriate query parts.
+   */
+  function get_results_query() {
+    $tid = $this->term->tid;
+    return array(
+      // Using $tid in table name to avoid duplicate table names in JOINs
+      'joins' => array("INNER JOIN {taxonomy_facets_term_node} taxonomy_facets_term_node_$tid ON n.nid = taxonomy_facets_term_node_$tid.nid"),
+      'wheres' => array("taxonomy_facets_term_node_$tid.tid = %d"),
+      'arguments' => array($this->term->tid),
+    );
+  }  
+  
+  /**
+   * Returns query elements required to count the number of nodes matching this
+   * category within the current search results.
+   *
+   * @return
+   *   Structured array as expected by _faceted_search_query::build(), with
+   *   appropriate query parts.
+   */
+  function get_count_within_results_query() {
+    return array(
+      'joins' => array('INNER JOIN {taxonomy_facets_term_node} taxonomy_facets_term_node ON results.nid = taxonomy_facets_term_node.nid'),
+      'wheres' => array('taxonomy_facets_term_node.tid = %d'),
+      'arguments' => array($this->term->tid),
+    );
+  }
+}
+
+// --------------------------------------------------------------------------
+// Internal stuff
+
+/**
+ * Return the id of the specified category. Useful for array_map().
+ */
+function _taxonomy_facets_get_category_tid($category) {
+  return $category->term->tid;
+}
+
+/**
+ * Add initial terms from the specified vocabulary to the
+ * taxonomy_facets_term_node table, based on the existing term_node table.
+ *
+ * This table is usually updated through hook_nodeapi(), but we need to populate
+ * the table when a vocabulary is enabled for faceted searches.
+ */
+// TODO: This should be done through cron
+function _taxonomy_facets_update_term_node_vid($vid) {
+  _taxonomy_facets_clear_term_node_vid($vid);
+
+  $result = db_query("SELECT tn.tid, tn.nid FROM {term_node} tn INNER JOIN {term_data} t ON t.tid = tn.tid WHERE t.vid = %d", $vid);
+  while ($tn = db_fetch_object($result)) {
+    $ancestors = taxonomy_get_parents_all($tn->tid);
+    foreach ($ancestors as $term) {
+      $count = db_result(db_query("SELECT COUNT(*) FROM {taxonomy_facets_term_node} WHERE tid = %d AND nid = %d", $term->tid, $tn->nid));
+      // If not already there (which is possible, since many terms can share common ancestors)
+      if ($count == 0) {
+        db_query("INSERT INTO {taxonomy_facets_term_node} SET tid = %d, nid = %d", $term->tid, $tn->nid);
+      }
+    }
+  }    
+}
+
+/**
+ * Clear the taxonomy_facets_term_node table from terms of the specified vocabulary.
+ */
+function _taxonomy_facets_clear_term_node_vid($vid) {
+  db_query("DELETE tn FROM {taxonomy_facets_term_node} tn, {term_data} t WHERE tn.tid = t.tid AND t.vid = %d", $vid);
+}
+
+/**
+ * Add terms from the specified node to the taxonomy_facets_term_node table.
+ */
+function _taxonomy_facets_update_term_node($node) {
+  _taxonomy_facets_clear_term_node($node);
+  
+  if (count($node->taxonomy) == 0) {
+    return;
+  }
+  $vids = array_keys(taxonomy_facets_get_vocabularies());
+  if (count($vids) == 0) {
+    return;
+  }
+
+  // For each term of the node that also belongs to one of the $vids, insert it
+  // (with its ancestors) into the taxonomy_facets_term_node table
+  $tids = array();
+  foreach ($node->taxonomy as $vid => $node_tids) {
+    if (in_array($vid, $vids)) {
+      $tids = array_merge($tids, $node_tids);
+    }
+  }
+  foreach ($tids as $tid) {
+    $ancestors = taxonomy_get_parents_all($tid);
+    foreach ($ancestors as $term) {
+      // If term has not been inserted yet, insert it (multiple terms may share
+      // common ancestors)
+      if (!isset($inserted[$term->tid])) {
+        $inserted[$term->tid] = TRUE;
+        db_query("INSERT INTO {taxonomy_facets_term_node} (nid, tid) VALUES (%d, %d)", $node->nid, $term->tid);
+      }
+    }
+  }
+}
+
+/**
+ * Clear the taxonomy_facets_term_node table from terms of the specified node.
+ */
+function _taxonomy_facets_clear_term_node($node) {
+  db_query("DELETE FROM {taxonomy_facets_term_node} WHERE nid = %d", $node->nid);
+}
+
