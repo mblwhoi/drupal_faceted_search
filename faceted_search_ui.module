@@ -220,7 +220,7 @@ function faceted_search_ui_show_guided_search($search) {
       $column_count = 2; // TODO: Avoid hardcoded number of columns
       $columns = array_chunk($facet_views, ceil(count($facet_views) / $column_count));
       $row = array();
-      for ($column_index = 0; $column_index < $column_count; $column_index++) {
+      for ($column_index = 0; $column_index < $column_count && $column_index < count($columns); $column_index++) {
         $row[] = implode('', $columns[$column_index]);
       }
       $output .= theme('table', array(), array($row));
@@ -668,7 +668,7 @@ function theme_faceted_search_ui_categories($facet, $categories, $column_count =
     if ($column_count > 1) {
       $columns = array_chunk($categories, ceil(count($categories) / $column_count));
       $row = array();
-      for ($column_index = 0; $column_index < $column_count; $column_index++) {
+      for ($column_index = 0; $column_index < $column_count && $column_index < count($columns); $column_index++) {
         $row[] = theme('item_list', $columns[$column_index]);
       }
       return theme('table', array(), array($row));
