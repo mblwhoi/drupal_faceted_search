@@ -528,10 +528,12 @@ class faceted_search {
    *   Array of objects with nid and score members.
    */
   function load_results($limit = 10) {
-    $result = pager_query("SELECT * FROM ". $this->_results_table, $limit, 0, 'SELECT '. $this->_results_count);
     $found_items = array();
-    while ($item = db_fetch_object($result)) {
-      $found_items[] = $item;
+    if ($this->_results_count) {
+      $result = pager_query("SELECT * FROM ". $this->_results_table, $limit, 0, 'SELECT '. $this->_results_count);
+      while ($item = db_fetch_object($result)) {
+        $found_items[] = $item;
+      }
     }
     return $found_items;
   }
