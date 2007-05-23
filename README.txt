@@ -17,13 +17,32 @@ forms (which break the navigation flow), and never offers facets that would lead
 to empty result sets.
 
 The most obvious metadata for faceted searches is provided by Drupal's taxonomy
-(categories) module. However, Faceted Search's API allows developers to expose
-other metadata, therefore providing more more facets to users for browsing
-content.
+module. However, Faceted Search's API allows developers to expose other
+metadata, therefore providing more more facets to users for browsing content.
 
 
-Status
-******
+The package
+***********
+
+Faceted Search is in fact a bundle of modules.
+
+- Faceted Search: This module provides the search framework and API.
+
+- Faceted Search UI: This module provides the search user interface.
+
+- Taxonomy Facets: This modules allows users to search content through
+  taxonomy. Any vocabulary can become a facet that can be used to refine the
+  current query.
+
+- Content Type Facet: This module adds a facet that allows users to refine the
+  current query based on content type.
+
+Hopefully, many more facets will be developed. The API is meant to make it easy
+to implement new facets.
+
+
+Current status
+**************
 
 This module is undergoing development and is not ready for production use. It
 executes tons of complex database queries, and very little performance
@@ -42,26 +61,6 @@ Some important tasks that still need to be done:
 - Writing some developer documentation.
 - Performing more tests.
 - Adding many more features. :-)
-
-
-Package
-*******
-
-Faceted Search is in fact a bundle of modules.
-
-- Faceted Search: This module provides the search framework and API.
-
-- Faceted Search UI: This module provides the search user interface.
-
-- Taxonomy Facets: This modules allows users to search content through
-  taxonomy. Any vocabulary can become a facet that can be used to refine the
-  current query.
-
-- Content Type Facet: This module adds a facet that allows users to refine the
-  current query based on content type.
-
-Hopefully, many more facets will be developed. The API is meant to make it easy
-to implement new facets.
 
 
 Requirements
