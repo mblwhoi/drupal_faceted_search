@@ -147,7 +147,7 @@ function taxonomy_facets_admin_settings_form() {
     $form['taxonomy_facets_status'] = array(
       '#type' => 'checkboxes',
       '#title' => t('Vocabularies to use as facets'),
-      '#description' => t('Check the vocabularies that are allowed to be used in faceted searches. Note that the default weight of each facet will equal the weight of the corresponding vocabulary.'),
+      '#description' => t('Check the vocabularies that shall be used in faceted searches. Note that the default weight of each facet will equal the weight of its corresponding vocabulary.'),
       '#options' => $vocabularies,
       '#default_value' => variable_get('taxonomy_facets_status', array()),
     );

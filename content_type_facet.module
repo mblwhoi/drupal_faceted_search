@@ -74,7 +74,7 @@ function content_type_facet_admin_settings_form() {
     $form['content_type_facet_status'] = array(
       '#type' => 'checkboxes',
       '#title' => t('Content types to display in the Content type facet'),
-      '#description' => t('Check the content types that are allowed to be displayed in the Content type facet. Note that this setting is not a filter for search results; all content types will still be retrievable in searches (from other facets or from text searches).'),
+      '#description' => t('Check the content types that shall be displayed in the Content type facet. Note that this setting is not a filter for search results; all content types will still be retrievable in searches (from other facets or from text searches).'),
       '#options' => $types,
       '#default_value' => variable_get('content_type_facet_status', array()),
     );
