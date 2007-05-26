@@ -1,0 +1,45 @@
+.faceted-search-facet.faceted-search-guided-search {
+  margin-bottom: 1em;
+}
+/* List of categories */
+.faceted-search-facet .item-list ul {
+  margin: 0;
+}
+/*.faceted-search-facet .item-list ul {
+  margin: 0 1em 1em 0;
+}*/
+.faceted-search-facet .item-list li {
+  background: none;
+  padding: 0;
+  margin: 0;
+  list-style-type: none;
+  list-style-image: none;
+}
+/* List of categories in tables (multi-column lists) */
+.faceted-search-facet table.faceted-search {
+  margin: 0;
+}
+/*.faceted-search-facet table.faceted-search {
+  margin: 0 0 1em 0;
+}
+.faceted-search-facet table.faceted-search .item-list ul {
+  margin: 0 1em 0 0;
+}*/
+/* List of facets or categories in tables (multi-column lists) */
+table.faceted-search tbody {
+  border-top: 0;
+}
+table.faceted-search tr {
+  background: none;
+  border: 0;
+}
+table.faceted-search td {
+  padding: 0;
+  vertical-align: top;
+}
+.faceted-search-stage-facet table.faceted-search td {
+  width: 25%;
+}
+.faceted-search-stage-select table.faceted-search td {
+  width: 50%;
+}

@@ -62,6 +62,9 @@ function faceted_search_ui_block($op = 'list', $delta = 0, $edit = array()) {
   }
   elseif ($op == 'view') {
     global $_faceted_search_ui_current_search;
+
+    faceted_search_ui_add_css();
+    
     switch ($delta) {
       case 0:
         $block['subject'] = t('Current search'); 
@@ -95,6 +98,8 @@ function faceted_search_ui_stage_results() {
   // Check if we should really enter the 'results' stage (when no search text
   // has been specified, we should enter the 'select' stage).
   if ($_faceted_search_ui_current_search->get_text()) {
+    faceted_search_ui_add_css();
+    
     // Collect the search results
     $_faceted_search_ui_current_search->execute();
     $results = faceted_search_ui_format_results($_faceted_search_ui_current_search);
@@ -102,11 +107,12 @@ function faceted_search_ui_stage_results() {
     drupal_set_title(t('Search'));
     
     if ($_faceted_search_ui_current_search->get_results_count()) {
-      return theme('box', t('Search results'), $results);
+      $results = theme('box', t('Search results'), $results);
     }
     else {
-      return theme('box', t('Your search yielded no results'), search_help('search#noresults'));
+      $results = theme('box', t('Your search yielded no results'), search_help('search#noresults'));
     }
+    return theme('faceted_search_ui_page', $_faceted_search_ui_current_search, $results);
   }
   elseif ($_faceted_search_ui_current_search->stage == 'select') {
     drupal_goto('faceted_search/select');
@@ -122,6 +128,8 @@ function faceted_search_ui_stage_results() {
 function faceted_search_ui_stage_select() {
   global $_faceted_search_ui_current_search;
 
+  faceted_search_ui_add_css();
+    
   // Build the search results, which are required to count nodes per category
   $_faceted_search_ui_current_search->execute();
 
@@ -133,8 +141,9 @@ function faceted_search_ui_stage_select() {
   if ($box = faceted_search_ui_show_guided_search($_faceted_search_ui_current_search)) {
     $output .= theme('box', t('Guided search'), $box);
   }
-  
-  return $output;
+  if ($output) {
+    return theme('faceted_search_ui_page', $_faceted_search_ui_current_search, $output);
+  }
 }
 
 /**
@@ -143,6 +152,8 @@ function faceted_search_ui_stage_select() {
 function faceted_search_ui_stage_facet() {
   global $_faceted_search_ui_current_search;
 
+  faceted_search_ui_add_css();
+  
   // Build the search results, which are required to count nodes per category
   $_faceted_search_ui_current_search->execute();
 
@@ -162,12 +173,13 @@ function faceted_search_ui_stage_facet() {
 
   drupal_set_title(t('Search'));
 
-  $content = theme('faceted_search_ui_heading', $_faceted_search_ui_current_search, $index, TRUE);
+  $content = theme('faceted_search_ui_facet_heading', $_faceted_search_ui_current_search, $index, 'guided-search');
   $categories = faceted_search_ui_build_categories($_faceted_search_ui_current_search, $index);
   if (count($categories)) {
     $content .= theme('faceted_search_ui_categories', $facet, $categories, 4); // TODO: Avoid hardcoded number of columns
   }
-  return theme('faceted_search_ui_wrapper', $facet, $content);
+  $content = theme('faceted_search_ui_facet_wrapper', $facet, 'guided-search', $content);
+  return theme('faceted_search_ui_page', $_faceted_search_ui_current_search, $content);
 }
 
 /**
@@ -180,8 +192,8 @@ function faceted_search_ui_show_current_search($search) {
 
   foreach ($search->get_facets() as $index => $facet) {
     if ($facet->get_active_category()) {
-      $content = theme('faceted_search_ui_heading', $search, $index, FALSE);
-      $output .= theme('faceted_search_ui_wrapper', $facet, $content);
+      $content = theme('faceted_search_ui_facet_heading', $search, $index, 'current-search');
+      $output .= theme('faceted_search_ui_facet_wrapper', $facet, 'current-search', $content);
     }
   }
   
@@ -208,11 +220,11 @@ function faceted_search_ui_show_guided_search($search) {
 
     $categories = faceted_search_ui_build_categories($search, $index);
     if (count($categories) || $facet->get_active_category()) {
-      $content = theme('faceted_search_ui_heading', $search, $index, TRUE);
+      $content = theme('faceted_search_ui_facet_heading', $search, $index, 'guided-search');
       if (count($categories)) {
-        $content .= theme('faceted_search_ui_categories', $facet, $categories, 1); // TODO: Avoid hardcoded number of columns
+        $content .= theme('faceted_search_ui_categories', $facet, $categories, $search->stage == 'select' ? 2 : 1); // TODO: Avoid hardcoded number of columns
       }
-      $facet_views[] = theme('faceted_search_ui_wrapper', $facet, $content);
+      $facet_views[] = theme('faceted_search_ui_facet_wrapper', $facet, 'guided-search', $content);
     }
   }
   if (count($facet_views)) {
@@ -223,7 +235,12 @@ function faceted_search_ui_show_guided_search($search) {
       for ($column_index = 0; $column_index < $column_count && $column_index < count($columns); $column_index++) {
         $row[] = implode('', $columns[$column_index]);
       }
-      $output .= theme('table', array(), array($row));
+      // Ensure a consistent number of columns
+      while ($column_index < $column_count) {
+        $column_index++;
+        $row[] = '';
+      }
+      $output .= theme('table', array(), array($row), array('class' => 'faceted-search'));
     }
     else {
       $output = implode('', $facet_views);
@@ -237,7 +254,7 @@ function faceted_search_ui_show_guided_search($search) {
  */
 function faceted_search_ui_format_results($search) {
   if ($search->style == 'extract') {
-    drupal_add_css(drupal_get_path('module', 'search') .'/search.css', 'module', 'all', FALSE);
+    drupal_add_css(drupal_get_path('module', 'search') .'/search.css');
     
     $found_items = $search->load_results(variable_get('default_nodes_main', 10));
       
@@ -617,11 +634,50 @@ function faceted_search_ui_build_categories($search, $index) {
   return $links;
 }
 
-function theme_faceted_search_ui_wrapper($facet, $content) {
+/**
+ * Add the default stylesheet.
+ */
+function faceted_search_ui_add_css() {
+  drupal_add_css(drupal_get_path('module', 'faceted_search') .'/faceted_search_ui.css');
+}
+
+/**
+ * Render a faceted search page.
+ *
+ * @param $search
+ *   The search context.
+ *
+ * @param $content
+ *   The page's content.
+ */
+function theme_faceted_search_ui_page($search, $content) {
+  $classes = array(
+    'faceted-search-page',
+    'faceted-search-stage-'. $search->stage,
+    'faceted-search-style-'. $search->style,
+    'faceted-search-sort-'. $search->sort,
+  );
+  return '<div class="'. implode(' ', $classes) .'">'. $content .'</div>'."\n";
+}
+
+/**
+ * Render a wrapper around a facet.
+ *
+ * @param $facet
+ *   The facet object.
+ *
+ * @param $context
+ *   The caller's context (either 'guided-search' or 'current-search').
+ *
+ * @param $content
+ *   The facet's content (heading, categories, etc.)
+ */
+function theme_faceted_search_ui_facet_wrapper($facet, $context, $content) {
   $classes = array(
     'faceted-search-facet',
     'faceted-search-facet-'. check_plain($facet->get_key() .'-'. $facet->get_id()),
     'faceted-search-facet-'. ($facet->get_active_category() ? 'active' : 'inactive'),
+    'faceted-search-'. $context,
   );
   return '<div class="'. implode(' ', $classes) .'">'. $content .'</div>'."\n";
 }
@@ -630,16 +686,15 @@ function theme_faceted_search_ui_wrapper($facet, $content) {
  * Render the facet identified by $index. This displays the facet's label,
  * active path, and active category.
  *
- * @param $remover_in_breadcrumb
- *   When true, the facet's remover will appear as the root of the facet's
- *   active category breadcrumb, otherwise it will appear as a separate link.
+ * @param $context
+ *   The caller's context (either 'guided-search' or 'current-search').
  */
-function theme_faceted_search_ui_heading($search, $index, $remover_in_breadcrumb) {
+function theme_faceted_search_ui_facet_heading($search, $index, $context) {
   $facet = $search->get_facet($index);
   $remover_path = faceted_search_ui_build_remover_path($search, $index);
   
-  if (!$remover_in_breadcrumb) {
-    $output .= theme('faceted_search_ui_remover_link', $remover_path) .' ';
+  if ($context == 'current-search') {
+    $output .= theme('faceted_search_ui_remover_link_current_search', $remover_path) .' ';
   }
   
   // Render the facet's label (except for keyword facets).
@@ -653,8 +708,8 @@ function theme_faceted_search_ui_heading($search, $index, $remover_in_breadcrumb
   // Render path to the facet's active category.
   if ($facet->get_active_category()) {
     $breadcrumb = array();
-    if ($remover_in_breadcrumb) {
-      $breadcrumb[] = theme('faceted_search_ui_remover_link_in_breadcrumb', $remover_path);
+    if ($context == 'guided-search') {
+      $breadcrumb[] = theme('faceted_search_ui_remover_link_guided_search', $remover_path);
     }
     $breadcrumb = faceted_search_ui_build_breadcrumb($search, $index, $breadcrumb);
     $output .= theme('faceted_search_ui_breadcrumb', $breadcrumb);
@@ -671,7 +726,12 @@ function theme_faceted_search_ui_categories($facet, $categories, $column_count =
       for ($column_index = 0; $column_index < $column_count && $column_index < count($columns); $column_index++) {
         $row[] = theme('item_list', $columns[$column_index]);
       }
-      return theme('table', array(), array($row));
+      // Ensure a consistent number of columns
+      while ($column_index < $column_count) {
+        $column_index++;
+        $row[] = '';
+      }
+      return theme('table', array(), array($row), array('class' => 'faceted-search'));
     }
     else {
       return theme('item_list', $categories);
@@ -691,11 +751,11 @@ function theme_faceted_search_ui_more_link($path) {
   return l(t('more...'), $path);
 }
 
-function theme_faceted_search_ui_remover_link_in_breadcrumb($path) {
+function theme_faceted_search_ui_remover_link_guided_search($path) {
   return l(t('all'), $path);
 }
 
-function theme_faceted_search_ui_remover_link($path) {
+function theme_faceted_search_ui_remover_link_current_search($path) {
   // TODO: nice default icon instead of ndash
   return l('[&ndash;]', $path, array('title' => t('Remove this term')), NULL, NULL, FALSE, TRUE);
 }
