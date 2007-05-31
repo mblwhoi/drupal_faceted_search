@@ -406,7 +406,7 @@ class faceted_search {
    *
    * The second query further refines this set by verifying advanced conditions
    * (such as facets, AND, negative or phrase matches), and orders the results
-   * on a the column or expression 'score'.
+   * by score.
    */
   function execute() {
     if (!$this->_keywords && !$this->_facets) {
@@ -562,8 +562,6 @@ class faceted_search {
       $query->select = 'COUNT(*)';
       $query->from = '{node} results';
       $query->wheres[] = 'results.status = 1';
-      // TODO: will need db_rewrite_sql()
-
       // TODO: this needs cleanup. Different tables are used depending on
       // context and use the same alias... Not so intuitive.
     }

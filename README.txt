@@ -48,8 +48,8 @@ This module is undergoing development and is not ready for production use. It
 executes tons of complex database queries, and very little performance
 optimizations have been done so far.
 
-Also, there will undoubtly be some bugs regarding node access and i18n, among
-other things. No testing has been done so far in this regard.
+Also, there will probably be some bugs regarding i18n. No testing has been done
+so far in this regard.
 
 Although this code uses some object-oriented programming, an effort was made not
 to push this too far in order to remain compatible with PHP 4. Note, however,
