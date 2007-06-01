@@ -443,7 +443,7 @@ class faceted_search {
     }
     else {
       // Has no keywords
-      $query1->select = 'n.nid, 1 AS relevance, COUNT(*) AS matches'; // TODO: check if relevance = 1 makes sense
+      $query1->select = 'n.nid, 1 AS relevance, COUNT(*) AS matches';
       $query1->from = '{node} n';
       $query1->joins[] = 'INNER JOIN {users} u ON n.uid = u.uid';
       $query1->groupby[] = 'n.nid';
