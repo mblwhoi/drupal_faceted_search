@@ -752,6 +752,55 @@ class faceted_search {
 }
 
 /**
+ * Utility class to store and build search queries.
+ */
+class _faceted_search_query {
+  var $select = '';
+  var $from = '';
+  var $joins = array();
+  var $wheres = array();
+  var $arguments = array();
+  var $groupby = array();
+  var $having = array();
+  var $orderby = '';
+
+  /**
+   * Insert the specified parts into the query.
+   *
+   * @param $parts
+   *   A structured array with the following items:
+   *
+   *   'joins' => Array of JOIN clauses.
+   *
+   *   'wheres' => Array of WHERE clauses.
+   *
+   *   'arguments' => Array of values to later pass as argument to
+   *   db_query(). Use this whenever possible (instead of putting values
+   *   directly in 'wheres', to make sure that arguments are escaped properly.
+   *
+   *   'groupby' => Array of GROUP BY clauses.
+   *
+   *   'having' => Array of HAVING clauses.
+   */
+  function build($parts) {
+    // TODO: Have a limit on the maximum number of joins
+    // TODO: Have a threshold for join operation (at some point, STRAIGHT_JOIN
+    // becomes faster than INNER JOIN. Probably requires to split join op, join
+    // table and join cond
+    foreach ($parts as $key => $array) {
+      $this->$key = array_merge($this->$key, $array);
+    }
+  }
+
+  /**
+   * Build the actual SQL query text.
+   */
+  function sql() {
+    return 'SELECT '. $this->select .' FROM '. $this->from .' '. implode(' ', $this->joins) . (count($this->wheres) ? ' WHERE '. implode(' AND ', $this->wheres) : '') . (count($this->groupby) ? ' GROUP BY '. implode(', ', $this->groupby) : '') . (count($this->having) ? ' HAVING '. implode(', ', $this->having) : '') . ($this->orderby ? ' ORDER BY '. $this->orderby : '');
+  }
+}
+
+/**
  * Invoke hook_faceted_search_list() on the specified module.
  *
  * @return
