@@ -456,7 +456,10 @@ class faceted_search {
     // Build ranking expression (we try to map each parameter to a
     // uniform distribution in the range 0..1).
     $ranking = array();
-    $query2->joins[] = 'INNER JOIN {search_dataset} d ON i.nid = d.sid';
+    if ($query_parts[0] || $query_parts[2]) {
+      // Has some positive or negative keywords
+      $query2->joins[] = 'INNER JOIN {search_dataset} d ON i.nid = d.sid';
+    }
     $query2->joins[] = 'INNER JOIN {node} n ON n.nid = i.nid'; // Always join the node table
     // Used to avoid joining on node_comment_statistics twice
     $stats_join = FALSE;
