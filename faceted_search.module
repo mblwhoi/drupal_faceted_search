@@ -84,6 +84,17 @@ function faceted_search_admin_settings_form() {
       _faceted_search_add_display_settings($form['display']['faceted_search_display'], $display_settings, $module, $facet);
     }
   }
+  $form['filter'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Filter'),
+    '#description' => t('You may exclude some content types from search results.'),
+  );
+  $form['filter']['faceted_search_excluded_types'] = array(
+    '#type' => 'checkboxes',
+    '#options' => node_get_types('names'),
+    '#description' => t('Check the content types to exclude from search results.'),
+    '#default_value' => variable_get('faceted_search_excluded_types', array()),
+  );
 
   return system_settings_form($form);
 }

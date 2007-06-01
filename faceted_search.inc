@@ -405,8 +405,8 @@ class faceted_search {
    * classic "OR" search.
    *
    * The second query further refines this set by verifying advanced conditions
-   * (such as facets, AND, negative or phrase matches), and orders the results
-   * by score.
+   * (such as filters, facets, AND, negative or phrase matches), and orders the
+   * results by score.
    */
   function execute() {
     if (!$this->_keywords && !$this->_facets) {
@@ -461,6 +461,10 @@ class faceted_search {
       $query2->joins[] = 'INNER JOIN {search_dataset} d ON i.nid = d.sid';
     }
     $query2->joins[] = 'INNER JOIN {node} n ON n.nid = i.nid'; // Always join the node table
+    // Apply node type filter
+    if ($excluded_types = array_filter(variable_get('faceted_search_excluded_types', array()))) {
+      $query2->wheres[] = "n.type NOT IN ('". implode("','", $excluded_types) ."')";
+    }
     // Used to avoid joining on node_comment_statistics twice
     $stats_join = FALSE;
     $this->_results_total = 0;
@@ -556,22 +560,24 @@ class faceted_search {
    */
   function count_within_results($category) {
     $query = new _faceted_search_query();
+    $query->select = 'COUNT(*)';
+    $query->from = '{node} n';
     if ($this->_results_count > 0) {
-      $query->select = 'COUNT(*)';
-      $query->from = $this->_results_table .' results';
+      // Search within results.
+      $query->joins[] = 'INNER JOIN '. $this->_results_table .' results ON results.nid = n.nid';
     }
     elseif (empty($this->_text)) {
-      // No search text, search within all nodes
-      $query->select = 'COUNT(*)';
-      $query->from = '{node} results';
-      $query->wheres[] = 'results.status = 1';
-      // TODO: this needs cleanup. Different tables are used depending on
-      // context and use the same alias... Not so intuitive.
+      // No search text, search within all nodes.
+      $query->wheres[] = 'n.status = 1';
     }
     else {
       // There is a search text but the results count is 0, thus no search
       // refinement si possible!
       return 0; 
+    }
+    // Apply node type filter.
+    if ($excluded_types = variable_get('faceted_search_excluded_types', array())) {
+      $query->wheres[] = "n.type NOT IN ('". implode("','", $excluded_types) ."')";
     }
     $query->build($category->get_count_within_results_query());
     return db_result(db_query($query->sql(), $query->arguments));

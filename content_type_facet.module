@@ -184,7 +184,6 @@ class content_type_facet_category extends faceted_search_category {
    */
   function get_count_within_results_query() {
     return array(
-      'joins' => array('INNER JOIN {node} n ON results.nid = n.nid'), 
       'wheres' => array("n.type = '%s'"),
       'arguments' => array($this->_type),
     );

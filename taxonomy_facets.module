@@ -367,7 +367,7 @@ class taxonomy_facet_category extends faceted_search_category {
    */
   function get_count_within_results_query() {
     return array(
-      'joins' => array('INNER JOIN {taxonomy_facets_term_node} taxonomy_facets_term_node ON results.nid = taxonomy_facets_term_node.nid'),
+      'joins' => array('INNER JOIN {taxonomy_facets_term_node} taxonomy_facets_term_node ON n.nid = taxonomy_facets_term_node.nid'),
       'wheres' => array('taxonomy_facets_term_node.tid = %d'),
       'arguments' => array($this->term->tid),
     );
