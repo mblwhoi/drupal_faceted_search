@@ -191,7 +191,7 @@ function faceted_search_ui_show_current_search($search) {
   }
 
   foreach ($search->get_facets() as $index => $facet) {
-    if ($facet->get_active_category()) {
+    if ($facet->is_active()) {
       $content = theme('faceted_search_ui_facet_heading', $search, $index, 'current-search');
       $output .= theme('faceted_search_ui_facet_wrapper', $facet, 'current-search', $content);
     }
@@ -219,7 +219,7 @@ function faceted_search_ui_show_guided_search($search) {
     }
 
     $categories = faceted_search_ui_build_categories($search, $index);
-    if (count($categories) || $facet->get_active_category()) {
+    if (count($categories) || $facet->is_active()) {
       $content = theme('faceted_search_ui_facet_heading', $search, $index, 'guided-search');
       if (count($categories)) {
         $content .= theme('faceted_search_ui_categories', $facet, $categories, $search->stage == 'select' ? 2 : 1); // TODO: Avoid hardcoded number of columns
@@ -299,30 +299,6 @@ function faceted_search_ui_format_results($search) {
   }
 }
   
-/**
- * Generate a title based on the specified search.
- *
- * This could be used by themes to set the page header with a more interesting
- * title reflecting the current search. However, it is not used by default with
- * drupal_set_title(), because while this contextual title would be nice for the
- * title bar, it doesn't make any sense as a page (content) title -- it would be
- * redundant with the "Current search" block.
- */
-// function faceted_search_ui_make_title($search) {
-//   $args = array();
-//   foreach ($search->get_facets() as $facet) {
-//     if ($category = $facet->get_active_category()) {
-//       $path = array();
-//       foreach ($facet->get_active_path() as $ancestor) {
-//         $path[] = check_plain($ancestor->get_label());
-//       }
-//       $path[] = check_plain($category->get_label());
-//       $args[] = theme('faceted_search_ui_breadcrumb', $path);
-//     }
-//   }
-//   return count($args) > 0 ? t('Search: !args', array('!args' => implode(', ', $args))) : t('Search');
-// }
-
 /**
  * Render the search form.
  */
@@ -523,28 +499,31 @@ function faceted_search_ui_build_remover_path($search, $index) {
  *   Index of the facet within the search context.
  *
  * @param $breadcrumb
- *   Array of initial components (or prefix components) of the breadcrumb, if any is desired.
+ *   Array of initial components (or prefix components) of the breadcrumb, if
+ *   any is desired.
+ *
+ * @param $context
+ *   The caller's context (either 'guided-search', 'current-search' or 'node').
  *
  * @return
  *   Array of breadcrumb components.
  */
-function faceted_search_ui_build_breadcrumb($search, $index, $breadcrumb = array()) {
+function faceted_search_ui_build_breadcrumb($search, $index, $breadcrumb = array(), $context = 'guided-search') {
   // Get all facets to take into account in the links.
   $facets = $search->get_facets();
   $facet = $facets[$index];
 
-  if ($active_category = $facet->get_active_category()) {
+  if ($facet->is_active()) {
     // Replace the current facet with a clone for active category manipulations
     // (to avoid manipulating the original facet).
     $facets[$index] = drupal_clone($facet);
     
-    $path = $facet->get_active_path();
-    $ancestors = array();
-    foreach ($path as $ancestor) {
+    $path = array();
+    foreach ($facet->get_active_path() as $category_index => $category) {
+      $path[] = $category;
       // Replace active category within the facet
-      $facets[$index]->set_active_path($ancestors);
-      $facets[$index]->set_active_category($ancestor);
-      $ancestor_path = faceted_search_ui_build_path(
+      $facets[$index]->set_active_path($path);
+      $link = faceted_search_ui_build_path(
         $search->stage == 'select' ? 'results' : $search->stage,
         $search->style,
         $search->sort,
@@ -553,12 +532,13 @@ function faceted_search_ui_build_breadcrumb($search, $index, $breadcrumb = array
         $search->facet_key,
         $search->facet_id,
         $facets);
-      $breadcrumb[] = l($ancestor->get_label(), $ancestor_path);
-      $ancestors[] = $ancestor;
+      $breadcrumb[] = l($category->get_label(), $link);
     }
-    
-    // The active category itself is not rendered as a link
-    $breadcrumb[] = $active_category->get_label();
+    if ($category && $context != 'node') {
+      // The last category needs not be a link to itself since it is already in
+      // the current search.
+      $breadcrumb[count($breadcrumb) - 1] = check_plain($category->get_label());
+    }
   }
 
   return $breadcrumb;
@@ -577,7 +557,6 @@ function faceted_search_ui_build_categories($search, $index) {
   $links = array();
   $facets = $search->get_facets();
   $facet = $facets[$index];
-  $active_category = $facet->get_active_category();
   list($categories, $counts) = _faceted_search_ui_collect_categories($search, $facet);
 
   // If the current facet has reached its max number of categories
@@ -591,20 +570,15 @@ function faceted_search_ui_build_categories($search, $index) {
   // avoid manipulating the original facet).
   $facets[$index] = drupal_clone($facet);
 
-  // Prepare the facet for processing subcategories of its active category.
-  if ($active_category) {
-    $active_path = $facet->get_active_path();
-    $active_path[] = $active_category;
-    $facets[$index]->set_active_path($active_path);
-  }
-  
   // Build links to categories.
   // TODO: Separate into alphabetical groups (with first letter of each category label), if configured to do so
   foreach ($categories as $category_index => $category) {
     // If category was not sliced away by the max number of categories
     if (isset($counts[$category_index])) {
-      // Replace active category in the facet
-      $facets[$index]->set_active_category($category);
+      $active_path = $facet->get_active_path();
+      $active_path[] = $category;
+      // Replace active path in the facet
+      $facets[$index]->set_active_path($active_path);
       $path = faceted_search_ui_build_path(
         'results',
         $search->style,
@@ -667,7 +641,7 @@ function theme_faceted_search_ui_page($search, $content) {
  *   The facet object.
  *
  * @param $context
- *   The caller's context (either 'guided-search' or 'current-search').
+ *   The caller's context (either 'guided-search', 'current-search', or 'node').
  *
  * @param $content
  *   The facet's content (heading, categories, etc.)
@@ -676,7 +650,7 @@ function theme_faceted_search_ui_facet_wrapper($facet, $context, $content) {
   $classes = array(
     'faceted-search-facet',
     'faceted-search-facet-'. check_plain($facet->get_key() .'-'. $facet->get_id()),
-    'faceted-search-facet-'. ($facet->get_active_category() ? 'active' : 'inactive'),
+    'faceted-search-facet-'. ($facet->is_active() ? 'active' : 'inactive'),
     'faceted-search-'. $context,
   );
   return '<div class="'. implode(' ', $classes) .'">'. $content .'</div>'."\n";
@@ -687,7 +661,7 @@ function theme_faceted_search_ui_facet_wrapper($facet, $context, $content) {
  * active path, and active category.
  *
  * @param $context
- *   The caller's context (either 'guided-search' or 'current-search').
+ *   The caller's context (either 'guided-search', 'current-search' or 'node').
  */
 function theme_faceted_search_ui_facet_heading($search, $index, $context) {
   $facet = $search->get_facet($index);
@@ -700,18 +674,18 @@ function theme_faceted_search_ui_facet_heading($search, $index, $context) {
   // Render the facet's label (except for keyword facets).
   if ($facet->get_key() != 'keyword') {
     $output .= theme('faceted_search_ui_label', $facet);
-    if ($facet->get_active_category()) {
+    if ($facet->is_active()) {
       $output .= ': ';
     }
   }
 
   // Render path to the facet's active category.
-  if ($facet->get_active_category()) {
+  if ($facet->is_active()) {
     $breadcrumb = array();
     if ($context == 'guided-search') {
       $breadcrumb[] = theme('faceted_search_ui_remover_link_guided_search', $remover_path);
     }
-    $breadcrumb = faceted_search_ui_build_breadcrumb($search, $index, $breadcrumb);
+    $breadcrumb = faceted_search_ui_build_breadcrumb($search, $index, $breadcrumb, $context);
     $output .= theme('faceted_search_ui_breadcrumb', $breadcrumb);
   }
 
@@ -823,7 +797,7 @@ function _faceted_search_ui_init() {
   }
   
   // Set defaults.
-  $stage = 'results';
+  $stage = 'results'; // TODO: Create a ui_state class with all these defaults
   $style = 'extract';
   $sort = 'relevance';
   $aim = 'new';

@@ -49,11 +49,6 @@ class faceted_search_facet {
   var $_max_categories = 0;
 
   /**
-   * The active category of this facet.
-   */
-  var $_active = NULL;
-  
-  /**
    * An array representing the path of categories leading to the active category
    * of this facet (i.e. without the active category itself).
    */
@@ -67,21 +62,14 @@ class faceted_search_facet {
    *   as used to construct the facet from the search text in the module's
    *   implementation of hook_faceted_search_parse(). 
    *
-   * @param $active_category
-   *   The category to set as this facet's active category. Give NULL for an
-   *   unused facet. Unused facets normally do not appear in the UI's view of
-   *   the current search, but can be available for browsing.
-   *
    * @param $active_path
-   *   Array representing the path of ancestor categories leading to the
-   *   specified active category. These must be actual parents of the active
-   *   category. Give an empty array if the active category is a root category
-   *   of the facet, or if there is no active category.
+   *   Array representing the path leading to the active category, including the
+   *   active category itself. Defaults to an empty array, meaning no active
+   *   category.
    */
-  function faceted_search_facet($key, $active_category = NULL, $active_path = array()) {
+  function faceted_search_facet($key, $active_path = array()) {
     $this->_key = $key;
     $this->_path = $active_path;
-    $this->_active = $active_category;
   }
 
   /**
@@ -128,36 +116,54 @@ class faceted_search_facet {
   }
 
   /**
-   * Return the active category of this facet, or NULL if this facet has no
-   * active category.
+   * Return TRUE if this facet has an active category.
    */
-  function get_active_category() {
-    return $this->_active;
+  function is_active() {
+    return count($this->_path) > 0;
   }
 
   /**
-   * Set the active category of this facet. The caller must ensure consistency
-   * with the active path.
-   */
-  function set_active_category($category) {
-    $this->_active = $category;
-  }
-  
-  /**
-   * Return the path of ancestors to the active category (without the active
-   * category itself), or an empty array if the active category has no parent or
-   * if there is no active category.
+   * Return an array representing the path to the active category, including the
+   * active category itself. Return an empty array if there is no active
+   * category.
    */
   function get_active_path() {
     return $this->_path;
   }
 
   /**
-   * Set the path of ancestors leading to the active category. The caller must
-   * ensure consistency with the active category.
+   * Set the path of the active category, including the active category itself.
+   *
+   * @param $path
+   *   The path of the category (array of categories). Defaults to no active
+   *   path.
    */
-  function set_active_path($path) {
+  function set_active_path($path = array()) {
     $this->_path = $path;
+  }
+
+  /**
+   * Return the active category, or NULL if there is no active category.
+   */
+  function get_active_category() {
+    return end($this->_path);
+  }
+  
+  /**
+   * Replace the active category in the active path.
+   *
+   * The caller is responsible for making sure that the specified category is
+   * consistent with the existing path (e.g. that the path contains actual
+   * ancestors of that category).
+   */
+  function set_active_category($category) {
+    $count = count($this->_path);
+    if ($count > 0) {
+      $this->_path[$count - 1] = $category;
+    }
+    else {
+      $this->_path = array($category);
+    }
   }
 }
 
@@ -192,7 +198,7 @@ class faceted_search_keyword_category extends faceted_search_category {
 class faceted_search_keyword_facet extends faceted_search_facet {
   
   function faceted_search_keyword_facet($active_category = NULL) {
-    parent::faceted_search_facet('keyword', $active_category);
+    parent::faceted_search_facet('keyword', $active_category ? array($active_category) : array());
   }
 
   /**
@@ -515,9 +521,8 @@ class faceted_search {
     // in the query)
     foreach ($this->_facets as $facet) {
       if ($facet->get_key() != 'keyword') {
-        $active = $facet->get_active_category();
-        if ($active) {
-          $query2->build($active->get_results_query());
+        if ($category = $facet->get_active_category()) {
+          $query2->build($category->get_results_query());
         }
       }
     }
@@ -836,7 +841,7 @@ function _faceted_search_list($module) {
  */
 function _faceted_search_compare_facets($a, $b) {
   if ($a->get_weight() == $b->get_weight()) {
-    if ($a->get_key() == 'keyword' && $b->get_key() == 'keyword' && $a->get_active_category() && $b->get_active_category()) {
+    if ($a->get_key() == 'keyword' && $b->get_key() == 'keyword' && $a->is_active() && $b->is_active()) {
       // Special case for sorting keyword facets
       // (Using intermediate variables to please PHP4)
       $a_cat = $a->get_active_category();

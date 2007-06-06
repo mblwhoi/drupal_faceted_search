@@ -123,8 +123,7 @@ function taxonomy_facets_faceted_search_parse(&$text) {
       }
       // If found some categories in the current path of tids, build a facet
       if (count($path) > 0) {
-        $last = array_pop($path);
-        $facets[] = new taxonomy_facet($vocabularies[$last->term->vid], $last, $path);
+        $facets[] = new taxonomy_facet($vocabularies[$term->vid], $path);
       }
     }
 
@@ -237,8 +236,8 @@ class taxonomy_facet extends faceted_search_facet {
   /**
    * Constructor. 
    */
-  function taxonomy_facet($vocabulary, $active_category = NULL, $active_path = array()) {
-    parent::faceted_search_facet('taxonomy', $active_category, $active_path);
+  function taxonomy_facet($vocabulary, $active_path = array()) {
+    parent::faceted_search_facet('taxonomy', $active_path);
     $this->_vocabulary = $vocabulary;
   }
 
@@ -265,18 +264,10 @@ class taxonomy_facet extends faceted_search_facet {
 
   /**
    * Return the search text for this facet, taking into account this facet's
-   * active category and active path.
+   * active path.
    */
   function get_text() {
-    if ($category = $this->get_active_category()) {
-      $path = $this->get_active_path();
-      if (count($path) > 0) {
-        $path[] = $category;
-        return implode('.', array_map('_taxonomy_facets_get_category_tid', $path));
-      }
-      return $category->term->tid;
-    }
-    return '';
+    return implode('.', array_map('_taxonomy_facets_get_category_tid', $this->get_active_path()));
   }
   
   /**
@@ -306,28 +297,28 @@ class taxonomy_facet_category extends faceted_search_category {
   /**
    * The taxonomy term corresponding to this facet category.
    */
-  var $term = NULL;
+  var $_term = NULL;
 
   /**
    * Constructor. Build this facet category from a taxonomy term.
    */
   function taxonomy_facet_category($term) {
     parent::faceted_search_category();
-    $this->term = $term;
+    $this->_term = $term;
   }
 
   /**
    * Return the label of this category.
    */
   function get_label() {
-    return $this->term->name;
+    return $this->_term->name;
   }
 
   /**
    * Return the subcategories, if any.
    */
   function get_subcategories() {
-    $terms = taxonomy_get_children($this->term->tid, $this->term->vid);
+    $terms = taxonomy_get_children($this->_term->tid, $this->_term->vid);
     if (!$terms) {
       return array();
     }
@@ -348,12 +339,12 @@ class taxonomy_facet_category extends faceted_search_category {
    *   appropriate query parts.
    */
   function get_results_query() {
-    $tid = $this->term->tid;
+    $tid = $this->_term->tid;
     return array(
       // Using $tid in table name to avoid duplicate table names in JOINs
       'joins' => array("INNER JOIN {taxonomy_facets_term_node} taxonomy_facets_term_node_$tid ON n.nid = taxonomy_facets_term_node_$tid.nid"),
       'wheres' => array("taxonomy_facets_term_node_$tid.tid = %d"),
-      'arguments' => array($this->term->tid),
+      'arguments' => array($this->_term->tid),
     );
   }  
   
@@ -369,7 +360,7 @@ class taxonomy_facet_category extends faceted_search_category {
     return array(
       'joins' => array('INNER JOIN {taxonomy_facets_term_node} taxonomy_facets_term_node ON n.nid = taxonomy_facets_term_node.nid'),
       'wheres' => array('taxonomy_facets_term_node.tid = %d'),
-      'arguments' => array($this->term->tid),
+      'arguments' => array($this->_term->tid),
     );
   }
 }
@@ -381,7 +372,7 @@ class taxonomy_facet_category extends faceted_search_category {
  * Return the id of the specified category. Useful for array_map().
  */
 function _taxonomy_facets_get_category_tid($category) {
-  return $category->term->tid;
+  return $category->_term->tid;
 }
 
 /**
