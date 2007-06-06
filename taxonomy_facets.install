@@ -39,3 +39,15 @@ function taxonomy_facets_uninstall() {
   db_query("DELETE FROM {variable} WHERE name LIKE 'taxonomy_facets_%'");
   cache_clear_all('variables', 'cache');
 }
+
+/**
+ * Renamed variable.
+ */
+function taxonomy_facets_update_1() {
+  $vocabularies = array_filter(variable_get('taxonomy_facets_status', array()));
+  if (count($vocabularies)) {
+    variable_set('taxonomy_facets_vocabularies', $vocabularies);
+  }
+  variable_del('taxonomy_facets_status');
+  return array();
+}

@@ -8,3 +8,15 @@ function content_type_facet_uninstall() {
   db_query("DELETE FROM {variable} WHERE name LIKE 'content_type_facet_%'");
   cache_clear_all('variables', 'cache');
 }
+
+/**
+ * Renamed variable.
+ */
+function content_type_facet_update_1() {
+  $types = array_filter(variable_get('content_type_facet_status', array()));
+  if (count($types)) {
+    variable_set('content_type_facet_types', $types);
+  }
+  variable_del('content_type_facet_status');
+  return array();
+}

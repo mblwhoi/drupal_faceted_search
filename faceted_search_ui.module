@@ -58,6 +58,7 @@ function faceted_search_ui_block($op = 'list', $delta = 0, $edit = array()) {
     $blocks[0] = array('info' => t('Faceted search / Current search'));
     $blocks[1] = array('info' => t('Faceted search / Keyword search'));
     $blocks[2] = array('info' => t('Faceted search / Guided search'));
+    $blocks[3] = array('info' => t('Faceted search / Related categories'));
     return $blocks;
   }
   elseif ($op == 'view') {
@@ -84,6 +85,16 @@ function faceted_search_ui_block($op = 'list', $delta = 0, $edit = array()) {
           $block['content'] = faceted_search_ui_show_guided_search($_faceted_search_ui_current_search);
         }
         break;
+
+      case 3:
+        if (arg(0) == 'node' && is_numeric(arg(1)) && $node = node_load(arg(1))) {
+          if ($content = faceted_search_ui_show_related_categories($node)) {
+            $block['subject'] = t('Related categories'); 
+            $block['content'] = $content;
+          }
+        }
+        break;
+        
     }
     return $block;
   }
@@ -147,7 +158,7 @@ function faceted_search_ui_stage_select() {
 }
 
 /**
- * Display a facet's children.
+ * Display a facet's categories.
  */
 function faceted_search_ui_stage_facet() {
   global $_faceted_search_ui_current_search;
@@ -173,7 +184,7 @@ function faceted_search_ui_stage_facet() {
 
   drupal_set_title(t('Search'));
 
-  $content = theme('faceted_search_ui_facet_heading', $_faceted_search_ui_current_search, $index, 'guided-search');
+  $content = theme('faceted_search_ui_facet_heading', $_faceted_search_ui_current_search->ui_state, $_faceted_search_ui_current_search->get_facets(), $index, 'guided-search');
   $categories = faceted_search_ui_build_categories($_faceted_search_ui_current_search, $index);
   if (count($categories)) {
     $content .= theme('faceted_search_ui_categories', $facet, $categories, 4); // TODO: Avoid hardcoded number of columns
@@ -192,7 +203,7 @@ function faceted_search_ui_show_current_search($search) {
 
   foreach ($search->get_facets() as $index => $facet) {
     if ($facet->is_active()) {
-      $content = theme('faceted_search_ui_facet_heading', $search, $index, 'current-search');
+      $content = theme('faceted_search_ui_facet_heading', $search->ui_state, $search->get_facets(), $index, 'current-search');
       $output .= theme('faceted_search_ui_facet_wrapper', $facet, 'current-search', $content);
     }
   }
@@ -220,7 +231,7 @@ function faceted_search_ui_show_guided_search($search) {
 
     $categories = faceted_search_ui_build_categories($search, $index);
     if (count($categories) || $facet->is_active()) {
-      $content = theme('faceted_search_ui_facet_heading', $search, $index, 'guided-search');
+      $content = theme('faceted_search_ui_facet_heading', $search->ui_state, $search->get_facets(), $index, 'guided-search');
       if (count($categories)) {
         $content .= theme('faceted_search_ui_categories', $facet, $categories, $search->ui_state['stage'] == 'select' ? 2 : 1); // TODO: Avoid hardcoded number of columns
       }
@@ -246,6 +257,26 @@ function faceted_search_ui_show_guided_search($search) {
       $output = implode('', $facet_views);
     }
   }
+  return $output;
+}
+
+/**
+ * Display the facets related to the specified node.
+ */
+function faceted_search_ui_show_related_categories($node) {
+  $excluded_types = array_filter(variable_get('faceted_search_excluded_types', array()));
+  if (isset($excluded_types[$node->type])) {
+    return; // This node type is not used in faceted searches.
+  }
+
+  $facets = faceted_search_collect_facets($node);
+  foreach ($facets as $facet) {
+    // TODO: Sort facets
+    // TODO: Facets with the same key should be grouped under the same label (instead of repeating the label)
+    $heading = theme('faceted_search_ui_facet_heading', _faceted_search_ui_defaults(), array($facet), 0, 'related-categories');
+    $output .= theme('faceted_search_ui_facet_wrapper', $facet, 'related-categories', $heading);
+  }
+
   return $output;
 }
 
@@ -450,18 +481,19 @@ function faceted_search_ui_build_path($ui_state, $text, $facets = array()) {
 /**
  * Build the remover path for a given facet.
  *
- * @param $search
- *   The search context.
+ * @param $ui_state
+ *   The current state of the user interface.
+ *
+ * @param $facets
+ *   The facets to take into account in the remover's links.
  *
  * @param $index
- *   Index of the facet within the search context.
+ *   Index of the facet whose remover shall be built.
  */
-function faceted_search_ui_build_remover_path($search, $index) {
-  $facets = $search->get_facets();
+function faceted_search_ui_build_remover_path($ui_state, $facets, $index) {
   // Remove current facet for remover.
   unset($facets[$index]); 
   // Switch to results stage.
-  $ui_state = $search->ui_state;
   if ($ui_state['stage'] == 'select') {
     $ui_state['stage'] = 'results';
   }
@@ -469,29 +501,30 @@ function faceted_search_ui_build_remover_path($search, $index) {
 }
 
 /**
- * Build the breadcrumb of a facet according to its active category.
+ * Build the breadcrumb of a facet according to its active path.
  *
- * @param $search
- *   The search context.
+ * @param $ui_state
+ *   The current state of the user interface.
+ *
+ * @param $facets
+ *   The facets to take into account in the breadcrumb's links.
  *
  * @param $index
- *   Index of the facet within the search context.
+ *   Index of the facet whose breadcrumb shall be built.
  *
  * @param $breadcrumb
  *   Array of initial components (or prefix components) of the breadcrumb, if
  *   any is desired.
  *
  * @param $context
- *   The caller's context (either 'guided-search', 'current-search' or 'node').
+ *   The caller's context (either 'guided-search', 'current-search' or
+ *   'related-categories').
  *
  * @return
  *   Array of breadcrumb components.
  */
-function faceted_search_ui_build_breadcrumb($search, $index, $breadcrumb = array(), $context = 'guided-search') {
-  // Get all facets to take into account in the links.
-  $facets = $search->get_facets();
+function faceted_search_ui_build_breadcrumb($ui_state, $facets, $index, $breadcrumb = array(), $context = 'guided-search') {
   $facet = $facets[$index];
-
   if ($facet->is_active()) {
     // Replace the current facet with a clone for active category manipulations
     // (to avoid manipulating the original facet).
@@ -503,14 +536,13 @@ function faceted_search_ui_build_breadcrumb($search, $index, $breadcrumb = array
       // Replace active category within the facet
       $facets[$index]->set_active_path($path);
       // Switch to results stage.
-      $ui_state = $search->ui_state;
       if ($ui_state['stage'] == 'select') {
         $ui_state['stage'] = 'results';
       }
       $link = faceted_search_ui_build_path($ui_state, '', $facets);
       $breadcrumb[] = l($category->get_label(), $link);
     }
-    if ($category && $context != 'node') {
+    if ($category && $context != 'related-categories') {
       // The last category needs not be a link to itself since it is already in
       // the current search.
       $breadcrumb[count($breadcrumb) - 1] = check_plain($category->get_label());
@@ -610,7 +642,8 @@ function theme_faceted_search_ui_page($search, $content) {
  *   The facet object.
  *
  * @param $context
- *   The caller's context (either 'guided-search', 'current-search', or 'node').
+ *   The caller's context (either 'guided-search', 'current-search', or
+ *   'related-categories').
  *
  * @param $content
  *   The facet's content (heading, categories, etc.)
@@ -630,11 +663,12 @@ function theme_faceted_search_ui_facet_wrapper($facet, $context, $content) {
  * active path, and active category.
  *
  * @param $context
- *   The caller's context (either 'guided-search', 'current-search' or 'node').
+ *   The caller's context (either 'guided-search', 'current-search' or
+ *   'related-categories').
  */
-function theme_faceted_search_ui_facet_heading($search, $index, $context) {
-  $facet = $search->get_facet($index);
-  $remover_path = faceted_search_ui_build_remover_path($search, $index);
+function theme_faceted_search_ui_facet_heading($ui_state, $facets, $index, $context) {
+  $facet = $facets[$index];
+  $remover_path = faceted_search_ui_build_remover_path($ui_state, $facets, $index);
   
   if ($context == 'current-search') {
     $output .= theme('faceted_search_ui_remover_link_current_search', $remover_path) .' ';
@@ -654,7 +688,7 @@ function theme_faceted_search_ui_facet_heading($search, $index, $context) {
     if ($context == 'guided-search') {
       $breadcrumb[] = theme('faceted_search_ui_remover_link_guided_search', $remover_path);
     }
-    $breadcrumb = faceted_search_ui_build_breadcrumb($search, $index, $breadcrumb, $context);
+    $breadcrumb = faceted_search_ui_build_breadcrumb($ui_state, $facets, $index, $breadcrumb, $context);
     $output .= theme('faceted_search_ui_breadcrumb', $breadcrumb);
   }
 

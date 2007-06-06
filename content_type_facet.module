@@ -48,17 +48,34 @@ function content_type_facet_faceted_search_list() {
  *   Array of facets to include in the current search.
  */
 function content_type_facet_faceted_search_parse(&$text) {
-  $valid_types = content_type_facet_get_types();
+  $types = content_type_facet_get_types();
   $facets = array();
   if ($type = search_query_extract($text, 'content_type')) {
     // Create an active facet with the type found in search text
-    if (in_array($type, $valid_types)) {
+    if (isset($types[$type])) {
       $facets[] = new content_type_facet($type);
     }
     // Remove the parsed text
     $text = search_query_insert($text, 'content_type');
   }
+  return $facets;
+}
 
+/**
+ * Implementation of hook_faceted_search_collect().
+ *
+ * Return a facet based on the specified node's type. The returned facet will
+ * have an active category reflecting the node's type.
+ *
+ * @return
+ *   Array of facets.
+ */
+function content_type_facet_faceted_search_collect($node) {
+  $types = content_type_facet_get_types();
+  $facets = array();
+  if (isset($types[$node->type])) {
+    $facets[] = new content_type_facet($node->type);
+  }
   return $facets;
 }
 
@@ -66,17 +83,14 @@ function content_type_facet_faceted_search_parse(&$text) {
  * Menu callback for the administration settings.
  */
 function content_type_facet_admin_settings_form() {
-  $types = array();
-  foreach (node_get_types() as $type) { // TODO: simplify this! node_get_types('names').
-    $types[$type->type] = $type->name;
-  }
+  $types = node_get_types('names');
   if (count($types)) {
-    $form['content_type_facet_status'] = array(
+    $form['content_type_facet_types'] = array(
       '#type' => 'checkboxes',
       '#title' => t('Content types to display in the Content type facet'),
       '#description' => t('Check the content types that shall be displayed in the Content type facet. Note that this setting is not a filter for search results; other content types can still be searchable through other facets or from text searches.'),
       '#options' => $types,
-      '#default_value' => variable_get('content_type_facet_status', array()),
+      '#default_value' => content_type_facet_get_types(),
     );
   }
   else {
@@ -92,8 +106,9 @@ function content_type_facet_admin_settings_form() {
  * searches.
  */
 function content_type_facet_get_types() {
-  // TODO: variable should be simplified as ('type' => status) pairs
-  return array_intersect(array_keys(node_get_types()), variable_get('content_type_facet_status', array()));
+  // Intersecting with node_get_types() ensures that only types that still exist
+  // are returned.
+  return array_filter(array_intersect(variable_get('content_type_facet_types', array()), array_keys(node_get_types())));
 }
 
 /**

@@ -135,6 +135,38 @@ function taxonomy_facets_faceted_search_parse(&$text) {
 }
 
 /**
+ * Implementation of hook_faceted_search_collect().
+ *
+ * Collect facets from the specified node's taxonomy. All returned facets will
+ * have an active path reflecting the node's taxonomy.
+ *
+ * @return
+ *   Array of facets. 
+ */
+function taxonomy_facets_faceted_search_collect($node) {
+  $facets = array();
+  $vocabularies = taxonomy_facets_get_vocabularies();
+
+  foreach ($node->taxonomy as $term) {
+    $vid = $term->vid;
+    if (isset($vocabularies[$vid])) {
+      $path = array();
+      // Retrieve ancestor terms
+      while ($term) {
+        array_unshift($path, new taxonomy_facet_category($term));
+        $parents = taxonomy_get_parents($term->tid);
+        $term = reset($parents); // Keep only the first parent
+      }
+      if ($path) {
+        $facets[] = new taxonomy_facet($vocabularies[$vid], $path);
+      }
+    }
+  }
+
+  return $facets;
+}
+
+/**
  * Menu callback for the administration settings.
  */
 function taxonomy_facets_admin_settings_form() {
@@ -143,12 +175,12 @@ function taxonomy_facets_admin_settings_form() {
     $vocabularies[$vocabulary->vid] = $vocabulary->name;
   }
   if (count($vocabularies)) {
-    $form['taxonomy_facets_status'] = array(
+    $form['taxonomy_facets_vocabularies'] = array(
       '#type' => 'checkboxes',
       '#title' => t('Vocabularies to use as facets'),
       '#description' => t('Check the vocabularies that shall be used in faceted searches. Note that the default weight of each facet will equal the weight of its corresponding vocabulary.'),
       '#options' => $vocabularies,
-      '#default_value' => variable_get('taxonomy_facets_status', array()),
+      '#default_value' => variable_get('taxonomy_facets_vocabularies', array()),
     );
     $form['indexing'] = array(
       '#type' => 'fieldset',
@@ -176,10 +208,10 @@ function taxonomy_facets_admin_settings_form() {
  * Submit callback for the administration settings.
  */
 function taxonomy_facets_admin_settings_form_submit($form_id, $form_values) {
-  $old_status = variable_get('taxonomy_facets_status', array());
-  if (count($form_values['taxonomy_facets_status'])) {
-    foreach ($form_values['taxonomy_facets_status'] as $vid => $status) {
-      if ($old_status[$vid] != $status) {
+  $vocabularies = variable_get('taxonomy_facets_vocabularies', array());
+  if (count($form_values['taxonomy_facets_vocabularies'])) {
+    foreach ($form_values['taxonomy_facets_vocabularies'] as $vid => $status) {
+      if ($vocabularies[$vid] != $status) {
         $vocabulary = taxonomy_get_vocabulary($vid);
         if ($status) {
           _taxonomy_facets_update_term_node_vid($vid);
@@ -211,15 +243,16 @@ function taxonomy_facets_rebuild_term_node() {
  * faceted searches.
  */
 function taxonomy_facets_get_vocabularies() {
-  $facet_vocabularies = array();
-  $settings = variable_get('taxonomy_facets_status', array());
-  $vocabularies = taxonomy_get_vocabularies();
-  foreach ($vocabularies as $vocabulary) {
+  $vocabularies = array();
+  $settings = variable_get('taxonomy_facets_vocabularies', array());
+  // Fill the return array with vocabulary objects.
+  $all_vocabularies = taxonomy_get_vocabularies();
+  foreach ($all_vocabularies as $vocabulary) {
     if ($settings[$vocabulary->vid]) {
-      $facet_vocabularies[$vocabulary->vid] = $vocabulary;
+      $vocabularies[$vocabulary->vid] = $vocabulary;
     }
   }
-  return $facet_vocabularies;
+  return $vocabularies;
 }
 
 /**

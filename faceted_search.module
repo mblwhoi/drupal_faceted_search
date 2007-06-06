@@ -132,6 +132,20 @@ function faceted_search_build_text($facets) {
   return trim($text);
 }
 
+/**
+ * Collects the facets related to the specified node.
+ */
+function faceted_search_collect_facets($node) {
+  $facets = array();
+  foreach (module_implements('faceted_search_collect') as $module) {
+    if (module_hook($module, 'faceted_search_collect')) {
+      $function = $module .'_faceted_search_collect';
+      $facets = array_merge($facets, $function($node)); // TODO: sort
+    }
+  }
+  return $facets;
+}
+
 function theme_faceted_search_display_settings($form) {
   uasort($form, '_element_sort');
 

@@ -32,6 +32,7 @@ class faceted_search_category {
  * The base class for facets.
  */
 class faceted_search_facet {
+  
   /**
    * The key identifying this class of facet in search texts. Keys are used in
    * the form of 'key:text' tokens in search texts.
