@@ -12,9 +12,9 @@ data.
 The interface exposes metadata in such a way that users can build their queries
 as they go, refining or expanding the current query, with results automatically
 reflecting the current query. This interface also integrates free-text search,
-fully leveraging Drupal's search engine. This interface avoids complex search
-forms (which break the navigation flow), and never offers facets that would lead
-to empty result sets.
+fully leveraging Drupal's search engine. It avoids complex search forms (which
+break the navigation flow), and never offers facets that would lead to empty
+result sets.
 
 The most obvious metadata for faceted searches is provided by Drupal's taxonomy
 module. However, Faceted Search's API allows developers to expose other
