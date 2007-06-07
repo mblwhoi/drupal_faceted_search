@@ -44,6 +44,9 @@ function faceted_search_ui_menu($may_cache) {
     );
   }
   else {
+    // TODO: Avoid this initialization when not needed; must be done only when
+    // arg(0) == 'faceted_search', or when any of the faceted search blocks are
+    // used.
     _faceted_search_ui_init();
   }
   
@@ -271,7 +274,6 @@ function faceted_search_ui_show_related_categories($node) {
 
   $facets = faceted_search_collect_facets($node);
   foreach ($facets as $facet) {
-    // TODO: Sort facets
     // TODO: Facets with the same key should be grouped under the same label (instead of repeating the label)
     $heading = theme('faceted_search_ui_facet_heading', _faceted_search_ui_defaults(), array($facet), 0, 'related-categories');
     $output .= theme('faceted_search_ui_facet_wrapper', $facet, 'related-categories', $heading);
@@ -571,7 +573,7 @@ function faceted_search_ui_build_categories($search, $index) {
   if ($search->ui_state['stage'] != 'facet' && $facet->get_max_categories() > 0 && count($categories) > $facet->get_max_categories()) {
     // Keep the categories that lead to the greatest number of nodes
     arsort($counts);
-    $counts = _faceted_search_array_slice_preserve_keys($counts, 0, $facet->get_max_categories());
+    $counts = _faceted_search_ui_array_slice_preserve_keys($counts, 0, $facet->get_max_categories());
   }
 
   // Replace the facet with a clone to allow active category manipulations (to
@@ -652,7 +654,7 @@ function theme_faceted_search_ui_facet_wrapper($facet, $context, $content) {
   $classes = array(
     'faceted-search-facet',
     'faceted-search-facet-'. check_plain($facet->get_key() .'-'. $facet->get_id()),
-    'faceted-search-facet-'. ($facet->is_active() ? 'active' : 'inactive'),
+    'faceted-search-facet-'. ($facet->is_active() && $context != 'related-categories' ? 'active' : 'inactive'),
     'faceted-search-'. $context,
   );
   return '<div class="'. implode(' ', $classes) .'">'. $content .'</div>'."\n";
@@ -930,7 +932,7 @@ function _faceted_search_ui_collect_categories($search, $facet) {
 /**
  * Implement array_slice() with preserve_keys for every PHP version.
  */
-function _faceted_search_array_slice_preserve_keys($array, $offset, $length = NULL) {
+function _faceted_search_ui_array_slice_preserve_keys($array, $offset, $length = NULL) {
   if (version_compare(phpversion(), '5.0.2') >= 0) {
     // PHP >= 5.0.2 is able to do this itself
     return array_slice($array, $offset, $length, TRUE);
