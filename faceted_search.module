@@ -140,8 +140,13 @@ function faceted_search_collect_facets($node) {
   foreach (module_implements('faceted_search_collect') as $module) {
     if (module_hook($module, 'faceted_search_collect')) {
       $function = $module .'_faceted_search_collect';
-      $facets = array_merge($facets, $function($node)); // TODO: sort
+      $module_facets = $function($node);
+      array_walk($module_facets, create_function('$facet, $index, $module', '$facet->load_settings($module);'), $module);
+      $facets = array_merge($facets, $module_facets);
     }
+  }
+  if (count($facets) > 0) {
+    uasort($facets, '_faceted_search_compare_facets');
   }
   return $facets;
 }

@@ -74,6 +74,22 @@ class faceted_search_facet {
   }
 
   /**
+   * Assign this facet's settings.
+   *
+   * @param $module
+   *   Creator module of this facet.
+   */
+  function load_settings($module) {
+    // Retrieve the settings for this facet
+    $settings = variable_get('faceted_search_display', array());
+    $key = $module .'_'. $this->get_id();
+    
+    // Assign this facet's settings
+    $this->_weight = isset($settings[$key]['weight']) ? $settings[$key]['weight'] : $this->get_default_weight();
+    $this->_max_categories = isset($settings[$key]['max']) ? $settings[$key]['max'] : $this->get_default_max_categories();
+  }
+
+  /**
    * Return the key for this class of facet.
    */
   function get_key() {
@@ -605,15 +621,7 @@ class faceted_search {
    *   Creator module of the facet.
    */
   function _add_facet($facet, $module) {
-    // Retrieve the settings for this facet
-    $settings = variable_get('faceted_search_display', array());
-    $key = $module .'_'. $facet->get_id();
-    
-    // Assign this facet's settings
-    $facet->_weight = isset($settings[$key]['weight']) ? $settings[$key]['weight'] : $facet->get_default_weight();
-    $facet->_max_categories = isset($settings[$key]['max']) ? $settings[$key]['max'] : $facet->get_default_max_categories();
-
-    // Add facet to this search
+    $facet->load_settings($module);
     $this->_facets[] = $facet;
   }
   
