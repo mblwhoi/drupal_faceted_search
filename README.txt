@@ -48,16 +48,10 @@ This module is undergoing development and is not ready for production use. It
 executes tons of complex database queries, and very little performance
 optimizations have been done so far.
 
+The interface still has some rough edges, but should work pretty well.
+
 Although this code uses some object-oriented programming, an effort was made not
-to push this too far in order to remain compatible with PHP 4. Note, however,
-that testing at this point has mostly been performed under PHP 5.
-
-Some important tasks that still need to be done:
-
-- Making the default UI look better.
-- Writing some developer documentation.
-- Performing more tests.
-- Adding many more features. :-)
+to push this too far in order to remain compatible with PHP 4.
 
 
 Requirements
@@ -91,9 +85,11 @@ Installation
    - Faceted search / Current search
    - Faceted search / Keyword search
    - Faceted search / Guided search
+   - Faceted search / Related categories
 
    It is most intuitive for users to have the Current search block located above
-   the two others.
+   the Keyword search and Guided search blocks, and to have the Related
+   categories block placed in the Content region (so it appears under nodes).
 
 6. Go to the Administer > Site configuration > Faceted Search page.
 
