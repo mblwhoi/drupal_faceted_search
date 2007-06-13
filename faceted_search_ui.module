@@ -90,7 +90,7 @@ function faceted_search_ui_block($op = 'list', $delta = 0, $edit = array()) {
         break;
 
       case 3:
-        if (arg(0) == 'node' && is_numeric(arg(1)) && $node = node_load(arg(1))) {
+        if (arg(0) == 'node' && is_numeric(arg(1)) && !arg(2) && $node = node_load(arg(1))) {
           if ($content = faceted_search_ui_show_related_categories($node)) {
             $block['subject'] = t('Related categories'); 
             $block['content'] = $content;
