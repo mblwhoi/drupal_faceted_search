@@ -3,4 +3,3 @@ name = Faceted Search
 description = "API for performing faceted searches."
 dependencies = search
 package = Faceted Search
-version = "$Name$"

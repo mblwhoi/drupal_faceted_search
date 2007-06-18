@@ -3,5 +3,4 @@ name = Taxonomy Facets
 description = "Provides facets based on taxonomy (categories)."
 dependencies = taxonomy search faceted_search
 package = Faceted Search
-version = "$Name$"
 
