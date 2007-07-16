@@ -1,6 +1,6 @@
 ; $Id$
 name = Content Type Facet
 description = "Provides a facet for content types."
-dependencies = search faceted_search
+dependencies = faceted_search
 package = Faceted Search
 
