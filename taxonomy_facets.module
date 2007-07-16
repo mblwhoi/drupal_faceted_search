@@ -39,21 +39,21 @@ function taxonomy_facets_menu($may_cache) {
 function taxonomy_facets_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
   switch ($op) {
     case 'delete':
-      _taxonomy_facets_clear_term_node($node);
+      _taxonomy_facets_clear_term_node($node->nid);
       break;
 
     case 'insert':
       if ($node->status) {
-        _taxonomy_facets_update_term_node($node);
+        _taxonomy_facets_update_term_node($node->nid, $node->taxonomy);
       }
       break;
       
     case 'update':
       if ($node->status) {
-        _taxonomy_facets_update_term_node($node);
+        _taxonomy_facets_update_term_node($node->nid, $node->taxonomy);
       }
       else {
-        _taxonomy_facets_clear_term_node($node);
+        _taxonomy_facets_clear_term_node($node->nid);
       }
       break;
   }
@@ -440,27 +440,79 @@ function _taxonomy_facets_clear_term_node_vid($vid) {
 }
 
 /**
- * Add terms from the specified node to the taxonomy_facets_term_node table.
+ * Update the saved term associations for the specified node.
  */
-function _taxonomy_facets_update_term_node($node) {
-  _taxonomy_facets_clear_term_node($node);
+function _taxonomy_facets_update_term_node($nid, $terms) {
+  _taxonomy_facets_clear_term_node($nid);
   
-  if (count($node->taxonomy) == 0) {
+  if (count($terms) == 0) {
     return;
   }
-  $vids = array_keys(taxonomy_facets_get_vocabularies());
-  if (count($vids) == 0) {
+  // Get allowed vocabularies.
+  $vocabularies = taxonomy_facets_get_vocabularies();
+  if (count($vocabularies) == 0) {
     return;
   }
 
-  // For each term of the node that also belongs to one of the $vids, insert it
-  // (with its ancestors) into the taxonomy_facets_term_node table
   $tids = array();
-  foreach ($node->taxonomy as $vid => $node_tids) {
-    if (in_array($vid, $vids)) {
-      $tids = array_merge($tids, $node_tids);
+  
+  // Check for free tags to save.
+  if (isset($terms['tags'])) {
+    // Note: This is based on taxonomy_node_save().
+    $input = $terms['tags'];
+    unset($terms['tags']);
+    foreach ($input as $vid => $vid_value) {
+      // This regexp allows the following types of user input:
+      // this, "somecmpany, llc", "and ""this"" w,o.rks", foo bar
+      $regexp = '%(?:^|,\ *)("(?>[^"]*)(?>""[^"]* )*"|(?: [^",]*))%x';
+      preg_match_all($regexp, $vid_value, $matches);
+      $input_terms = array_unique($matches[1]);
+
+      $inserted = array();
+      foreach ($input_terms as $input_term) {
+        // If a user has escaped a term (to demonstrate that it is a group, or
+        // includes a comma or quote character), we remove the escape formatting
+        // so to save the term into the database as the user intends.
+        $input_term = str_replace('""', '"', preg_replace('/^"(.*)"$/', '\1', $input_term));
+        $input_term = trim($input_term);
+        if ($input_term == '') {
+          continue;
+        }
+
+        // Return the term's tid. Note: This assumes that taxonomy_node_save()
+        // has been called previously!
+        $possibilities = taxonomy_get_term_by_name($input_term);
+        $input_term_tid = NULL; // tid match, if any.
+        foreach ($possibilities as $possibility) {
+          if ($possibility->vid == $vid) {
+            // Note: Should break here, but taxonomy_node_save() doesn't. Can't
+            // save $input_term_tid in $tids here, since that would append all
+            // the possibilities instead of the last one.
+            $input_term_tid = $possibility->tid;
+          }
+        }
+        if ($input_term_tid) {
+          $tids[] = $input_term_tid;
+        }
+      }
     }
   }
+  // Collect the controlled vocabulary terms to save.
+  foreach ($terms as $vid => $more_tids) {
+    if (isset($vocabularies[$vid])) {
+      $tids = array_merge($tids, $more_tids);
+    }
+  }
+  if ($tids) {
+    _taxonomy_facets_save_term_node($nid, $tids);
+  }
+}
+
+/**
+ * Save the specified terms (and their ancestors) in the
+ * taxonomy_facets_term_node table.
+ */
+function _taxonomy_facets_save_term_node($nid, $tids) {
   foreach ($tids as $tid) {
     $ancestors = taxonomy_get_parents_all($tid);
     foreach ($ancestors as $term) {
@@ -468,16 +520,16 @@ function _taxonomy_facets_update_term_node($node) {
       // common ancestors)
       if (!isset($inserted[$term->tid])) {
         $inserted[$term->tid] = TRUE;
-        db_query("INSERT INTO {taxonomy_facets_term_node} (nid, tid) VALUES (%d, %d)", $node->nid, $term->tid);
+        db_query("INSERT INTO {taxonomy_facets_term_node} (nid, tid) VALUES (%d, %d)", $nid, $term->tid);
       }
     }
   }
 }
 
 /**
- * Clear the taxonomy_facets_term_node table from terms of the specified node.
+ * Clear the saved term associations for the specified node.
  */
-function _taxonomy_facets_clear_term_node($node) {
-  db_query("DELETE FROM {taxonomy_facets_term_node} WHERE nid = %d", $node->nid);
+function _taxonomy_facets_clear_term_node($nid) {
+  db_query("DELETE FROM {taxonomy_facets_term_node} WHERE nid = %d", $nid);
 }
 
