@@ -456,7 +456,7 @@ function _taxonomy_facets_update_term_node($nid, $terms) {
 
   $tids = array();
   
-  // Check for free tags to save.
+  // Collect the free tags to save.
   if (isset($terms['tags'])) {
     // Note: This is based on taxonomy_node_save().
     $input = $terms['tags'];
@@ -497,10 +497,28 @@ function _taxonomy_facets_update_term_node($nid, $terms) {
       }
     }
   }
-  // Collect the controlled vocabulary terms to save.
-  foreach ($terms as $vid => $more_tids) {
-    if (isset($vocabularies[$vid])) {
-      $tids = array_merge($tids, $more_tids);
+  
+  // Collect the taxonomy terms to save.
+  foreach ($terms as $key => $value) {
+    if (is_array($value)) {
+      // We are looking at an array of tids indexed by vid.
+      if (isset($vocabularies[$key])) {
+        $tids = array_merge($tids, $value);
+      }
+    }
+    elseif (is_object($value)) {
+      // We are looking at a term. Note: Not sure how this can happen, but it
+      // has been reported, and taxonomy_node_save() handles this case.
+      if (isset($vocabularies[$value->vid])) {
+        $tids[] = $value->tid;
+      }
+    }
+    elseif ($value) {
+      // We are looking at a tid. Note: Not sure how this can happen, but
+      // taxonomy_node_save() handles this case.
+      if (isset($vocabularies[$key])) {
+        $tids[] = $key;
+      }
     }
   }
   if ($tids) {
