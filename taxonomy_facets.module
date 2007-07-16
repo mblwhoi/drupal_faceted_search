@@ -521,7 +521,7 @@ function _taxonomy_facets_update_term_node($nid, $terms) {
       // We are looking at a tid. Note: Not sure how this can happen, but
       // taxonomy_node_save() handles this case.
       if (isset($vocabularies[$key])) {
-        $tids[] = $key;
+        $tids[] = $value;
       }
     }
   }
