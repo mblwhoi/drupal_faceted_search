@@ -462,6 +462,10 @@ function _taxonomy_facets_update_term_node($nid, $terms) {
     $input = $terms['tags'];
     unset($terms['tags']);
     foreach ($input as $vid => $vid_value) {
+      if (!isset($vocabularies[$vid])) {
+        continue;
+      }
+      
       // This regexp allows the following types of user input:
       // this, "somecmpany, llc", "and ""this"" w,o.rks", foo bar
       $regexp = '%(?:^|,\ *)("(?>[^"]*)(?>""[^"]* )*"|(?: [^",]*))%x';
