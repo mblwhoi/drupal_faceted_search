@@ -719,7 +719,7 @@ function theme_faceted_search_ui_categories($facet, $categories, $column_count =
 }
 
 function theme_faceted_search_ui_label($facet) {
-  return '<strong>'. $facet->get_label() .'</strong>';
+  return '<strong>'. check_plain($facet->get_label()) .'</strong>';
 }
 
 function theme_faceted_search_ui_category($label, $path, $count) {

@@ -198,7 +198,7 @@ function _faceted_search_add_display_settings(&$form, $settings, $module, $facet
   $key = $module .'_'. $facet->get_id();
   $weight = isset($settings[$key]['weight']) ? $settings[$key]['weight'] : $facet->get_default_weight();
   $form[$key] = array(
-    '#title' => $facet->get_label(),
+    '#title' => check_plain($facet->get_label()),
     '#weight' => $weight,
   );
   $form[$key]['weight'] = array(
