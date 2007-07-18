@@ -188,7 +188,7 @@ function faceted_search_ui_stage_facet() {
   drupal_set_title(t('Search'));
 
   $content = theme('faceted_search_ui_facet_heading', $_faceted_search_ui_current_search->ui_state, $_faceted_search_ui_current_search->get_facets(), $index, 'guided-search');
-  $categories = faceted_search_ui_build_categories($_faceted_search_ui_current_search, $index);
+  $categories = faceted_search_ui_build_categories($_faceted_search_ui_current_search, $index, FALSE);
   if (count($categories)) {
     $content .= theme('faceted_search_ui_categories', $facet, $categories, 4); // TODO: Avoid hardcoded number of columns
   }
@@ -232,7 +232,7 @@ function faceted_search_ui_show_guided_search($search) {
       continue; 
     }
 
-    $categories = faceted_search_ui_build_categories($search, $index);
+    $categories = faceted_search_ui_build_categories($search, $index, TRUE);
     if (count($categories) || $facet->is_active()) {
       $content = theme('faceted_search_ui_facet_heading', $search->ui_state, $search->get_facets(), $index, 'guided-search');
       if (count($categories)) {
@@ -562,19 +562,16 @@ function faceted_search_ui_build_breadcrumb($ui_state, $facets, $index, $breadcr
  *
  * @param $index
  *   Index of the facet within the search context.
+ *
+ * @param $max
+ *   TRUE when the configured maximum number of categories of the facet should
+ *   be applied to limit results, or FALSE when no limit should be applied.
  */
-function faceted_search_ui_build_categories($search, $index) {
+function faceted_search_ui_build_categories($search, $index, $max) {
   $links = array();
   $facets = $search->get_facets();
   $facet = $facets[$index];
-  list($categories, $counts) = _faceted_search_ui_collect_categories($search, $facet);
-
-  // If the current facet has reached its max number of categories
-  if ($search->ui_state['stage'] != 'facet' && $facet->get_max_categories() > 0 && count($categories) > $facet->get_max_categories()) {
-    // Keep the categories that lead to the greatest number of nodes
-    arsort($counts);
-    $counts = _faceted_search_ui_array_slice_preserve_keys($counts, 0, $facet->get_max_categories());
-  }
+  list($categories, $counts) = _faceted_search_ui_collect_categories($search, $facet, $max);
 
   // Replace the facet with a clone to allow active category manipulations (to
   // avoid manipulating the original facet).
@@ -904,7 +901,7 @@ function _faceted_search_ui_defaults() {
  * Collect the categories of the given facet and for each category, count the
  * number of matching nodes within the current search results.
  */
-function _faceted_search_ui_collect_categories($search, $facet) {
+function _faceted_search_ui_collect_categories($search, $facet, $max) {
   $categories = array();
   if ($active_category = $facet->get_active_category()) {
     $categories = $active_category->get_subcategories();
@@ -912,56 +909,26 @@ function _faceted_search_ui_collect_categories($search, $facet) {
   else {
     $categories = $facet->get_root_categories();
   }
-    
+
+  $max = $max ? $facet->get_max_categories() : 0;
+  $collected = 0;
   $counts = array();
   foreach ($categories as $category_index => $category) {
     // Count the number of associated nodes within the search results
     if ($count = $search->count_within_results($category)) {
       // Category matches at least one node, save node count
       $counts[$category_index] = $count;
+      $collected++;
     }
     else {
       // Forget that category
       unset($categories[$category_index]);
+    }
+    if ($max && $collected == $max) {
+      break;
     }
   }
 
   return array($categories, $counts);
 }
 
-/**
- * Implement array_slice() with preserve_keys for every PHP version.
- */
-function _faceted_search_ui_array_slice_preserve_keys($array, $offset, $length = NULL) {
-  if (version_compare(phpversion(), '5.0.2') >= 0) {
-    // PHP >= 5.0.2 is able to do this itself
-    return array_slice($array, $offset, $length, TRUE);
-  }
-  else {
-    // Prepare input variables
-    $result = array();
-    $i = 0;
-    if ($offset < 0) {
-      $offset = count($array) + $offset;
-    }
-    if ($length > 0) {
-      $end_offset = $offset + $length;
-    }
-    else if ($length < 0) {
-      $end_offset = count($array) + $length;
-    }
-    else {
-      $end_offset = count($array);
-    }
-   
-    // Collect elements
-    foreach ($array as $key => $value) {
-      if ($i >= $offset && $i < $end_offset) {
-        $result[$key] = $value;
-      }
-      $i++;
-    }
-
-    return $result;
-  }   
-}
