@@ -69,7 +69,7 @@ function faceted_search_admin_settings_form() {
   $form['display'] = array(
     '#type' => 'fieldset',
     '#title' => t('Facet display'),
-    '#description' => t('In listings, the heavier facets will sink and the lighter facets will be positioned nearer the top. For performance reasons, it is advisable to limit the number of categories per facet in guided search. Users can always get the full listing of categories in a dedicated page.'),
+    '#description' => t('In listings, the heavier facets will sink and the lighter facets will be positioned nearer the top. For performance reasons, it is advisable to limit the number of categories per facet in guided search (users will still be able to get the full listing of categories by following a <em>more</em> link).'),
   );
   $form['display']['faceted_search_display'] = array(
     '#theme' => 'faceted_search_display_settings',
