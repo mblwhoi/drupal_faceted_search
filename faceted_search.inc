@@ -22,6 +22,9 @@ class faceted_search_category {
    * Return the subcategories, if any.
    *
    * This only needs to be overridden for hierarchical facets.
+   *
+   * @return
+   *   Array of categories.
    */
   function get_subcategories() {
     return array();
@@ -132,6 +135,16 @@ class faceted_search_facet {
     return 10;
   }
 
+  /**
+   * Return the root categories of this facet.
+   *
+   * @return
+   *   Array of categories.
+   */
+  function get_root_categories() {
+    return array();
+  }
+  
   /**
    * Return TRUE if this facet has an active category.
    */
