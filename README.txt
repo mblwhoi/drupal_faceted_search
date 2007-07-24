@@ -44,20 +44,27 @@ to implement new facets.
 Current status
 **************
 
-This module is undergoing development and is not ready for production use. It
-executes tons of complex database queries, and very little performance
-optimizations have been done so far.
+This module is undergoing development. It might not be a good idea to use it on
+a production site.
 
 The interface still has some rough edges, but should work pretty well.
 
-Although this code uses some object-oriented programming, an effort was made not
-to push this too far in order to remain compatible with PHP 4.
+Although this code uses some object-oriented programming, it is still compatible
+with PHP 4 at the moment.
 
 
 Requirements
 ************
 
 - Drupal 5.x.
+
+
+Caution
+*******
+
+Faceted searches are relatively database-intensive. If your server can barely
+keep up with your traffic, this module will make things worst. Make sure to
+benchmark performance before deploying this module on a busy site.
 
 
 Installation

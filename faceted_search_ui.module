@@ -44,9 +44,6 @@ function faceted_search_ui_menu($may_cache) {
     );
   }
   else {
-    // TODO: Avoid this initialization when not needed; must be done only when
-    // arg(0) == 'faceted_search', or when any of the faceted search blocks are
-    // used.
     _faceted_search_ui_init();
   }
   
@@ -188,7 +185,7 @@ function faceted_search_ui_stage_facet() {
   drupal_set_title(t('Search'));
 
   $content = theme('faceted_search_ui_facet_heading', $_faceted_search_ui_current_search->ui_state, $_faceted_search_ui_current_search->get_facets(), $index, 'guided-search');
-  $categories = faceted_search_ui_build_categories($_faceted_search_ui_current_search, $index, FALSE);
+  $categories = faceted_search_ui_build_categories($_faceted_search_ui_current_search, $index);
   if (count($categories)) {
     $content .= theme('faceted_search_ui_categories', $facet, $categories, 4); // TODO: Avoid hardcoded number of columns
   }
@@ -232,10 +229,17 @@ function faceted_search_ui_show_guided_search($search) {
       continue; 
     }
 
-    $categories = faceted_search_ui_build_categories($search, $index, TRUE);
-    if (count($categories) || $facet->is_active()) {
+    if ($facet->get_max_categories() > 0) {
+      $max_count = $facet->get_max_categories();
+    }
+    else {
+      $max_count = NULL; // No limit.
+    }
+    
+    $categories = faceted_search_ui_build_categories($search, $index, 0, $max_count);
+    if (count($categories) > 0 || $facet->is_active()) {
       $content = theme('faceted_search_ui_facet_heading', $search->ui_state, $search->get_facets(), $index, 'guided-search');
-      if (count($categories)) {
+      if (count($categories) > 0) {
         $content .= theme('faceted_search_ui_categories', $facet, $categories, $search->ui_state['stage'] == 'select' ? 2 : 1); // TODO: Avoid hardcoded number of columns
       }
       $facet_views[] = theme('faceted_search_ui_facet_wrapper', $facet, 'guided-search', $content);
@@ -476,7 +480,6 @@ function faceted_search_ui_build_path($ui_state, $text, $facets = array()) {
   if ($ui_state['style'] != 'full') {
     $ui_state['aim'] = 'na';
   }
-  
   return "faceted_search/{$ui_state['stage']}/{$facet}/{$ui_state['style']}/{$ui_state['sort']}/{$ui_state['aim']}/{$text}";
 }
 
@@ -563,15 +566,19 @@ function faceted_search_ui_build_breadcrumb($ui_state, $facets, $index, $breadcr
  * @param $index
  *   Index of the facet within the search context.
  *
- * @param $max
- *   TRUE when the configured maximum number of categories of the facet should
- *   be applied to limit results, or FALSE when no limit should be applied.
+ * @param $from
+ *   Ordinal number of the first category to load. Numbering starts at 0.
+ *
+ * @param $max_count
+ *   Number of categories to load.
  */
-function faceted_search_ui_build_categories($search, $index, $max) {
-  $links = array();
+function faceted_search_ui_build_categories($search, $index, $from = NULL, $max_count = NULL) {
   $facets = $search->get_facets();
   $facet = $facets[$index];
-  list($categories, $counts) = _faceted_search_ui_collect_categories($search, $facet, $max);
+  
+  // Load the categories. If a limit is used, we load one extra category in
+  // order to determine whether a 'more' link needs to be displayed.
+  $categories = $search->load_categories($facet, $from, (isset($max_count) ? $max_count + 1 : $max_count));
 
   // Replace the facet with a clone to allow active category manipulations (to
   // avoid manipulating the original facet).
@@ -584,20 +591,21 @@ function faceted_search_ui_build_categories($search, $index, $max) {
   
   // Build links to categories.
   // TODO: Separate into alphabetical groups (with first letter of each category label), if configured to do so
+  $links = array();
   foreach ($categories as $category_index => $category) {
-    // If category was not sliced away by the max number of categories
-    if (isset($counts[$category_index])) {
-      $active_path = $facet->get_active_path();
-      $active_path[] = $category;
-      // Replace active path in the facet
-      $facets[$index]->set_active_path($active_path);
-      $path = faceted_search_ui_build_path($ui_state, '', $facets);
-      $links[] = theme('faceted_search_ui_category', $category->get_label(), $path, $counts[$category_index]);
+    if (isset($max_count) && $category_index == $max_count) {
+      break; // Do not theme the extra category.
     }
+    $active_path = $facet->get_active_path();
+    $active_path[] = $category;
+    // Replace active path in the facet
+    $facets[$index]->set_active_path($active_path);
+    $path = faceted_search_ui_build_path($ui_state, '', $facets);
+    $links[] = theme('faceted_search_ui_category', $category, $path);
   }
 
   // Add the 'more...' link.
-  if ($search->ui_state['stage'] != 'facet' && count($counts) != count($categories)) {
+  if ($search->ui_state['stage'] != 'facet' && isset($max_count) && count($categories) > $max_count) {
     $ui_state['stage'] = 'facet';
     $ui_state['facet-key'] = $facet->get_key();
     $ui_state['facet-id'] = $facet->get_id();
@@ -719,8 +727,8 @@ function theme_faceted_search_ui_label($facet) {
   return '<strong>'. check_plain($facet->get_label()) .'</strong>';
 }
 
-function theme_faceted_search_ui_category($label, $path, $count) {
-  return l($label, $path) .' ('. $count .')';
+function theme_faceted_search_ui_category($category, $path) {
+  return l($category->get_label(), $path) .' ('. $category->get_count() .')';
 }
 
 function theme_faceted_search_ui_more_link($path) {
@@ -859,12 +867,9 @@ function _faceted_search_ui_init() {
           $ui_state['aim'] = $input_aim;
           break;
       }
-      $arg++;
     }
-    else {
-      $arg++; // Skip aim, which is used only by the the 'full' style.
-    }
-    
+    $arg++;
+
     // Text.
     $text = trim($form ? $form_text : arg($arg));
   }
@@ -897,38 +902,4 @@ function _faceted_search_ui_defaults() {
   );
 }
 
-/**
- * Collect the categories of the given facet and for each category, count the
- * number of matching nodes within the current search results.
- */
-function _faceted_search_ui_collect_categories($search, $facet, $max) {
-  $categories = array();
-  if ($active_category = $facet->get_active_category()) {
-    $categories = $active_category->get_subcategories();
-  }
-  else {
-    $categories = $facet->get_root_categories();
-  }
-
-  $max = $max ? $facet->get_max_categories() : 0;
-  $collected = 0;
-  $counts = array();
-  foreach ($categories as $category_index => $category) {
-    // Count the number of associated nodes within the search results
-    if ($count = $search->count_within_results($category)) {
-      // Category matches at least one node, save node count
-      $counts[$category_index] = $count;
-      $collected++;
-    }
-    else {
-      // Forget that category
-      unset($categories[$category_index]);
-    }
-    if ($max && $collected == $max) {
-      break;
-    }
-  }
-
-  return array($categories, $counts);
-}
 

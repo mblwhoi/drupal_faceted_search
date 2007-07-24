@@ -11,23 +11,44 @@
  * Base class for facet categories.
  */
 class faceted_search_category {
+  /**
+   * The number of nodes associated to this category.
+   */
+  var $_count = NULL;
 
   /**
    * Constructor.
+   *
+   * @param $count
+   *   The number of nodes associated to this category within the current
+   *   search.
    */
-  function faceted_search_category() {
+  function faceted_search_category($count = NULL) {
+    $this->_count = $count;
+  }
+
+  /**
+   * Return the number of nodes associated to this category within the current
+   * search.
+   *
+   * @return The number of matching nodes, or NULL is count is unknown.
+   */
+  function get_count() {
+    return $this->_count;
   }
   
   /**
-   * Return the subcategories, if any.
+   * Returns query elements required to retrive the subcategories of this
+   * category and associated nodes within the current search results.
    *
    * This only needs to be overridden for hierarchical facets.
    *
    * @return
-   *   Array of categories.
+   *   Structured array as expected by _faceted_search_query::build(), with
+   *   appropriate query parts.
    */
-  function get_subcategories() {
-    return array();
+  function get_subcategories_query() {
+    return NULL;
   }
 }
 
@@ -136,12 +157,28 @@ class faceted_search_facet {
   }
 
   /**
-   * Return the root categories of this facet.
+   * Returns query elements required to retrieve the root categories of this
+   * facet and their associated nodes within the current search results.
+   *
+   * @return
+   *   Structured array as expected by _faceted_search_query::build(), with
+   *   appropriate query parts.
+   */
+  function get_root_categories_query() {
+    return NULL;
+  }
+
+  /**
+   * This factory method creates categories given query results that include the
+   * fields selected in get_root_categories_query() or get_subcategories_query().
+   *
+   * @param $results
+   *   $results A database query result resource.
    *
    * @return
    *   Array of categories.
    */
-  function get_root_categories() {
+  function build_categories($results) {
     return array();
   }
   
@@ -432,7 +469,7 @@ class faceted_search {
   function get_facet($index) {
     return $this->_facets[$index];
   }
-  
+
   /**
    * Perform the search and store the results in a temporary table.
    *
@@ -471,7 +508,7 @@ class faceted_search {
 
     if ($query_parts[0] || $query_parts[2]) {
       // Has some positive or negative keywords
-      $query1->select = 'i.sid AS nid, SUM(i.score * t.count) AS relevance, COUNT(*) AS matches';
+      $query1->select[] = 'i.sid AS nid, SUM(i.score * t.count) AS relevance, COUNT(*) AS matches';
       $query1->from = '{search_index} i';
       $query1->wheres[] = "i.type = 'node'";
       $query1->groupby[] = 'i.sid';
@@ -479,7 +516,7 @@ class faceted_search {
     }
     else {
       // Has no keywords
-      $query1->select = 'n.nid, 1 AS relevance, COUNT(*) AS matches';
+      $query1->select[] = 'n.nid, 1 AS relevance, COUNT(*) AS matches';
       $query1->from = '{node} n';
       $query1->joins[] = 'INNER JOIN {users} u ON n.uid = u.uid';
       $query1->groupby[] = 'n.nid';
@@ -498,7 +535,7 @@ class faceted_search {
     }
     $query2->joins[] = 'INNER JOIN {node} n ON n.nid = i.nid'; // Always join the node table
     // Apply node type filter
-    if ($excluded_types = array_filter(variable_get('faceted_search_excluded_types', array()))) {
+    if ($excluded_types = faceted_search_excluded_types()) {
       $query2->wheres[] = "n.type NOT IN ('". implode("','", $excluded_types) ."')";
     }
     // Used to avoid joining on node_comment_statistics twice
@@ -539,13 +576,13 @@ class faceted_search {
       $query2->joins[] = 'LEFT JOIN {node_counter} nc ON nc.nid = i.nid';
       $this->_results_total += $weight;
     }
-    $query2->select = 'i.nid, ('. (count($ranking) ? implode(' + ', $ranking) : 'i.relevance') .') / '. $this->_results_total .' AS score';
+    $query2->select[] = 'i.nid, ('. (count($ranking) ? implode(' + ', $ranking) : 'i.relevance') .') / '. $this->_results_total .' AS score';
     // Based on node_search() - END
     if ($query_parts[0] && $query_parts[1]) {
       $query2->wheres[] = $query_parts[0];
       $query2->arguments = array_merge($query2->arguments, $query_parts[1]);
     }
-    $query2->orderby = 'score DESC';
+    $query2->orderby[] = 'score DESC';
 
     // Apply facets into query, except for keywords (which are already included
     // in the query)
@@ -558,7 +595,7 @@ class faceted_search {
     }
 
     // Perform search
-    $this->_query($query1, $query2);
+    $this->_execute_search_query($query1, $query2);
   }
 
   /**
@@ -590,12 +627,34 @@ class faceted_search {
   }
 
   /**
-   * Count nodes matching the given category within results. If this search has
-   * no results, the count is done within all nodes.
+   * Return the categories for the given facet and count matching nodes within
+   * results.
+   *
+   * @param $facet
+   *   The facet whose categories are to be loaded.
+   *
+   * @param $from
+   *   Ordinal number of the first category to load. Numbering starts at 0.
+   *
+   * @param $max_count
+   *   Number of categories to load.
    */
-  function count_within_results($category) {
+  function load_categories($facet, $from = NULL, $max_count = NULL) {
+    // Gather the query components that will retrieve the categories
+    if ($active_category = $facet->get_active_category()) {
+      $parts = $active_category->get_subcategories_query();
+    }
+    else {
+      $parts = $facet->get_root_categories_query();
+    }
+    if (!isset($parts)) {
+      return array();
+    }
+    
+    // Prepare the base query components to include the current search results
+    // and to count nodes.
     $query = new _faceted_search_query();
-    $query->select = 'COUNT(*)';
+    $query->select[] = 'COUNT(n.nid) AS count';
     $query->from = '{node} n';
     if ($this->_results_count > 0) {
       // Search within results.
@@ -606,18 +665,27 @@ class faceted_search {
       $query->wheres[] = 'n.status = 1';
     }
     else {
-      // There is a search text but the results count is 0, thus no search
-      // refinement si possible!
-      return 0; 
+      // There is a search text but the results count is 0, thus no categories
+      // are possible!
+      return array(); 
     }
+
     // Apply node type filter.
-    if ($excluded_types = variable_get('faceted_search_excluded_types', array())) {
+    if ($excluded_types = faceted_search_excluded_types()) {
       $query->wheres[] = "n.type NOT IN ('". implode("','", $excluded_types) ."')";
     }
-    $query->build($category->get_count_within_results_query());
-    return db_result(db_query($query->sql(), $query->arguments));
+    
+    // Run the query and return the categories.
+    $query->build($parts);
+    if (isset($from) && isset($max_count)) {
+      $results = db_query_range($query->sql(), $query->arguments, $from, $max_count);
+    }
+    else {
+      $results = db_query($query->sql(), $query->arguments);
+    }
+    return $facet->build_categories($results);
   }
-
+  
   /**
    * Add a facet to this search.
    *
@@ -756,7 +824,7 @@ class faceted_search {
    * @return
    *   An array of nids for the search results.
    */
-  function _query($query1, $query2) {
+  function _execute_search_query($query1, $query2) {
     // This is similar to search.module's do_search()
 
     // Drop query1's temporary table if it exists -- this allows for multiple
@@ -773,7 +841,9 @@ class faceted_search {
     }
 
     // Execute query2
-    $query2->select = str_replace('i.relevance', '('. (1.0 / $normalize) .' * i.relevance)', $query2->select);
+    foreach ($query2->select as $index => $select) {
+      $query2->select[$index] = str_replace('i.relevance', '('. (1.0 / $normalize) .' * i.relevance)', $select);
+    }
     $query2->from = 'temp_faceted_search_nids i'; // Query from the temporary table generated by query1
     $result = db_query_temporary($query2->sql(), $query2->arguments, $this->_results_table);
     
@@ -788,14 +858,14 @@ class faceted_search {
  * Utility class to store and build search queries.
  */
 class _faceted_search_query {
-  var $select = '';
+  var $select = array();
   var $from = '';
   var $joins = array();
   var $wheres = array();
   var $arguments = array();
   var $groupby = array();
   var $having = array();
-  var $orderby = '';
+  var $orderby = array();
 
   /**
    * Insert the specified parts into the query.
@@ -803,17 +873,21 @@ class _faceted_search_query {
    * @param $parts
    *   A structured array with the following items:
    *
-   *   'joins' => Array of JOIN clauses.
+   *   'select' => Array of SELECT expressions.
    *
-   *   'wheres' => Array of WHERE clauses.
+   *   'joins' => Array of JOIN expressions.
+   *
+   *   'wheres' => Array of WHERE conditions.
+   *
+   *   'groupby' => Array of GROUP BY expressions.
+   *
+   *   'having' => Array of HAVING expressions.
+   *
+   *   'orderby' => Array of ORDER BY expressions.
    *
    *   'arguments' => Array of values to later pass as argument to
    *   db_query(). Use this whenever possible (instead of putting values
    *   directly in 'wheres', to make sure that arguments are escaped properly.
-   *
-   *   'groupby' => Array of GROUP BY clauses.
-   *
-   *   'having' => Array of HAVING clauses.
    */
   function build($parts) {
     // TODO: Have a limit on the maximum number of joins
@@ -829,7 +903,7 @@ class _faceted_search_query {
    * Build the actual SQL query text.
    */
   function sql() {
-    return 'SELECT '. $this->select .' FROM '. $this->from .' '. implode(' ', $this->joins) . (count($this->wheres) ? ' WHERE '. implode(' AND ', $this->wheres) : '') . (count($this->groupby) ? ' GROUP BY '. implode(', ', $this->groupby) : '') . (count($this->having) ? ' HAVING '. implode(', ', $this->having) : '') . ($this->orderby ? ' ORDER BY '. $this->orderby : '');
+    return 'SELECT '. (count($this->select) ? implode(', ', $this->select) : '*') .' FROM '. $this->from .' '. implode(' ', $this->joins) . (count($this->wheres) ? ' WHERE '. implode(' AND ', $this->wheres) : '') . (count($this->groupby) ? ' GROUP BY '. implode(', ', $this->groupby) : '') . (count($this->having) ? ' HAVING '. implode(', ', $this->having) : '') . (count($this->orderby) ? ' ORDER BY '. implode(', ', $this->orderby) : '');
   }
 }
 
