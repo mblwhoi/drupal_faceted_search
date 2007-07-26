@@ -55,6 +55,7 @@ function faceted_search_ui_menu($may_cache) {
  */
 function faceted_search_ui_block($op = 'list', $delta = 0, $edit = array()) {
   if ($op == 'list') {
+    // TODO: use strings as delta (more significant ids make theming easier)
     $blocks[0] = array('info' => t('Faceted search / Current search'));
     $blocks[1] = array('info' => t('Faceted search / Keyword search'));
     $blocks[2] = array('info' => t('Faceted search / Guided search'));
@@ -134,7 +135,7 @@ function faceted_search_ui_stage_results() {
 }
 
 /**
- * Display the search page.
+ * Menu callback to display the search page.
  */
 function faceted_search_ui_stage_select() {
   global $_faceted_search_ui_current_search;
@@ -158,7 +159,7 @@ function faceted_search_ui_stage_select() {
 }
 
 /**
- * Display a facet's categories.
+ * Menu callback to display a facet's categories.
  */
 function faceted_search_ui_stage_facet() {
   global $_faceted_search_ui_current_search;
@@ -620,7 +621,8 @@ function faceted_search_ui_build_categories($search, $index, $from = NULL, $max_
  * Add the default stylesheet.
  */
 function faceted_search_ui_add_css() {
-  drupal_add_css(drupal_get_path('module', 'faceted_search') .'/faceted_search_ui.css');
+  $path = drupal_get_path('module', 'faceted_search');
+  drupal_add_css($path .'/faceted_search_ui.css');
 }
 
 /**
@@ -728,11 +730,11 @@ function theme_faceted_search_ui_label($facet) {
 }
 
 function theme_faceted_search_ui_category($category, $path) {
-  return l($category->get_label(), $path) .' ('. $category->get_count() .')';
+  return l($category->get_label(), $path, array('class' => 'faceted-search-category')) .' ('. $category->get_count() .')';
 }
 
 function theme_faceted_search_ui_more_link($path) {
-  return l(t('more...'), $path);
+  return l(t('more...'), $path, array('class' => 'faceted-search-more'));
 }
 
 function theme_faceted_search_ui_remover_link_guided_search($path) {
