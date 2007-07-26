@@ -316,7 +316,7 @@ class taxonomy_facet extends faceted_search_facet {
       'joins' => array(
         'INNER JOIN {taxonomy_facets_term_node} taxonomy_facets_term_node ON n.nid = taxonomy_facets_term_node.nid',
         'INNER JOIN {term_data} t ON taxonomy_facets_term_node.tid = t.tid',
-        'INNER JOIN {term_hierarchy} h ON h.tid = t.tid',
+        'INNER JOIN {term_hierarchy} h ON taxonomy_facets_term_node.tid = h.tid',
       ),
       'wheres' => array(
         't.vid = %d',
@@ -390,8 +390,8 @@ class taxonomy_facet_category extends faceted_search_category {
       ),
       'joins' => array(
         'INNER JOIN {taxonomy_facets_term_node} taxonomy_facets_term_node ON n.nid = taxonomy_facets_term_node.nid',
-        'INNER JOIN {term_hierarchy} h ON taxonomy_facets_term_node.tid = h.tid',
         'INNER JOIN {term_data} t ON taxonomy_facets_term_node.tid = t.tid',
+        'INNER JOIN {term_hierarchy} h ON taxonomy_facets_term_node.tid = h.tid',
       ),
       'wheres' => array(
         'h.parent = %d',
