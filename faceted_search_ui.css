@@ -36,3 +36,16 @@ table.faceted-search td {
 .faceted-search-stage-select table.faceted-search td {
   width: 50%;
 }
+#faceted-search-tooltip {
+  display: none;
+  position: absolute;
+  z-index: 100;
+  background: #fff;
+  border: 1px solid #777;
+  width: 250px;
+  padding: 0.75em;
+}
+#faceted-search-tooltip p {
+  margin-top: 0;
+  margin-bottom: 0.5em;
+}
