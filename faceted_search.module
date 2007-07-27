@@ -68,7 +68,7 @@ function faceted_search_admin_settings_form() {
   $display_settings = variable_get('faceted_search_display', array());
   $form['display'] = array(
     '#type' => 'fieldset',
-    '#title' => t('Facet display'),
+    '#title' => t('Display'),
     '#description' => t('In listings, the heavier facets will sink and the lighter facets will be positioned nearer the top. For performance reasons, it is advisable to limit the number of categories per facet in guided search (users will still be able to get the full listing of categories by following a <em>more</em> link).'),
   );
   $form['display']['faceted_search_display'] = array(
@@ -84,12 +84,12 @@ function faceted_search_admin_settings_form() {
       _faceted_search_add_display_settings($form['display']['faceted_search_display'], $display_settings, $module, $facet);
     }
   }
-  $form['filter'] = array(
+  $form['filtering'] = array(
     '#type' => 'fieldset',
-    '#title' => t('Filter'),
+    '#title' => t('Results filtering'),
     '#description' => t('You may exclude some content types from search results.'),
   );
-  $form['filter']['faceted_search_excluded_types'] = array(
+  $form['filtering']['faceted_search_excluded_types'] = array(
     '#type' => 'checkboxes',
     '#options' => node_get_types('names'),
     '#description' => t('Check the content types to exclude from search results.'),
