@@ -44,7 +44,7 @@ table.faceted-search td {
   background: #fff;
   border: 1px solid #777;
   width: 270px;
-  padding: 0.75em;
+  padding: 10px;
   text-align: left;
 }
 #faceted-search-tooltip p {
