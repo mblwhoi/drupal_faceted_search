@@ -114,12 +114,12 @@ function faceted_search_ui_form_alter($form_id, &$form) {
   if ($form_id == 'faceted_search_admin_settings_form') {
     $form['display']['faceted_search_ui_tooltips'] = array(
       '#type' => 'checkbox',
-      '#title' => t('Preview subcategories in tooltips.'),
+      '#title' => t('Enable tooltips'),
       '#description' => t('Check this option to have tooltips displayed with subcategories when hovering over a category in the guided search. This feature works only with clients that have Javascript enabled.'),
       '#default_value' => variable_get('faceted_search_ui_tooltips', TRUE),
     );
     $form['display']['faceted_search_ui_default_style'] = array(
-      '#type' => 'select',
+      '#type' => 'radios',
       '#title' => t('Default display style for search results'),
       '#description' => t('When the <em>Extracts</em> option is selected, search results show extracts relevant to the search terms. With the <em>Teasers</em> option, search results use standard teasers.'),
       '#options' => array('extract' => t('Extracts'), 'teaser' => t('Teasers')),
