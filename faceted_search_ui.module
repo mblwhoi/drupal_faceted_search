@@ -266,7 +266,7 @@ function faceted_search_ui_categories() {
   // Output JSON data, with id to help client to cache the content.
   print drupal_to_js(
     array(
-      'id' => urlencode($_faceted_search_ui_current_search->get_text()),
+      'id' => $_faceted_search_ui_current_search->get_text(),
       'content' => $content,
     )
   );

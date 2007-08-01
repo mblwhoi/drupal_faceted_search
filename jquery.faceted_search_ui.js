@@ -1,21 +1,22 @@
 // $Id$
 
 /**
- * Provides tooltips with subcategories when hovering categories, through AHAH.
+ * Provides tooltips with subcategories when hovering categories, through AJAX.
  */ 
 jQuery.facetedSearchUI = {
-  isActive : false, // True when hovering a category.
+  anchor : null, // The hovered element.
+  url : null, // The tooltip's url.
+  id : null, // Unique id for the hovered category (used as cache key).
   cache : {}, // Cached HTML chunks.
 
   activate : function() {
-    if (jQuery.facetedSearchUI.isActive || !this.href) {
-      return;
+    if (jQuery.facetedSearchUI.anchor != null || !this.href) {
+      return; // Already active, or invalid anchor.
     }
-    
+
     // Extract the facet key and id from the class of the category's parent.
     var facetKey = null;
     var facetId = null;
-    
     jQuery(this).parents('.faceted-search-facet').each(function() {
       var matches = jQuery(this).attr('class').match(/faceted-search-facet--([^ ]+)--([^ ]+)/);
       if (matches.length > 0) {
@@ -24,45 +25,59 @@ jQuery.facetedSearchUI = {
       }
     });
     if (!facetKey || !facetId) {
-      return;
+      return; // Could not find facet information.
     }
 
-    // Derive the url from the category's url, which also contains the search text.
-    var url = this.href.replace(/\/results\/na\//, '/categories/' + facetKey + '%3A' + facetId + '/');
-    if (url != this.href) {
-      jQuery.facetedSearchUI.isActive = true;
-      
+    // Derive the tooltip's url from the category's url, which also contains the search text.
+    jQuery.facetedSearchUI.url = this.href.replace(/\/results\/na\//, '/categories/' + facetKey + ':' + facetId + '/');
+    if (jQuery.facetedSearchUI.url == this.href) {
+      return; // Could not create the tooltip's url.
+    }
+    
+    // Save the hovered element.
+    jQuery.facetedSearchUI.anchor = this;
+    jQuery.facetedSearchUI.id = null;
+
+    // Wait a little bit before requesting the tooltip.
+    window.setTimeout(function() { jQuery.facetedSearchUI.delayedActivate(jQuery.facetedSearchUI.url, facetKey, facetId); }, 500);
+  },
+  
+  delayedActivate : function(url, facetKey, facetId) {
+    // If tooltip has not been deactivated yet.
+    if (jQuery.facetedSearchUI.url != null && jQuery.facetedSearchUI.url == url) {
       // Prepare the tooptip.
-      var elemPosition = jQuery(this).offset();
-      var elemWidth = jQuery(this).outerWidth();
+      var anchorPosition = jQuery(jQuery.facetedSearchUI.anchor).offset();
+      var anchorWidth = jQuery(jQuery.facetedSearchUI.anchor).outerWidth();
       var windowWidth = jQuery(window).width();
       var tooltip = jQuery('#faceted-search-tooltip');
       var tooltipWidth = tooltip.outerWidth();
-      tooltip.css('top', elemPosition.top + 'px');
-      if (elemPosition.left + elemWidth + tooltipWidth + 10 > windowWidth) {
-        tooltip.css('left', (elemPosition.left - tooltipWidth - 10) + 'px');
-        tooltip.addClass('faceted-search-tooltip-left'); // Might be useful for theming.
+      tooltip.css('top', anchorPosition.top + 'px');
+      if (anchorPosition.left + anchorWidth + tooltipWidth + 10 > windowWidth) {
+        tooltip.css('left', (anchorPosition.left - tooltipWidth - 10) + 'px');
       }
       else {
-        tooltip.css('left', (elemPosition.left + elemWidth + 10) + 'px');
-        tooltip.addClass('faceted-search-tooltip-right'); // Might be useful for theming.
+        tooltip.css('left', (anchorPosition.left + anchorWidth + 10) + 'px');
       }
 
       // Show the tooltip.
-      var id = jQuery.facetedSearchUI.makeCacheId(url);
-      if (id in jQuery.facetedSearchUI.cache) { // Show from the cache.
-        jQuery.facetedSearchUI.show(jQuery.facetedSearchUI.cache[id]);
+      jQuery.facetedSearchUI.id = jQuery.facetedSearchUI.makeId(jQuery.facetedSearchUI.url);
+      if (jQuery.facetedSearchUI.id in jQuery.facetedSearchUI.cache) { // Show from the cache.
+        jQuery.facetedSearchUI.show(jQuery.facetedSearchUI.cache[jQuery.facetedSearchUI.id]);
+        //jQuery(jQuery.facetedSearchUI.anchor).css('background', 'cyan'); // Debugging helper
       }
       else { // Was not in the cache, load it from the server.
-        jQuery.get(url, null, jQuery.facetedSearchUI.load);
+        jQuery.get(jQuery.facetedSearchUI.url, null, jQuery.facetedSearchUI.load);
+        //jQuery(jQuery.facetedSearchUI.anchor).css('background', 'yellow'); // Debugging helper
       }
     }
   },
   
   deactivate : function() {
-    if (jQuery.facetedSearchUI.isActive) {
-      jQuery.facetedSearchUI.isActive = false;
-      jQuery('#faceted-search-tooltip').hide().empty().removeClass('faceted-search-tooltip-left').removeClass('faceted-search-tooltip-right');
+    if (jQuery.facetedSearchUI.anchor != null) {
+      jQuery.facetedSearchUI.anchor = null;
+      jQuery.facetedSearchUI.id = null;
+      jQuery.facetedSearchUI.url = null;
+      jQuery('#faceted-search-tooltip').hide().empty();
     }
   },
 
@@ -71,21 +86,22 @@ jQuery.facetedSearchUI = {
     if (data.id) {
       // Cache the received HTML chunk and show it.
       jQuery.facetedSearchUI.cache[data.id] = data.content;
-      jQuery.facetedSearchUI.show(data.content);
+      if (data.id == jQuery.facetedSearchUI.id) {
+        jQuery.facetedSearchUI.show(data.content);
+      }
     }
   },
   
   show : function(chunk) {
-    // Show the tooltip, but only if we were called back while the tooltip was
-    // still active (i.e. only if the mouse did not move out).
-    if (jQuery.facetedSearchUI.isActive && chunk.length > 0) {
+    if (chunk.length > 0) {
+      // Received content is relevant to the currently hovered category, show it.
       jQuery('#faceted-search-tooltip').empty().append(chunk).show();
     }
   },
 
-  makeCacheId : function(url) {
+  makeId : function(url) {
     // Extract the search text to use as id.
-    return url.substr(url.lastIndexOf('/') + 1);
+    return decodeURIComponent(url.substr(url.lastIndexOf('/') + 1)).replace(/\+/, ' ');
   }
 };
 
@@ -94,10 +110,7 @@ if (Drupal.jsEnabled) {
     // Insert the tooltip block.
     jQuery('body').append('<div id="faceted-search-tooltip"></div>');
     // Bind hover behavior on category links.
-    jQuery('.faceted-search-category a').each(function() {
-      // TODO: Some delay before sending request... This will save some requests. Consider jquery.hoverIntent.js
-      jQuery(this).hover(jQuery.facetedSearchUI.activate, jQuery.facetedSearchUI.deactivate);
-    });
+    jQuery('.faceted-search-category a').hover(jQuery.facetedSearchUI.activate, jQuery.facetedSearchUI.deactivate);
     // Bind click behavior to force closing the tooptip, if ever needed.
     jQuery(this).click(jQuery.facetedSearchUI.deactivate);
   });
