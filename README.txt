@@ -58,13 +58,21 @@ Requirements
 
 - Drupal 5.x.
 
+- If you wish to use Faceted Search UI's tooltips feature (for showing
+  subcategories when hovering over a category in the guided search), it is
+  strongly recommended to install the jQuery Update module
+  (http://drupal.org/project/jquery_update). Make sure to read that module's
+  installation instructions. If you don't use the tooltips feature, Faceted
+  Search UI won't use jQuery at all, so in that case you would not need jQuery
+  Update.
+
 
 Caution
 *******
 
-Faceted searches are relatively database-intensive. If your server can barely
-keep up with your traffic, this module will make things worst. Make sure to
-benchmark performance before deploying this module on a busy site.
+Faceted searches are database-intensive. If your server can barely keep up with
+your traffic, this package will make things worst. Make sure to benchmark
+performance before deploying this package on a busy site.
 
 
 Installation
