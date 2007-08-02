@@ -117,7 +117,7 @@ function content_type_facet_get_types() {
 class content_type_facet extends faceted_search_facet {
 
   /**
-   * Constructor. Assigns the path of terms for this facet.
+   * Constructor. Optionally assigns the active type of the facet.
    */
   function content_type_facet($type = NULL) {
     $active_path = array();
