@@ -37,6 +37,9 @@ Faceted Search is in fact a bundle of modules.
 - Content Type Facet: This module adds a facet that allows users to refine the
   current query based on content type.
 
+- Author Facet: This module adds a facet that allows users to refine the current
+  query based on content author.
+
 Hopefully, many more facets will be developed. The API is meant to make it easy
 to implement new facets.
 
@@ -86,7 +89,7 @@ Installation
 
    - Faceted Search
    - Faceted Search UI
-   - Taxonomy Facets and/or Content Type Facet
+   - Taxonomy Facets and/or Content Type Facet and/or Author Facet
    - Search (Drupal core module)
    - Taxonomy (Drupal core module -- only needed if you intend to use Taxonomy Facets)
 
@@ -117,6 +120,9 @@ Installation
 
 6b. If you have enabled the Content Type Facet module, click the Content Type
     Facet tab and check the content types you'd like to use in faceted searches.
+
+6c. If you have enabled the Author Facet module, click the Author Facet tab and
+    check the roles you'd like to exclude from faceted searches.
 
 7. Click the Settings tab and assign weights and maximum number of categories to
    each facet. These options apply to the Current search and Guided search

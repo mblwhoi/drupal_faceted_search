@@ -1,0 +1,236 @@
+<?php
+// $Id$
+
+/**
+ * @file
+ * Provides a facet for content authors.
+ */
+
+require_once('./'. drupal_get_path('module', 'faceted_search') .'/faceted_search.inc');
+
+/**
+ * Implementation of hook_menu().
+ */
+function author_facet_menu($may_cache) {
+  $items = array();
+  if ($may_cache) {
+    $items[] = array(
+      'path' => 'admin/settings/faceted_search/author_facet',
+      'title' => t('Author Facet'),
+      'callback' => 'drupal_get_form',
+      'callback arguments' => array('author_facet_admin_settings_form'),
+      'access' => user_access('administer site configuration'),
+      'type' => MENU_LOCAL_TASK,
+    );
+  }
+  
+  return $items;
+}
+
+/**
+ * Implementation of hook_faceted_search_list().
+ */
+function author_facet_faceted_search_list() {
+  return new author_facet();
+}
+
+/**
+ * Implementation of hook_faceted_search_parse().
+ *
+ * Scan the given search text for a 'author:uid' token, and extract a
+ * facet from it.
+ *
+ * @param &$text
+ *   Text to parse. Once the desired token has been extracted, it is removed
+ *   from the text.
+ *
+ * @return
+ *   Array of facets to include in the current search.
+ */
+function author_facet_faceted_search_parse(&$text) {
+  $facets = array();
+  if ($uid = search_query_extract($text, 'author')) {
+    if (is_numeric($uid)) {
+      if ($name = author_facet_get_user_name($uid)) {
+        // Create an active facet with the user found in the search text.
+        $facets[] = new author_facet($uid, $name);
+      }
+      // Remove the parsed text
+      $text = search_query_insert($text, 'author');
+    }
+  }    
+  return $facets;
+}
+
+/**
+ * Implementation of hook_faceted_search_collect().
+ *
+ * Return a facet based on the specified node's author. The returned facet will
+ * have an active category reflecting the node's author.
+ *
+ * @return
+ *   Array of facets.
+ */
+function author_facet_faceted_search_collect($node) {
+  $facets = array();
+  if ($node->uid && $name = author_facet_get_user_name($node->uid)) {
+    // Create an active facet with the node's author.
+    $facets[] = new author_facet($node->uid, $name);
+  }
+  return $facets;
+}
+
+/**
+ * Menu callback for the administration settings.
+ */
+function author_facet_admin_settings_form() {
+  $roles = array_filter(user_roles(TRUE), '_author_facet_filter_role');
+  $form['author_facet_excluded_roles'] = array(
+    '#type' => 'checkboxes',
+    '#title' => t('Roles to exclude from the Author facet'),
+    '#description' => t('Any user having one or more of the checked roles will not appear in the facet. Note that this setting is not a filter for search results; content from excluded users can still be searchable through other facets or from text searches.'),
+    '#options' => $roles,
+    '#default_value' => author_facet_excluded_roles(),
+  );
+  return system_settings_form($form);
+}
+
+/**
+ * Return the name of a user.
+ *
+ * @return The user's name, or FALSE if not found or if the user's role is not
+ * allowed in the facet.
+ */
+function author_facet_get_user_name($uid) {
+  $roles_condition = author_facet_excluded_roles() ? ' AND r.rid NOT IN ('. implode(', ', author_facet_excluded_roles()) .')' : '';
+  return db_result(db_query('SELECT u.name FROM {users} u INNER JOIN {users_roles} r ON u.uid = r.uid WHERE u.uid = %d'. $roles_condition, $uid));
+}
+
+/**
+ * Returns an array with the roles that should not be used in faceted searches.
+ */
+function author_facet_excluded_roles() {
+  return array_filter(variable_get('author_facet_excluded_roles', array()));
+}
+
+/**
+ * Callback for array_filter to remove unwanted roles.
+ */
+function _author_facet_filter_role($role) {
+  return $role != t('authenticated user');
+}
+
+/**
+ * A facet for node authors. 
+ */
+class author_facet extends faceted_search_facet {
+
+  /**
+   * Constructor. Optionally assigns the active user of the facet.
+   */
+  function author_facet($uid = NULL, $name = '') {
+    $active_path = array();
+    if ($uid && $name) {
+      $active_path[] = new author_facet_category($uid, $name);
+    }
+    parent::faceted_search_facet('author', $active_path);
+  }
+
+  function get_id() {
+    return 1; // This module provides only one facet.
+  }
+
+  function get_label() {
+    return t('Author');
+  }
+
+  /**
+   * Returns the search text for this facet, taking into account this facet's
+   * active path.
+   */
+  function get_text() {
+    if ($category = $this->get_active_category()) {
+      return $category->_uid;
+    }
+    return '';
+  }
+  
+  /**
+   * Returns query elements required to retrieve the root categories of this
+   * facet and their associated nodes within the current search results.
+   */
+  function get_root_categories_query() {
+    $query = array(
+      'select' => array(
+        'u.uid',
+        'u.name',
+      ),
+      'joins' => array(
+        'INNER JOIN {users} u ON u.uid = n.uid',
+      ),
+      'wheres' => array(
+        'u.status = 1',
+      ),
+      'groupby' => array(
+        'u.uid',
+      ),
+      'orderby' => array(
+        'u.name',
+      ),
+    );
+    if (author_facet_excluded_roles()) {
+      $query['wheres'][] = '(SELECT r.rid FROM {users_roles} r WHERE u.uid = r.uid AND r.rid IN('. implode(', ', author_facet_excluded_roles()) .')) IS NULL';
+    }
+    return $query;
+  }
+
+  /**
+   * This factory method creates categories given query results that include the
+   * fields selected in get_root_categories_query() or get_subcategories_query().
+   *
+   * @param $results
+   *   $results A database query result resource.
+   *
+   * @return
+   *   Array of categories.
+   */
+  function build_categories($results) {
+    $categories = array();
+    while ($result = db_fetch_object($results)) {
+      $categories[] = new author_facet_category($result->uid, $result->name, $result->count);
+    }
+    return $categories;
+  }
+}
+
+/**
+ * A node-type based facet category.
+ */
+class author_facet_category extends faceted_search_category {
+  var $_uid = NULL;
+  var $_name = '';
+  
+  function author_facet_category($uid, $name, $count = NULL) {
+    parent::faceted_search_category($count);
+    $this->_uid = $uid;
+    $this->_name = $name;
+  }
+
+  function get_label() {
+    return $this->_name;
+  }
+
+  /**
+   * Returns query elements required to search nodes matching this category.
+   *
+   * @return
+   *   Structured array as expected by _faceted_search_query::build(), with
+   *   appropriate query parts.
+   */
+  function get_results_query() {
+    return array(
+      'wheres' => array('n.uid = %d'),
+      'arguments' => array($this->_uid),
+    );
+  }  
+}
