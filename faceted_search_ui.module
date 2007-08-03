@@ -143,7 +143,7 @@ function faceted_search_ui_stage_results() {
     $_faceted_search_ui_current_search->execute();
     $results = faceted_search_ui_format_results($_faceted_search_ui_current_search);
 
-    drupal_set_title(t('Search'));
+    faceted_search_ui_set_title($_faceted_search_ui_current_search);
     
     if ($_faceted_search_ui_current_search->get_results_count()) {
       $results = theme('box', t('Search results'), $results);
@@ -172,7 +172,7 @@ function faceted_search_ui_stage_select() {
   // Build the search results, which are required to count nodes per category
   $_faceted_search_ui_current_search->execute();
 
-  drupal_set_title(t('Search'));
+  faceted_search_ui_set_title($_faceted_search_ui_current_search);
 
   if ($box = faceted_search_ui_show_keyword_search($_faceted_search_ui_current_search)) {
     $output .= theme('box', t('Keyword search'), $box);
@@ -211,7 +211,7 @@ function faceted_search_ui_stage_facet() {
     return;
   }
 
-  drupal_set_title(t('Search'));
+  faceted_search_ui_set_title($_faceted_search_ui_current_search);
 
   $content = theme('faceted_search_ui_facet_heading', $_faceted_search_ui_current_search->ui_state, $_faceted_search_ui_current_search->get_facets(), $index, 'guided-search');
   $categories = faceted_search_ui_build_categories($_faceted_search_ui_current_search, $index); // TODO: paging
@@ -366,6 +366,25 @@ function faceted_search_ui_show_related_categories($node) {
   }
 
   return $output;
+}
+
+/**
+ * Sets the page title.
+ */
+function faceted_search_ui_set_title($search) {
+  if ($search->get_text()) {
+    $labels = array();
+    foreach ($search->get_facets() as $facet) {
+      if ($facet->is_active()) {
+        $labels[] = check_plain($facet->get_active_category()->get_label());
+      }
+    }
+    if ($labels) {
+      drupal_set_title(t('Search: @terms', array('@terms' => implode(', ', $labels))));
+      return;
+    }
+  }
+  drupal_set_title(t('Search')); // Default title.
 }
 
 /**
