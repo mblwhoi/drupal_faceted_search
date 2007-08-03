@@ -59,7 +59,7 @@ with PHP 4 at the moment.
 Requirements
 ************
 
-- Drupal 5.x.
+- This module requires Drupal 5.x (http://drupal.org/project/drupal).
 
 - If you wish to use Faceted Search UI's tooltips feature (for showing
   subcategories when hovering over a category in the guided search), it is
@@ -68,6 +68,10 @@ Requirements
   installation instructions. If you don't use the tooltips feature, Faceted
   Search UI won't use jQuery at all, so in that case you would not need jQuery
   Update.
+
+- If you use the Faceted Search UI's Related Categories block, you might want to
+  remove Drupal's default terms listing when viewing a node. To do that, see the
+  Taxonomy hide module (http://drupal.org/project/taxonomy_hide).
 
 
 Caution
