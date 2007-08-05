@@ -1,3 +1,5 @@
+$Id$
+
 README file for the Faceted Search Drupal module.
 
 
@@ -112,7 +114,11 @@ Installation
 
    - Faceted Search
    - Faceted Search UI
-   - Taxonomy Facets and/or Content Type Facet and/or Author Facet
+   - At least one of the following modules (which are provided with Faceted Search):
+     - Author Facet
+     - Content Type Facet
+     - Date Authored Facet
+     - Taxonomy Facets
    - Search (Drupal core module)
    - Taxonomy (Drupal core module -- only needed if you intend to use Taxonomy Facets)
 
@@ -134,18 +140,18 @@ Installation
 
 6. Go to the Administer > Site configuration > Faceted Search page.
 
-6a. If you have enabled the Taxonomy Facets module, click the Taxonomy Facets
+6a. If you have enabled the Author Facet module, click the Author Facet tab and
+    check the roles you'd like to exclude from faceted searches.
+
+6b. If you have enabled the Content Type Facet module, click the Content Type
+    Facet tab and check the content types you'd like to use in faceted searches.
+
+6c. If you have enabled the Taxonomy Facets module, click the Taxonomy Facets
     tab and check the vocabularies you'd like to use in faceted searches.
 
     If your site does not have vocabularies, you'll have to create them, and
     populate them with terms. See the Drupal handbook pages on taxonomy for more
     information (http://drupal.org/handbook/modules/taxonomy).
-
-6b. If you have enabled the Content Type Facet module, click the Content Type
-    Facet tab and check the content types you'd like to use in faceted searches.
-
-6c. If you have enabled the Author Facet module, click the Author Facet tab and
-    check the roles you'd like to exclude from faceted searches.
 
 7. Click the Settings tab and assign weights and maximum number of categories to
    each facet. These options apply to the Current search and Guided search
