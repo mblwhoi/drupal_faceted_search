@@ -1,0 +1,319 @@
+<?php
+// $Id$
+
+/**
+ * @file
+ * Provides a facet for searching content by date of creation.
+ */
+
+require_once('./'. drupal_get_path('module', 'faceted_search') .'/faceted_search.inc');
+
+// TODO: add setting for granularity.
+// TODO: date formatting for labels
+
+/**
+ * Implementation of hook_faceted_search_list().
+ */
+function date_authored_facet_faceted_search_list() {
+  return new date_authored_facet();
+}
+
+/**
+ * Implementation of hook_faceted_search_parse().
+ *
+ * Scan the given search text for a 'date_authored:date' token, and extract a
+ * facet from it. Date is formatted as either YYYY, YYYY-MM, or YYYY-MM-DD. 
+ *
+ * @param &$text
+ *   Text to parse. Once the desired token has been extracted, it is removed
+ *   from the text.
+ *
+ * @return
+ *   Array of facets to include in the current search.
+ */
+function date_authored_facet_faceted_search_parse(&$text) {
+  $facets = array();
+  if ($date = search_query_extract($text, 'date_authored')) {
+    $matches = array();
+    if (preg_match('/^([0-9][0-9][0-9][0-9])(-([0-9][0-9])(-([0-9][0-9]))?)?$/', $date, $matches)) {
+      $path = array(); // Array to build the path of categories.
+      if (isset($matches[1])) {
+        // Found year.
+        $path[] = new date_authored_facet_category($matches[1]);
+      }
+      if (isset($matches[3])) {
+        // Found month.
+        $path[] = new date_authored_facet_category($matches[1], $matches[3]);
+      }
+      if (isset($matches[5])) {
+        // Found day.
+        $path[] = new date_authored_facet_category($matches[1], $matches[3], $matches[5]);
+      }
+      if (!empty($path)) {
+        $facets[] = new date_authored_facet($path);
+      }
+    }
+    // Remove the parsed text
+    $text = search_query_insert($text, 'date_authored');
+  }
+
+  return $facets;
+}
+
+/**
+ * Implementation of hook_faceted_search_collect().
+ *
+ * Return a facet based on the specified node's date of creation. The returned
+ * facet will have an active path reflecting the node's date of creation.
+ *
+ * @return
+ *   Array of facets.
+ */
+function date_authored_facet_faceted_search_collect($node) {
+  // Convert the node's creation date into the user's timezone.
+  $timezone = _date_authored_facet_get_user_timezone();
+  $year = gmdate('Y', $node->created + $timezone);
+  $month = gmdate('n', $node->created + $timezone);
+  $day = gmdate('j', $node->created + $timezone);
+  
+  // Build the path of categories.
+  $path = array(
+    new date_authored_facet_category($year),
+    new date_authored_facet_category($year, $month),
+    new date_authored_facet_category($year, $month, $day),
+  );
+  
+  // Return an active facet with the node's date created.
+  return array(new date_authored_facet($path));
+}
+
+/**
+ * A facet for searching content by date of creation.
+ */
+class date_authored_facet extends faceted_search_facet {
+
+  /**
+   * Constructor.
+   */
+  function date_authored_facet($active_path = array()) {
+    parent::faceted_search_facet('date_authored', $active_path);
+  }
+
+  function get_id() {
+    return 1; // This module provides only one facet.
+  }
+
+  function get_label() {
+    return t('Date authored');
+  }
+
+  /**
+   * Returns the search text for this facet, taking into account this facet's
+   * active path.
+   */
+  function get_text() {
+    if ($category = $this->get_active_category()) {
+      return $category->get_text();
+    }
+    return '';
+  }
+  
+  /**
+   * Returns query elements required to retrieve the root categories of this
+   * facet and their associated nodes within the current search results.
+   */
+  function get_root_categories_query() {
+    $timezone = _date_authored_facet_get_timezone();
+    return array(
+      'select' => array("YEAR(FROM_UNIXTIME(n.created + $timezone)) AS created_year"),
+      'groupby' => array('created_year'),
+      'orderby' => array('n.created'),
+    );
+  }
+  
+  /**
+   * This factory method creates categories given query results that include the
+   * fields selected in get_root_categories_query() or get_subcategories_query().
+   *
+   * @param $results
+   *   $results A database query result resource.
+   *
+   * @return
+   *   Array of categories.
+   */
+  function build_categories($results) {
+    $categories = array();
+    while ($result = db_fetch_object($results)) {
+      $categories[] = new date_authored_facet_category($result->created_year, $result->created_month, $result->created_day, $result->count);
+    }
+    return $categories;
+  }
+}
+
+/**
+ * A category for node creation date.
+ */
+class date_authored_facet_category extends faceted_search_category {
+  var $_year = NULL;
+  var $_month = NULL;
+  var $_day = NULL;
+  
+  /**
+   * Constructs a category for the specified date.
+   *
+   * Note: We consider the specified date as within the user's timezone.
+   */
+  function date_authored_facet_category($year, $month = NULL, $day = NULL, $count = NULL) {
+    parent::faceted_search_category($count);
+    $this->_year = $year;
+    $this->_month = $month;
+    $this->_day = $day;
+  }
+
+  function get_label() {
+    // TODO: check preferred date format (/admin/settings/date-time)
+    $label = sprintf('%04d', $this->_year);
+    if (isset($this->_month)) {
+      $label .= sprintf('-%02d', $this->_month);
+      if (isset($this->_day)) {
+        $label .= sprintf('-%02d', $this->_day);
+      }
+    }
+    return $label;
+  }
+
+  function get_text() {
+    $text = sprintf('%04d', $this->_year);
+    if (isset($this->_month)) {
+      $text .= sprintf('-%02d', $this->_month);
+      if (isset($this->_day)) {
+        $text .= sprintf('-%02d', $this->_day);
+      }
+    }
+    return $text;
+  }
+  
+  /**
+   * Returns query elements required to retrive the subcategories of this
+   * category and their number of associated nodes within the current search
+   * results.
+   */
+  function get_subcategories_query() {
+    $timezone = _date_authored_facet_get_timezone();
+    if (isset($this->_day)) {
+      return NULL; // No subcategories.
+    }
+    elseif (isset($this->_month)) {
+      $from = sprintf("'%04d-%02d-01 00:00:00'", $this->_year, $this->_month);
+      return array(
+        'select' => array(
+          "YEAR(FROM_UNIXTIME(n.created + $timezone)) AS created_year",
+          "MONTH(FROM_UNIXTIME(n.created + $timezone)) AS created_month",
+          "DAY(FROM_UNIXTIME(n.created + $timezone)) AS created_day",
+        ),
+        'wheres' => array(
+          "(n.created + $timezone >= UNIX_TIMESTAMP($from))",
+          "(n.created + $timezone < UNIX_TIMESTAMP($from + INTERVAL 1 MONTH))",
+        ),
+        'groupby' => array('created_day'), // Needed for counting matching nodes.
+        'orderby' => array('n.created'),
+      );
+    }
+    elseif (isset($this->_year)) {
+      $from = sprintf("'%04d-01-01 00:00:00'", $this->_year);
+      return array(
+        'select' => array(
+          "YEAR(FROM_UNIXTIME(n.created + $timezone)) AS created_year",
+          "MONTH(FROM_UNIXTIME(n.created + $timezone)) AS created_month",
+        ),
+        'wheres' => array(
+          "(n.created + $timezone >= UNIX_TIMESTAMP($from))",
+          "(n.created + $timezone < UNIX_TIMESTAMP($from + INTERVAL 1 YEAR))",
+        ),
+        'groupby' => array('created_month'), // Needed for counting matching nodes.
+        'orderby' => array('n.created'),
+      );
+    }
+    else {
+      return NULL; // Should not really happen.
+    }
+  }
+
+  /**
+   * Returns query elements required to search nodes matching this category.
+   *
+   * @return
+   *   Structured array as expected by _faceted_search_query::build(), with
+   *   appropriate query parts.
+   */
+  function get_results_query() {
+    $timezone = _date_authored_facet_get_timezone();
+    if (isset($this->_day)) {
+      $from = sprintf("'%04d-%02d-%02d 00:00:00'", $this->_year, $this->_month, $this->_day);
+      return array(
+        'wheres' => array(
+          "(n.created + $timezone >= UNIX_TIMESTAMP($from))",
+          "(n.created + $timezone < UNIX_TIMESTAMP($from + INTERVAL 1 DAY))",
+        ),
+      );
+    }
+    elseif (isset($this->_month)) {
+      $from = sprintf("'%04d-%02d-01 00:00:00'", $this->_year, $this->_month);
+      return array(
+        'wheres' => array(
+          "(n.created + $timezone >= UNIX_TIMESTAMP($from))",
+          "(n.created + $timezone < UNIX_TIMESTAMP($from + INTERVAL 1 MONTH))",
+        ),
+      );
+    }
+    elseif (isset($this->_year)) {
+      $from = sprintf("'%04d-01-01 00:00:00'", $this->_year);
+      return array(
+        'wheres' => array(
+          "(n.created + $timezone >= UNIX_TIMESTAMP($from))",
+          "(n.created + $timezone < UNIX_TIMESTAMP($from + INTERVAL 1 YEAR))",
+        ),
+      );
+    }
+    else {
+      return NULL; // Should not really happen.
+    }
+  }
+}
+
+/**
+ * Returns the applicable timezone offset (in seconds) for date comparisons in
+ * database queries.
+ */
+function _date_authored_facet_get_timezone() {
+  return _date_authored_facet_get_user_timezone() - _date_authored_facet_get_system_timezone();
+}
+
+/**
+ * Returns current user's timezone offset (in seconds).
+ */
+function _date_authored_facet_get_user_timezone() {
+  global $user;
+  if (variable_get('configurable_timezones', 1) && $user->uid && strlen($user->timezone)) {
+    return $user->timezone;
+  }
+  else {
+    return variable_get('date_default_timezone', 0);
+  }
+}
+
+/**
+ * Returns the database system's timezone offset (in seconds).
+ *
+ * This hack is used to cancel MySQL's timezone conversions when it converts
+ * dates to/from Unix timestamps. We could avoid this if MySQL had functions
+ * that worked directly in UTC (see http://bugs.mysql.com/bug.php?id=28961).
+ */
+function _date_authored_facet_get_system_timezone() {
+  static $offset = NULL;
+  if (!isset($offset)) {
+    $system = db_result(db_query("SELECT UNIX_TIMESTAMP('2007-01-01 00:00:00')"));
+    $offset = 1167609600 - $system; // Find offset from the timestamp for 2007-01-01 00:00:00 UTC.
+  }
+  return $offset;
+}

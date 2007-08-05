@@ -40,6 +40,9 @@ Faceted Search is in fact a bundle of modules.
 - Author Facet: This module adds a facet that allows users to refine the current
   query based on content author.
 
+- Date Authored Facet: This module allows users to refine the current query
+  based on content creation date.
+
 Hopefully, many more facets will be developed. The API is meant to make it easy
 to implement new facets.
 
@@ -56,30 +59,46 @@ Although this code uses some object-oriented programming, it is still compatible
 with PHP 4 at the moment.
 
 
-Requirements
-************
-
-- This module requires Drupal 5.x (http://drupal.org/project/drupal).
-
-- If you wish to use Faceted Search UI's tooltips feature (for showing
-  subcategories when hovering over a category in the guided search), it is
-  strongly recommended to install the jQuery Update module
-  (http://drupal.org/project/jquery_update). Make sure to read that module's
-  installation instructions. If you don't use the tooltips feature, Faceted
-  Search UI won't use jQuery at all, so in that case you would not need jQuery
-  Update.
-
-- If you use the Faceted Search UI's Related Categories block, you might want to
-  remove Drupal's default terms listing when viewing a node. To do that, see the
-  Taxonomy hide module (http://drupal.org/project/taxonomy_hide).
-
-
 Caution
 *******
 
 Faceted searches are database-intensive. If your server can barely keep up with
 your traffic, this package will make things worst. Make sure to benchmark
 performance before deploying this package on a busy site.
+
+
+Requirements
+************
+
+- This module requires Drupal 5.x (http://drupal.org/project/drupal).
+
+
+Recommended modules
+*******************
+
+- jQuery Update (http://drupal.org/project/jquery_update): If you wish to use
+  Faceted Search UI's tooltips feature (for showing subcategories when hovering
+  over a category in the guided search), it is strongly recommended to install
+  the jQuery Update module. Make sure to read that module's installation
+  instructions. If you don't use the tooltips feature, Faceted Search UI won't
+  use jQuery at all, so in that case you would not need jQuery Update.
+
+- Taxonomy hide (http://drupal.org/project/taxonomy_hide): If you use the
+  Faceted Search UI's Related Categories block, you might want to remove
+  Drupal's default terms listing when viewing a node. You could do that from
+  your site's theme, but another way could be to use the Taxonomy hide module.
+
+
+Known incompatibilities
+***********************
+
+- Devel (http://drupal.org/project/devel): When the Devel module appends
+  information to pages, it interferes with the AJAX data needed for Faceted
+  Search UI's tooltips. For the tooltips to work, you'll have to either disable
+  Devel, or disable its displayed data.
+
+- PostgreSQL: The Date Authored Facet module uses some MySQL-specific functions.
+  Feel free to share patches to support PostgreSQL (or any other database). :-)
 
 
 Installation
@@ -131,6 +150,13 @@ Installation
 7. Click the Settings tab and assign weights and maximum number of categories to
    each facet. These options apply to the Current search and Guided search
    blocks.
+
+
+Support
+*******
+
+For support requests, bug reports, and feature requests, please use Faceted
+Search's issue queue on http://drupal.org/project/issues/faceted_search.
 
 
 Credits
