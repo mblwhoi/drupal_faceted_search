@@ -34,15 +34,15 @@ Faceted Search is in fact a bundle of modules.
 
 - Taxonomy Facets: This modules allows users to search content through
   taxonomy. Any vocabulary can become a facet that can be used to refine the
-  current query.
+  current search.
 
-- Content Type Facet: This module adds a facet that allows users to refine the
-  current query based on content type.
+- Content Type Facet: This module allows users to refine the current search
+  based on content type.
 
-- Author Facet: This module adds a facet that allows users to refine the current
-  query based on content author.
+- Author Facet: This module allows users to refine the current search based on
+  content author.
 
-- Date Authored Facet: This module allows users to refine the current query
+- Date Authored Facet: This module allows users to refine the current search
   based on content creation date.
 
 Hopefully, many more facets will be developed. The API is meant to make it easy
@@ -122,11 +122,7 @@ Installation
    - Search (Drupal core module)
    - Taxonomy (Drupal core module -- only needed if you intend to use Taxonomy Facets)
 
-3. Go to the Administer > User management > Access control page, and grant the
-   "use faceted search" permission to the roles you intend to give access to
-   faceted search.
-
-4. Go to the Administer > Site building > Blocks page, and enable the following
+3. Go to the Administer > Site building > Blocks page, and enable the following
    blocks:
 
    - Faceted search / Current search
@@ -138,24 +134,31 @@ Installation
    the Keyword search and Guided search blocks, and to have the Related
    categories block placed in the Content region (so it appears under nodes).
 
-6. Go to the Administer > Site configuration > Faceted Search page.
+4. Go to the Administer > Site configuration > Faceted Search page.
 
-6a. If you have enabled the Author Facet module, click the Author Facet tab and
+4a. If you have enabled the Author Facet module, click the Author Facet tab and
     check the roles you'd like to exclude from faceted searches.
 
-6b. If you have enabled the Content Type Facet module, click the Content Type
+4b. If you have enabled the Content Type Facet module, click the Content Type
     Facet tab and check the content types you'd like to use in faceted searches.
 
-6c. If you have enabled the Taxonomy Facets module, click the Taxonomy Facets
+4c. If you have enabled the Date Authored Facet module, click the Date Authored
+    Facet tab and select the date formats you'd like to use in faceted searches.
+
+4d. If you have enabled the Taxonomy Facets module, click the Taxonomy Facets
     tab and check the vocabularies you'd like to use in faceted searches.
 
     If your site does not have vocabularies, you'll have to create them, and
     populate them with terms. See the Drupal handbook pages on taxonomy for more
     information (http://drupal.org/handbook/modules/taxonomy).
 
-7. Click the Settings tab and assign weights and maximum number of categories to
+5. Click the Settings tab and assign weights and maximum number of categories to
    each facet. These options apply to the Current search and Guided search
    blocks.
+
+6. Go to the Administer > User management > Access control page, and grant the
+   "use faceted search" permission to the roles you intend to give access to
+   faceted search.
 
 
 Support
