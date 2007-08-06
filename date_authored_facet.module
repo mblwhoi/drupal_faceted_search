@@ -35,22 +35,25 @@ function date_authored_facet_faceted_search_parse(&$text) {
   $facets = array();
   if ($date = search_query_extract($text, 'date_authored')) {
     $matches = array();
-    if (preg_match('/^([0-9][0-9][0-9][0-9])(-([0-9][0-9])(-([0-9][0-9]))?)?$/', $date, $matches)) {
-      $path = array(); // Array to build the path of categories.
-      if (isset($matches[1])) {
-        // Found year.
-        $path[] = new date_authored_facet_category($matches[1]);
-      }
-      if (isset($matches[3])) {
-        // Found month.
-        $path[] = new date_authored_facet_category($matches[1], $matches[3]);
-      }
-      if (isset($matches[5])) {
-        // Found day.
-        $path[] = new date_authored_facet_category($matches[1], $matches[3], $matches[5]);
-      }
-      if (!empty($path)) {
-        $facets[] = new date_authored_facet($path);
+    // Match YYYY(-MM(-DD)).
+    if (preg_match('/^([12][0-9][0-9][0-9])(-([01][0-9])(-([0-3][0-9]))?)?$/', $date, $matches)) {
+      if (_date_authored_facet_check_date($matches[1], $matches[3], $matches[5])) {
+        $path = array(); // Array to build the path of categories.
+        if (isset($matches[1])) {
+          // Found year.
+          $path[] = new date_authored_facet_category($matches[1]);
+        }
+        if (isset($matches[3])) {
+          // Found month.
+          $path[] = new date_authored_facet_category($matches[1], $matches[3]);
+        }
+        if (isset($matches[5])) {
+          // Found day.
+          $path[] = new date_authored_facet_category($matches[1], $matches[3], $matches[5]);
+        }
+        if (!empty($path)) {
+          $facets[] = new date_authored_facet($path);
+        }
       }
     }
     // Remove the parsed text
@@ -71,10 +74,10 @@ function date_authored_facet_faceted_search_parse(&$text) {
  */
 function date_authored_facet_faceted_search_collect($node) {
   // Convert the node's creation date into the user's timezone.
-  $timezone = _date_authored_facet_get_user_timezone();
-  $year = gmdate('Y', $node->created + $timezone);
-  $month = gmdate('n', $node->created + $timezone);
-  $day = gmdate('j', $node->created + $timezone);
+  $timestamp = $node->created + _date_authored_facet_get_user_timezone();
+  $year = gmdate('Y', $timestamp);
+  $month = gmdate('n', $timestamp);
+  $day = gmdate('j', $timestamp);
   
   // Build the path of categories.
   $path = array(
@@ -316,4 +319,21 @@ function _date_authored_facet_get_system_timezone() {
     $offset = 1167609600 - $system; // Find offset from the timestamp for 2007-01-01 00:00:00 UTC.
   }
   return $offset;
+}
+
+/**
+ * Checks the validity of a date or partial date.
+ */
+function _date_authored_facet_check_date($year = NULL, $month = NULL, $day = NULL) {
+  if (!isset($year) || !is_numeric($year) || $year < 1) {
+    return FALSE;
+  }
+  if (isset($month) && (!is_numeric($month) || $month < 1 || $month > 12)) {
+    return FALSE;
+  }
+  if (isset($day) && (!isset($month) || !is_numeric($month) || !is_numeric($day) || !checkdate($month, $day, $year))) {
+    return FALSE;
+  }
+  
+  return TRUE;
 }
