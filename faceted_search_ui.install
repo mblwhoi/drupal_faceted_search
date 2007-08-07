@@ -1,0 +1,14 @@
+<?php
+// $Id$
+
+/**
+ * Renamed blocks' delta.
+ */
+function faceted_search_ui_update_1() {
+  $ret = array();
+  $ret[] = update_sql("UPDATE {blocks} SET delta = 'current' WHERE module = 'faceted_search_ui' AND delta = 0");
+  $ret[] = update_sql("UPDATE {blocks} SET delta = 'keyword' WHERE module = 'faceted_search_ui' AND delta = 1");
+  $ret[] = update_sql("UPDATE {blocks} SET delta = 'guided' WHERE module = 'faceted_search_ui' AND delta = 2");
+  $ret[] = update_sql("UPDATE {blocks} SET delta = 'related' WHERE module = 'faceted_search_ui' AND delta = 3");
+  return $ret;
+}

@@ -61,11 +61,10 @@ function faceted_search_ui_menu($may_cache) {
  */
 function faceted_search_ui_block($op = 'list', $delta = 0, $edit = array()) {
   if ($op == 'list') {
-    // TODO: use strings as delta (more significant ids make theming easier)
-    $blocks[0] = array('info' => t('Faceted search / Current search'));
-    $blocks[1] = array('info' => t('Faceted search / Keyword search'));
-    $blocks[2] = array('info' => t('Faceted search / Guided search'));
-    $blocks[3] = array('info' => t('Faceted search / Related categories'));
+    $blocks['current'] = array('info' => t('Faceted search / Current search'));
+    $blocks['keyword'] = array('info' => t('Faceted search / Keyword search'));
+    $blocks['guided'] = array('info' => t('Faceted search / Guided search'));
+    $blocks['related'] = array('info' => t('Faceted search / Related categories'));
     return $blocks;
   }
   elseif ($op == 'view') {
@@ -74,26 +73,26 @@ function faceted_search_ui_block($op = 'list', $delta = 0, $edit = array()) {
     faceted_search_ui_add_css();
     
     switch ($delta) {
-      case 0:
+      case 'current':
         $block['subject'] = t('Current search'); 
         $block['content'] = faceted_search_ui_show_current_search($_faceted_search_ui_current_search);
         break;
 
-      case 1:
+      case 'keyword':
         if ($_faceted_search_ui_current_search->ui_state['stage'] == 'results' && $_faceted_search_ui_current_search->ui_state['style'] != 'full') {
           $block['subject'] = t('Keyword search'); 
           $block['content'] = faceted_search_ui_show_keyword_search($_faceted_search_ui_current_search);
         }
         break;
 
-      case 2:
+      case 'guided':
         if ($_faceted_search_ui_current_search->ui_state['stage'] == 'results' && $_faceted_search_ui_current_search->ui_state['style'] != 'full') {
           $block['subject'] = t('Guided search');
           $block['content'] = faceted_search_ui_show_guided_search($_faceted_search_ui_current_search);
         }
         break;
 
-      case 3:
+      case 'related':
         if (arg(0) == 'node' && is_numeric(arg(1)) && !arg(2) && $node = node_load(arg(1))) {
           if ($content = faceted_search_ui_show_related_categories($node)) {
             $block['subject'] = t('Related categories'); 
