@@ -575,11 +575,11 @@ function faceted_search_ui_build_path($ui_state, $text, $facets = array()) {
     $facet = "{$ui_state['facet-key']}:{$ui_state['facet-id']}";
   }
   else {
-    $facet = 'na';
+    $facet = '-';
   }
   
   if ($ui_state['style'] != 'full') {
-    $ui_state['aim'] = 'na';
+    $ui_state['aim'] = '-';
   }
   return "faceted_search/{$ui_state['stage']}/{$facet}/{$ui_state['style']}/{$ui_state['sort']}/{$ui_state['aim']}/{$text}";
 }
