@@ -174,6 +174,8 @@ Credits
 * Developed by David Lesieur (http://davidlesieur.com,
   http://drupal.org/user/17157).
 
-* The superb Flamenco search interface (http://flamenco.berkeley.edu) provided,
-  and still provides, most of the inspiration for this project.
+* Sponsored in part by Eyos BV (http://www.eyos.nl).
+
+* The superb Flamenco search interface (http://flamenco.berkeley.edu) has
+  provided, and still provides, most of the inspiration for this project.
 
