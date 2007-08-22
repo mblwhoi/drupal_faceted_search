@@ -29,7 +29,7 @@ jQuery.facetedSearchUI = {
     }
 
     // Derive the tooltip's url from the category's url, which also contains the search text.
-    jQuery.facetedSearchUI.url = this.href.replace(/\/results\/na\//, '/categories/' + facetKey + ':' + facetId + '/');
+    jQuery.facetedSearchUI.url = this.href.replace(/\/results\/-\//, '/categories/' + facetKey + ':' + facetId + '/');
     if (jQuery.facetedSearchUI.url == this.href) {
       return; // Could not create the tooltip's url.
     }
