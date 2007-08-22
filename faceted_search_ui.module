@@ -228,6 +228,9 @@ function faceted_search_ui_stage_facet() {
 function faceted_search_ui_categories() {
   global $_faceted_search_ui_current_search;
 
+  // We are returning JavaScript, so tell the browser.
+  drupal_set_header('Content-Type: text/javascript; charset=utf-8');
+  
   // Build the search results, which are required to count nodes per category
   $_faceted_search_ui_current_search->execute();
 

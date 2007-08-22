@@ -94,11 +94,6 @@ Recommended modules
 Known incompatibilities
 ***********************
 
-- Devel (http://drupal.org/project/devel): When the Devel module appends
-  information to pages, it interferes with the AJAX data needed for Faceted
-  Search UI's tooltips. For the tooltips to work, you'll have to either disable
-  Devel, or disable its displayed data.
-
 - PostgreSQL: The Date Authored Facet module uses some MySQL-specific functions.
   Feel free to share patches to support PostgreSQL (or any other database). :-)
 
