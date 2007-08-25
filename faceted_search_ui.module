@@ -378,7 +378,8 @@ function faceted_search_ui_set_title($search) {
     $labels = array();
     foreach ($search->get_facets() as $facet) {
       if ($facet->is_active()) {
-        $labels[] = check_plain($facet->get_active_category()->get_label());
+        $category = $facet->get_active_category();
+        $labels[] = check_plain($category->get_label());
       }
     }
     if ($labels) {
