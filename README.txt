@@ -53,9 +53,10 @@ Current status
 **************
 
 This module is undergoing development. It might not be a good idea to use it on
-a production site.
+a production site. The provided features and API might still change without
+warning.
 
-The interface still has some rough edges, but should work pretty well.
+The user interface still has some rough edges, but should work pretty well.
 
 Although this code uses some object-oriented programming, it is still compatible
 with PHP 4 at the moment.
@@ -162,11 +163,14 @@ Support
 For support requests, bug reports, and feature requests, please use Faceted
 Search's issue queue on http://drupal.org/project/issues/faceted_search.
 
+You may also contact the author for paid customizations to this module
+(http://davidlesieur.com/contact).
+
 
 Credits
 *******
 
-* Developed by David Lesieur (http://davidlesieur.com,
+* Project initiated and developed by David Lesieur (http://davidlesieur.com,
   http://drupal.org/user/17157).
 
 * Sponsored in part by Eyos BV (http://www.eyos.nl).
