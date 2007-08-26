@@ -85,14 +85,23 @@ function author_facet_faceted_search_collect($node) {
  */
 function author_facet_admin_settings_form() {
   $roles = array_filter(user_roles(TRUE), '_author_facet_filter_role');
-  $form['author_facet_excluded_roles'] = array(
-    '#type' => 'checkboxes',
-    '#title' => t('Roles to exclude from the Author facet'),
-    '#description' => t('Any user having one or more of the checked roles will not appear in the facet. Note that this setting is not a filter for search results; content from excluded users can still be searchable through other facets or from text searches.'),
-    '#options' => $roles,
-    '#default_value' => author_facet_excluded_roles(),
-  );
-  return system_settings_form($form);
+  if (count($roles)) {
+    $form['author_facet_excluded_roles'] = array(
+      '#type' => 'checkboxes',
+      '#title' => t('Roles to exclude from the Author facet'),
+      '#description' => t('Any user having one or more of the checked roles will not appear in the facet. Note that this setting is not a filter for search results; content from excluded users can still be searchable through other facets or from text searches.'),
+      '#options' => $roles,
+      '#default_value' => author_facet_excluded_roles(),
+    );
+    return system_settings_form($form);
+  }
+  else {
+    $form['help'] = array(
+      '#type' => 'markup',
+      '#value' => '<p>'. t('No roles currently available for this configuration.') .'</p>',
+    );
+    return $form;
+  }
 }
 
 /**
