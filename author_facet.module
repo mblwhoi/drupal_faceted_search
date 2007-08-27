@@ -55,9 +55,9 @@ function author_facet_faceted_search_parse(&$text) {
         // Create an active facet with the user found in the search text.
         $facets[] = new author_facet($uid, $name);
       }
-      // Remove the parsed text
-      $text = search_query_insert($text, 'author');
     }
+    // Remove the parsed text
+    $text = search_query_insert($text, 'author');
   }    
   return $facets;
 }
