@@ -159,11 +159,12 @@ function theme_faceted_search_display_settings($form) {
   uasort($form, '_element_sort');
 
   $output = '';
-  $header = array(t('Facet'), t('Weight'), t('Number of categories to show in guided search'));
+  $header = array(t('Facet'), t('From module'), t('Weight'), t('Number of categories to show in guided search'));
   $rows = array();
   foreach (element_children($form) as $key) {
     $rows[] = array(
       check_plain($form[$key]['#title']),
+      drupal_render($form[$key]['module']),
       drupal_render($form[$key]['weight']),
       drupal_render($form[$key]['max']),
     );
@@ -204,6 +205,10 @@ function _faceted_search_add_display_settings(&$form, $settings, $module, $facet
   $form[$key] = array(
     '#title' => check_plain($facet->get_label()),
     '#weight' => $weight,
+  );
+  $form[$key]['module'] = array(
+    '#type' => 'markup',
+    '#value' => check_plain($module),
   );
   $form[$key]['weight'] = array(
     '#type' => 'weight',
