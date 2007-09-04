@@ -300,7 +300,7 @@ class faceted_search_keyword_and_facet extends faceted_search_keyword_facet {
   }
   
   function get_default_weight() {
-    return -20;
+    return -999;
   }
   
 }
@@ -326,7 +326,7 @@ class faceted_search_keyword_phrase_facet extends faceted_search_keyword_facet {
   }
   
   function get_default_weight() {
-    return -19;
+    return -998;
   }
 }
 
@@ -351,7 +351,7 @@ class faceted_search_keyword_or_facet extends faceted_search_keyword_facet {
   }
   
   function get_default_weight() {
-    return -18;
+    return -997;
   }
 }
 
@@ -376,7 +376,7 @@ class faceted_search_keyword_not_facet extends faceted_search_keyword_facet {
   }
   
   function get_default_weight() {
-    return -17;
+    return -996;
   }
 }
 
