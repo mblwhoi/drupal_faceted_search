@@ -95,8 +95,23 @@ function faceted_search_admin_settings_form() {
     '#description' => t('Check the content types to exclude from search results.'),
     '#default_value' => faceted_search_excluded_types(),
   );
+  $form = system_settings_form($form);
+  $form['#validate'] = array(
+    'system_settings_form_validate' => array(),
+    'faceted_search_admin_settings_form_validate' => array(),
+  );
+  return $form;
+}
 
-  return system_settings_form($form);
+/**
+ * Validation callback for administration page.
+ */
+function faceted_search_admin_settings_form_validate($form_id, $form_values) {
+  foreach ($form_values['faceted_search_display'] as $key => $display) {
+    if (!is_numeric($display['weight'])) {
+      form_set_error("faceted_search_display][$key][weight", t('Weight must be a numeric value.'));
+    }
+  }
 }
 
 function faceted_search_excluded_types() {
@@ -162,6 +177,8 @@ function theme_faceted_search_display_settings($form) {
   $header = array(t('Facet'), t('From module'), t('Weight'), t('Number of categories to show in guided search'));
   $rows = array();
   foreach (element_children($form) as $key) {
+    unset($form[$key]['weight']['#title']);
+    unset($form[$key]['max']['#title']);
     $rows[] = array(
       check_plain($form[$key]['#title']),
       drupal_render($form[$key]['module']),
@@ -211,13 +228,17 @@ function _faceted_search_add_display_settings(&$form, $settings, $module, $facet
     '#value' => check_plain($module),
   );
   $form[$key]['weight'] = array(
-    '#type' => 'weight',
-    '#delta' => 20,
+    '#title' => t('Weight'),
+    '#type' => 'textfield',
     '#default_value' => $weight,
+    '#maxlength' => 4,
+    '#size' => 4,
+    '#required' => TRUE,
   );
   if ($facet->get_key() != 'keyword') {
     $max_categories = isset($settings[$key]['max']) ? $settings[$key]['max'] : $facet->get_default_max_categories();
     $form[$key]['max'] = array(
+      '#title' => t('Number of categories to show in guided search'),
       '#type' => 'select',
       '#options' => array(
         0 => t('All categories'),
