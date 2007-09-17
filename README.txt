@@ -178,3 +178,11 @@ Credits
 * The superb Flamenco search interface (http://flamenco.berkeley.edu) has
   provided, and still provides, most of the inspiration for this project.
 
+
+See also
+********
+
+- Biblio Facets (http://drupal.org/project/biblio_facets): Integrates Faceted
+  Search with Biblio (http://drupal.org/project/biblio) to navigate Biblio's
+  types and fields as facets.
+
