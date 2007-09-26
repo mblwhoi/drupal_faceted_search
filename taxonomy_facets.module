@@ -191,7 +191,7 @@ function taxonomy_facets_admin_settings_form() {
     // the module becomes enabled.
     $form['indexing']['taxonomy_facets_rebuild'] = array(
       '#type' => 'markup',
-      '#value' => t('You must !rebuild if some content was added while the Taxonomy Facets module was disabled. This is not necessary after enabling the module for the first time.', array('!rebuild' => l(t('rebuild the Taxonomy Facets index'), 'admin/settings/faceted_search/taxonomy_facets/rebuild'))),
+      '#value' => t('If you are getting inconsistent results when navigating the taxonomy facets, try to <a href="@rebuild">rebuild the Taxonomy Facets index</a>. However, inconsistencies might denote a bug; please report it to Faceted Search\'s <a href="http://drupal.org/project/issues/faceted_search">issue queue</a>.', array('@rebuild' => url('admin/settings/faceted_search/taxonomy_facets/rebuild'))),
     );
     $form['#submit']['taxonomy_facets_admin_settings_form_submit'] = array(); // Must be called first
     $form['#submit']['system_settings_form_submit'] = array();
@@ -229,13 +229,17 @@ function taxonomy_facets_admin_settings_form_submit($form_id, $form_values) {
 /**
  * Menu callback for rebuilding the taxonomy_facets_term_node table.
  */
-function taxonomy_facets_rebuild_term_node() {
+function taxonomy_facets_rebuild_term_node($goto_admin = TRUE) {
   $vocabularies = taxonomy_facets_get_vocabularies();
-  foreach ($vocabularies as $vid => $vocabulary) {
-    _taxonomy_facets_update_term_node_vid($vid);
+  if ($vocabularies) {
+    foreach ($vocabularies as $vid => $vocabulary) {
+      _taxonomy_facets_update_term_node_vid($vid);
+    }
+    drupal_set_message(t('The Taxonomy Facets index has been updated.'));
   }
-  drupal_set_message(t('The Taxonomy Facets index has been updated.'));
-  drupal_goto('admin/settings/faceted_search/taxonomy_facets');
+  if ($goto_admin) {
+    drupal_goto('admin/settings/faceted_search/taxonomy_facets');
+  }
 }
 
 /**

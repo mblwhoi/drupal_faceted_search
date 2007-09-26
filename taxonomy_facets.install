@@ -41,6 +41,13 @@ function taxonomy_facets_uninstall() {
 }
 
 /**
+ * Implementation of hook_enable().
+ */
+function taxonomy_facets_enable() {
+  taxonomy_facets_rebuild_term_node(FALSE);
+}
+
+/**
  * Renamed variable.
  */
 function taxonomy_facets_update_1() {
