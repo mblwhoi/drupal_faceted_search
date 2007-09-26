@@ -1,0 +1,11 @@
+<?php
+// $Id$
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function date_authored_facet_uninstall() {
+  variable_del('date_authored_facet_format_y');
+  variable_del('date_authored_facet_format_ym');
+  variable_del('date_authored_facet_format_ymd');
+}

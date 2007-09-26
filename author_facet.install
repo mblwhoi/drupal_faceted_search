@@ -1,0 +1,10 @@
+<?php
+// $Id$
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function author_facet_uninstall() {
+  variable_del('author_facet_excluded_roles');
+}
+
