@@ -125,10 +125,11 @@ Installation
    - Faceted search / Keyword search
    - Faceted search / Guided search
    - Faceted search / Related categories
+   - Faceted search / Sort options
 
    It is most intuitive for users to have the Current search block located above
-   the Keyword search and Guided search blocks, and to have the Related
-   categories block placed in the Content region (so it appears under nodes).
+   the Keyword search and Guided search blocks, and the Related categories and
+   Sort options blocks displayed under the content.
 
 4. Go to the Administer > Site configuration > Faceted Search page.
 
@@ -173,7 +174,8 @@ Credits
 * Project initiated and developed by David Lesieur (http://davidlesieur.com,
   http://drupal.org/user/17157).
 
-* Sponsored in part by Eyos BV (http://www.eyos.nl).
+* Sponsored in part by Laboratoire NT2 (http://www.labo-nt2.uqam.ca) and Eyos BV
+  (http://www.eyos.nl).
 
 * The superb Flamenco search interface (http://flamenco.berkeley.edu) has
   provided, and still provides, most of the inspiration for this project.

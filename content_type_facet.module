@@ -136,6 +136,29 @@ class content_type_facet extends faceted_search_facet {
   }
 
   /**
+   * Returns the available sort options for this facet.
+   */
+  function get_sort_options() {
+    $options = parent::get_sort_options();
+    $options['type'] = t('Type');
+    return $options;
+  }
+
+  /**
+   * Handler for the 'count' sort criteria.
+   */
+  function get_query_orderby_count() {
+    return array('count DESC', 't.name ASC');
+  }
+
+  /**
+   * Handler for the 'type' sort criteria.
+   */
+  function get_query_orderby_type() {
+    return array('t.name ASC');
+  }
+
+  /**
    * Return the search text for this facet, taking into account this facet's
    * active path.
    */
@@ -164,9 +187,6 @@ class content_type_facet extends faceted_search_facet {
       ),
       'groupby' => array(
         't.type',
-      ),
-      'orderby' => array(
-        't.name',
       ),
     );
   }

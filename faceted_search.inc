@@ -69,6 +69,12 @@ class faceted_search_facet {
   var $_weight = 0;
 
   /**
+   * The current sort criteria to use for this facet. This determines how to
+   * sort the facet's categories.
+   */
+  var $_sort = '';
+
+  /**
    * The maximum number of categories to show in this facet.
    */
   var $_max_categories = 0;
@@ -78,7 +84,7 @@ class faceted_search_facet {
    * of this facet (i.e. without the active category itself).
    */
   var $_path = array();
-
+  
   /**
    * Constructor.
    *
@@ -110,6 +116,7 @@ class faceted_search_facet {
     
     // Assign this facet's settings
     $this->_weight = isset($settings[$key]['weight']) ? $settings[$key]['weight'] : $this->get_default_weight();
+    $this->_sort = isset($settings[$key]['sort']) ? $settings[$key]['sort'] : $this->get_default_sort();
     $this->_max_categories = isset($settings[$key]['max']) ? $settings[$key]['max'] : $this->get_default_max_categories();
   }
 
@@ -137,6 +144,61 @@ class faceted_search_facet {
     return 0;
   }
 
+  /**
+   * Returns the available sort options for this facet. Each option is a key =>
+   * label pair.
+   *
+   * Each key must have a corresponding handler method in the form
+   * 'get_query_orderby_key'.
+   */
+  function get_sort_options() {
+    return array('count' => t('Count'));
+  }
+
+  /**
+   * Returns the default sort criteria for this facet.
+   */
+  function get_default_sort() {
+    return 'count';
+  }
+  
+  /**
+   * Returns the current sort criteria for this facet.
+   */
+  function get_sort() {
+    return $this->_sort;
+  }
+  
+  /**
+   * Assigns the current sort criteria for this facet.
+   */
+  function set_sort($sort) {
+    // Assign value only if a corresponding handler exists.
+    if (method_exists($this, 'get_query_orderby_'. $sort)) {
+      $this->_sort = $sort;
+    }
+  }
+
+  /**
+   * Handler for the 'count' sort criteria.
+   */
+  function get_query_orderby_count() {
+    return array('count DESC');
+  }
+  
+  /**
+   * Returns the 'order by' query elements relevant to this facet. The elements
+   * must apply equally well queries returned by get_root_categories() or
+   * get_subcategories().
+   */
+  function get_query_orderby() {
+    $method = 'get_query_orderby_'. $this->_sort;
+    if (method_exists($this, $method)) {
+      return $this->$method();
+    }
+    return array();
+  }
+  
   /**
    * Return the configured maximum number of categories to show in this facet.
    *
@@ -266,6 +328,13 @@ class faceted_search_keyword_facet extends faceted_search_facet {
   
   function faceted_search_keyword_facet($active_category = NULL) {
     parent::faceted_search_facet('keyword', $active_category ? array($active_category) : array());
+  }
+
+  /**
+   * Returns the available sort options for this facet.
+   */
+  function get_sort_options() {
+    return array(); // Sort options are not relevant to this kind of facet.
   }
 
   /**
@@ -470,6 +539,17 @@ class faceted_search {
     return $this->_facets[$index];
   }
 
+  /** 
+   * Return the index of a facet given its key and id.
+   */
+  function get_facet_by_id($key, $id) {
+    foreach ($this->_facets as $index => $facet) {
+      if ($facet->get_key() == $key && $facet->get_id() == $id) {
+        return array($index, $facet);
+      }
+    }
+  }
+  
   /**
    * Perform the search and store the results in a temporary table.
    *
@@ -670,6 +750,9 @@ class faceted_search {
       return array(); 
     }
 
+    // Apply sort criteria.
+    $query->orderby = array_merge($query->orderby, $facet->get_query_orderby());
+    
     // Apply node type filter.
     if ($excluded_types = faceted_search_excluded_types()) {
       $query->wheres[] = "n.type NOT IN ('". implode("','", $excluded_types) ."')";

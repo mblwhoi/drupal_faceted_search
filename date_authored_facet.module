@@ -216,6 +216,37 @@ class date_authored_facet extends faceted_search_facet {
   }
 
   /**
+   * Returns the available sort options for this facet.
+   */
+  function get_sort_options() {
+    $options = parent::get_sort_options();
+    $options['oldest'] = t('Oldest first');
+    $options['latest'] = t('Latest first');
+    return $options;
+  }
+
+  /**
+   * Handler for the 'count' sort criteria.
+   */
+  function get_query_orderby_count() {
+    return array('count DESC', 'n.created ASC');
+  }
+
+  /**
+   * Handler for the 'oldest' sort criteria.
+   */
+  function get_query_orderby_oldest() {
+    return array('n.created ASC');
+  }
+
+  /**
+   * Handler for the 'latest' sort criteria.
+   */
+  function get_query_orderby_latest() {
+    return array('n.created DESC');
+  }
+
+  /**
    * Returns the search text for this facet, taking into account this facet's
    * active path.
    */
@@ -235,7 +266,6 @@ class date_authored_facet extends faceted_search_facet {
     return array(
       'select' => array("YEAR(FROM_UNIXTIME(n.created + $timezone)) AS created_year"),
       'groupby' => array('created_year'),
-      'orderby' => array('n.created'),
     );
   }
   
@@ -347,7 +377,6 @@ class date_authored_facet_category extends faceted_search_category {
           "(n.created + $timezone < UNIX_TIMESTAMP($from + INTERVAL 1 MONTH))",
         ),
         'groupby' => array('created_day'), // Needed for counting matching nodes.
-        'orderby' => array('n.created'),
       );
     }
     elseif (isset($this->_year)) {
@@ -362,7 +391,6 @@ class date_authored_facet_category extends faceted_search_category {
           "(n.created + $timezone < UNIX_TIMESTAMP($from + INTERVAL 1 YEAR))",
         ),
         'groupby' => array('created_month'), // Needed for counting matching nodes.
-        'orderby' => array('n.created'),
       );
     }
     else {

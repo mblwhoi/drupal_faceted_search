@@ -69,7 +69,7 @@ function faceted_search_admin_settings_form() {
   $form['display'] = array(
     '#type' => 'fieldset',
     '#title' => t('Display'),
-    '#description' => t('In listings, the heavier facets will sink and the lighter facets will be positioned nearer the top. For performance reasons, it is advisable to limit the number of categories per facet in guided search (users will still be able to get the full listing of categories by following a <em>more</em> link).'),
+    '#description' => t('<p>In listings, the heavier facets will sink and the lighter facets will be positioned nearer the top.</p><p>The Sort criteria applies to categories listings only, and the Categories limit applies to category listings in the Guided search only. For performance reasons, it is strongly advisable to select some limit (users will still be able to get the full listing of categories by following a <em>more</em> link).</p>'),
   );
   $form['display']['faceted_search_display'] = array(
     '#theme' => 'faceted_search_display_settings',
@@ -174,15 +174,17 @@ function theme_faceted_search_display_settings($form) {
   uasort($form, '_element_sort');
 
   $output = '';
-  $header = array(t('Facet'), t('From module'), t('Weight'), t('Number of categories to show in guided search'));
+  $header = array(t('Facet'), t('From module'), t('Weight'), t('Sort criteria'), t('Categories limit'));
   $rows = array();
   foreach (element_children($form) as $key) {
     unset($form[$key]['weight']['#title']);
     unset($form[$key]['max']['#title']);
+    unset($form[$key]['sort']['#title']);
     $rows[] = array(
       check_plain($form[$key]['#title']),
       drupal_render($form[$key]['module']),
       drupal_render($form[$key]['weight']),
+      drupal_render($form[$key]['sort']),
       drupal_render($form[$key]['max']),
     );
   }
@@ -235,6 +237,26 @@ function _faceted_search_add_display_settings(&$form, $settings, $module, $facet
     '#size' => 4,
     '#required' => TRUE,
   );
+
+  // Sort criteria.
+  $sort_options = $facet->get_sort_options();
+  $sort = isset($settings[$key]['sort']) && isset($sort_options[$settings[$key]['sort']]) ? $settings[$key]['sort'] : $facet->get_default_sort();
+  if (count($sort_options)) {
+    $form[$key]['sort'] = array(
+      '#title' => t('Sort criteria for categories'),
+      '#type' => 'select',
+      '#default_value' => $sort,
+      '#options' => $sort_options,
+    );
+  }
+  else {
+    $form[$key]['sort'] = array(
+      '#type' => 'markup',
+      '#value' => t('n/a'),
+    );
+  }
+
+  // Number of categories to show.
   if ($facet->get_key() != 'keyword') {
     $max_categories = isset($settings[$key]['max']) ? $settings[$key]['max'] : $facet->get_default_max_categories();
     $form[$key]['max'] = array(

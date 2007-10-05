@@ -279,34 +279,57 @@ class taxonomy_facet extends faceted_search_facet {
   }
 
   /**
-   * Return the id of this facet.
+   * Returns the id of this facet.
    */
   function get_id() {
     return $this->_vocabulary->vid;
   }
 
   /**
-   * Return the label of this facet.
+   * Returns the label of this facet.
    */
   function get_label() {
     return $this->_vocabulary->name;
   }
 
   /**
-   * Return the default weight of this facet.
+   * Returns the default weight of this facet.
    */
   function get_default_weight() {
     return $this->_vocabulary->weight;
   }
 
   /**
-   * Return the search text for this facet, taking into account this facet's
+   * Returns the available sort options for this facet.
+   */
+  function get_sort_options() {
+    $options = parent::get_sort_options();
+    $options['term'] = t('Category'); // Term weight & name.
+    return $options;
+  }
+
+  /**
+   * Handler for the 'count' sort criteria.
+   */
+  function get_query_orderby_count() {
+    return array('count DESC', 't.weight ASC', 't.name ASC');
+  }
+
+  /**
+   * Handler for the 'term' sort criteria.
+   */
+  function get_query_orderby_term() {
+    return array('t.weight ASC', 't.name ASC');
+  }
+
+  /**
+   * Returns the search text for this facet, taking into account this facet's
    * active path.
    */
   function get_text() {
     return implode('.', array_map('_taxonomy_facets_get_category_tid', $this->get_active_path()));
   }
-  
+
   /**
    * Returns query elements required to retrieve the root categories of this
    * facet and their associated nodes within the current search results.
@@ -328,10 +351,6 @@ class taxonomy_facet extends faceted_search_facet {
       ),
       'groupby' => array(
         't.tid',
-      ),
-      'orderby' => array(
-        't.weight',
-        't.name',
       ),
       'arguments' => array($this->_vocabulary->vid),
     );
@@ -402,10 +421,6 @@ class taxonomy_facet_category extends faceted_search_category {
       ),
       'groupby' => array(
         't.tid', // Needed for counting matching nodes.
-      ),
-      'orderby' => array(
-        't.weight',
-        't.name',
       ),
       'arguments' => array($this->_tid),
     );

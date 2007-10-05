@@ -65,6 +65,7 @@ function faceted_search_ui_block($op = 'list', $delta = 0, $edit = array()) {
     $blocks['keyword'] = array('info' => t('Faceted search / Keyword search'));
     $blocks['guided'] = array('info' => t('Faceted search / Guided search'));
     $blocks['related'] = array('info' => t('Faceted search / Related categories'));
+    $blocks['sort'] = array('info' => t('Faceted search / Sort options'));
     return $blocks;
   }
   elseif ($op == 'view') {
@@ -100,7 +101,10 @@ function faceted_search_ui_block($op = 'list', $delta = 0, $edit = array()) {
           }
         }
         break;
-        
+
+      case 'sort':
+        $block['content'] = faceted_search_ui_show_sort_options($_faceted_search_ui_current_search);
+        break;
     }
     return $block;
   }
@@ -197,15 +201,8 @@ function faceted_search_ui_stage_facet() {
   $_faceted_search_ui_current_search->execute();
 
   // Find what facet to show
-  $found = FALSE;
-  $facets = $_faceted_search_ui_current_search->get_facets();
-  foreach ($facets as $index => $facet) {
-    if ($facet->get_key() == $_faceted_search_ui_current_search->ui_state['facet-key'] && $facet->get_id() == $_faceted_search_ui_current_search->ui_state['facet-id']) {
-      $found = TRUE;
-      break; // Found
-    }
-  }
-  if (!$found) {
+  list($index, $facet) = $_faceted_search_ui_current_search->get_facet_by_id($_faceted_search_ui_current_search->ui_state['facet-key'], $_faceted_search_ui_current_search->ui_state['facet-id']);
+  if (!isset($index) || !isset($facet)) {
     drupal_not_found();
     return;
   }
@@ -371,6 +368,28 @@ function faceted_search_ui_show_related_categories($node) {
 }
 
 /**
+ * Display sort options.
+ */
+function faceted_search_ui_show_sort_options($search) {
+  $ui_state = $search->ui_state;
+  if ($ui_state['stage'] == 'facet') {
+    list($index, $facet) = $search->get_facet_by_id($search->ui_state['facet-key'], $search->ui_state['facet-id']);
+    $sort_options = $facet->get_sort_options();
+    if (count($sort_options) > 1) {
+      $sort_links = array();
+      foreach ($sort_options as $option => $name) {
+        $attributes = $search->ui_state['facet-sort'] == $option ? array('class' => 'active') : array();
+        $ui_state['facet-sort'] = $option;
+        $path = faceted_search_ui_build_path($ui_state, $search->get_text());
+        $sort_links[] = l($name, $path, $attributes);
+      }
+      return theme('faceted_search_ui_sort_options', $sort_links);
+    }
+  }
+  // TODO: Sort options for search results.
+}
+
+/**
  * Sets the page title.
  */
 function faceted_search_ui_set_title($search) {
@@ -413,7 +432,8 @@ function faceted_search_ui_format_results($search) {
       $node->body .= module_invoke('taxonomy', 'nodeapi', $node, 'update index');
 
       $extra = node_invoke_nodeapi($node, 'search result');
-      $results[] = array('link' => url('node/'. $item->nid, NULL, NULL, TRUE),
+      $results[] = array(
+        'link' => url('node/'. $item->nid, NULL, NULL, TRUE),
         'type' => node_get_types('name', $node),
         'title' => $node->title,
         'user' => theme('username', $node),
@@ -519,6 +539,10 @@ function faceted_search_ui_form($search) {
     '#type' => 'hidden',
     '#value' => $search->ui_state['facet-id'],
   );
+  $form['facet-sort'] = array(
+    '#type' => 'hidden',
+    '#value' => $search->ui_state['facet-sort'],
+  );
   $form['submit'] = array(
     '#type' => 'submit',
     '#value' => t('Search'),
@@ -580,11 +604,18 @@ function faceted_search_ui_build_path($ui_state, $text, $facets = array()) {
   else {
     $facet = '-';
   }
+
+  if ($ui_state['stage'] == 'facet' && $ui_state['facet-sort']) {
+    $facet_sort = $ui_state['facet-sort'];
+  }
+  else {
+    $facet_sort = '-';
+  }
   
   if ($ui_state['style'] != 'full') {
     $ui_state['aim'] = '-';
   }
-  return "faceted_search/{$ui_state['stage']}/{$facet}/{$ui_state['style']}/{$ui_state['sort']}/{$ui_state['aim']}/{$text}";
+  return "faceted_search/{$ui_state['stage']}/{$facet}/{$facet_sort}/{$ui_state['style']}/{$ui_state['sort']}/{$ui_state['aim']}/{$text}";
 }
 
 /**
@@ -682,6 +713,7 @@ function faceted_search_ui_build_breadcrumb($ui_state, $facets, $index, $breadcr
 function faceted_search_ui_build_categories($search, $index, $from = NULL, $max_count = NULL, $links = TRUE) {
   $facets = $search->get_facets();
   $facet = $facets[$index];
+  $facet->set_sort($search->ui_state['facet-sort']);
   
   // Load the categories. If a limit is used, we load one extra category in
   // order to determine whether a 'more' link needs to be displayed.
@@ -695,6 +727,7 @@ function faceted_search_ui_build_categories($search, $index, $from = NULL, $max_
   $ui_state['stage'] = 'results';
   $ui_state['facet-key'] = '';
   $ui_state['facet-id'] = '';
+  $ui_state['facet-sort'] = '';
 
   // Build links to categories.
   // TODO: Separate into alphabetical groups (with first letter of each category label), if configured to do so
@@ -719,6 +752,7 @@ function faceted_search_ui_build_categories($search, $index, $from = NULL, $max_
       $ui_state['stage'] = 'facet';
       $ui_state['facet-key'] = $facet->get_key();
       $ui_state['facet-id'] = $facet->get_id();
+      $ui_state['facet-sort'] = $facet->get_sort();
       $path = faceted_search_ui_build_path($ui_state, $search->get_text());
     }
     $items[] = theme('faceted_search_ui_more', $path);
@@ -877,6 +911,10 @@ function theme_faceted_search_ui_breadcrumb($breadcrumb) {
   return implode(' &raquo; ', $breadcrumb);
 }
 
+function theme_faceted_search_ui_sort_options($options) {
+  return '<p>'. t('Sort by: !options', array('!options' => implode(' | ', $options))) .'</p>';
+}
+
 // --------------------------------------------------------------------------
 // Internal stuff
 
@@ -885,7 +923,7 @@ function theme_faceted_search_ui_breadcrumb($breadcrumb) {
  *
  * The faceted search UI uses paths of the following form:
  *
- * faceted_search/stage/key:id/style/sort/aim/text
+ * faceted_search/stage/key:id/facet-sort/style/sort/aim/text
  *
  * Meaning of each path component:
  *
@@ -902,6 +940,9 @@ function theme_faceted_search_ui_breadcrumb($breadcrumb) {
  *
  * 'key:id' specifies the facet class and facet id to show. Only present in the
  * 'facet' and 'categories' stage.
+ *
+ * 'facet-sort' specifies the sort criteria to use when listing the facet's
+ * categories. Only used in the 'facet' stage.
  *
  * 'style' indicates how to present the search results. Options are 'extract',
  * 'teaser', 'full'. This option is useful only in the 'results' stage, but its
@@ -939,6 +980,7 @@ function _faceted_search_ui_init() {
     $form_text = $_POST['text'];
     $form_facet_key = $_POST['facet-key'];
     $form_facet_id = $_POST['facet-id'];
+    $form_facet_sort = $_POST['facet-sort'];
   }
   
   // Set defaults.
@@ -955,7 +997,7 @@ function _faceted_search_ui_init() {
       case 'results':
       case 'select':
         $ui_state['stage'] = $input_stage;
-        $arg++; // Skip next arg, which is used only by 'facet' stage.
+        $arg += 2; // Skip args that are only used by 'facet' stage.
         break;
       case 'facet':
       case 'categories':
@@ -963,10 +1005,13 @@ function _faceted_search_ui_init() {
         $facet = explode(':', arg($arg));
         $input_facet_key = $form ? $form_facet_key : $facet[0];
         $input_facet_id = $form ? $form_facet_id : $facet[1];
+        $arg++;
+        $input_facet_sort = $form ? $form_facet_sort : arg($arg);
         if ($input_facet_key && $input_facet_id) {
           $ui_state['stage'] = $input_stage;
           $ui_state['facet-key'] = $input_facet_key;
           $ui_state['facet-id'] = $input_facet_id;
+          $ui_state['facet-sort'] = $input_facet_sort;
         }
         break;
     }
@@ -1035,6 +1080,7 @@ function _faceted_search_ui_defaults() {
     'aim' => 'new',
     'facet-key' => '',
     'facet-id' => '',
+    'facet-sort' => '',
   );
 }
 

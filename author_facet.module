@@ -163,6 +163,29 @@ class author_facet extends faceted_search_facet {
   }
 
   /**
+   * Returns the available sort options for this facet.
+   */
+  function get_sort_options() {
+    $options = parent::get_sort_options();
+    $options['name'] = t('Name');
+    return $options;
+  }
+
+  /**
+   * Handler for the 'count' sort criteria.
+   */
+  function get_query_orderby_count() {
+    return array('count DESC', 'u.name ASC');
+  }
+
+  /**
+   * Handler for the 'name' sort criteria.
+   */
+  function get_query_orderby_name() {
+    return array('u.name ASC');
+  }
+
+  /**
    * Returns the search text for this facet, taking into account this facet's
    * active path.
    */
@@ -191,9 +214,6 @@ class author_facet extends faceted_search_facet {
       ),
       'groupby' => array(
         'u.uid',
-      ),
-      'orderby' => array(
-        'u.name',
       ),
     );
     if (author_facet_excluded_roles()) {
