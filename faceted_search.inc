@@ -742,6 +742,13 @@ class faceted_search {
     }
     elseif (empty($this->_text)) {
       // No search text, search within all nodes.
+      list($rewrite_join, $rewrite_where) = _db_rewrite_sql();
+      if ($rewrite_join) {
+        $query->joins[] = $rewrite_join;
+      }
+      if ($rewrite_where) {
+        $query->wheres[] = $rewrite_where;
+      }
       $query->wheres[] = 'n.status = 1';
     }
     else {
