@@ -145,16 +145,10 @@ function faceted_search_ui_stage_results() {
     // Collect the search results
     $_faceted_search_ui_current_search->execute();
     $results = faceted_search_ui_format_results($_faceted_search_ui_current_search);
-
-    faceted_search_ui_set_title($_faceted_search_ui_current_search);
     
-    if ($_faceted_search_ui_current_search->get_results_count()) {
-      $results = theme('box', t('Search results'), $results);
-    }
-    else {
-      $results = theme('box', t('Your search yielded no results'), search_help('search#noresults'));
-    }
-    return theme('faceted_search_ui_page', $_faceted_search_ui_current_search, $results);
+    faceted_search_ui_set_title($_faceted_search_ui_current_search);
+    $content = theme('faceted_search_ui_results', $results);
+    return theme('faceted_search_ui_page', $_faceted_search_ui_current_search, $content);
   }
   elseif ($_faceted_search_ui_current_search->ui_state['stage'] == 'select') {
     drupal_goto('faceted_search/select');
@@ -913,6 +907,35 @@ function theme_faceted_search_ui_breadcrumb($breadcrumb) {
 
 function theme_faceted_search_ui_sort_options($options) {
   return '<p>'. t('Sort by: !options', array('!options' => implode(' | ', $options))) .'</p>';
+}
+
+function theme_faceted_search_ui_results($results) {
+  global $pager_total, $pager_total_items, $pager_page_array;
+  if ($pager_total_items[0] > 0) {
+    $limit = variable_get('default_nodes_main', 10);
+    $from = $pager_page_array[0] * $limit + 1;
+    $to = min(($pager_page_array[0] + 1) * $limit, $pager_total_items[0]);
+    $total = $pager_total_items[0];
+    
+    if ($total == 1) {
+      $numbering = t('1 result');
+    }
+    elseif ($from == $to) {
+      $numbering = t('Result @to of @total', array('@to' => $to, '@total' => $total));
+    }
+    elseif ($total <= $limit) {
+      $numbering = t('@total results', array('@total' => $pager_total_items[0]));
+    }
+    else {
+      $numbering = t('Results @from - @to of @total', array('@from' => $from, '@to' => $to, '@total' => $total));
+    }
+    
+    $numbering = '<div class="faceted-search-numbering">'. $numbering .'</div>';
+    return $numbering . theme('box', t('Search results'), $results);
+  }
+  else {
+    return theme('box', t('Your search yielded no results'), search_help('search#noresults'));
+  }
 }
 
 // --------------------------------------------------------------------------

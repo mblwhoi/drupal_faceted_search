@@ -1,5 +1,8 @@
 /* $Id$ */
 
+.faceted-search-numbering {
+  float: right;
+}
 .faceted-search-facet.faceted-search-guided-search {
   margin-bottom: 1em;
 }
