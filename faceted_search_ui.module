@@ -466,12 +466,8 @@ function faceted_search_ui_form($search) {
     '#maxlength' => 255,
   );
   $ui_state = $search->ui_state;
-  if ($ui_state['stage'] != 'select') {
-    $ui_state['stage'] = 'select';
-    $path = faceted_search_ui_build_path($ui_state, $search->get_text());
-    $form['go-select']['#value'] = '<div>'. l(t('Advanced search'), $path) .'</div>';
-  }
-  else {
+  $current_stage = $ui_state['stage'];
+  if ($current_stage == 'select') {
     $form['advanced']['keywords']['phrase'] = array(
       '#type' => 'textfield',
       '#title' => t('With the exact phrase'),
@@ -493,9 +489,6 @@ function faceted_search_ui_form($search) {
       '#size' => 20,
       '#maxlength' => 255,
     );
-    $ui_state['stage'] = 'results';
-    $path = faceted_search_ui_build_path($ui_state, $search->get_text());
-    $form['go-results']['#value'] = '<div>'. l(t('Standard search'), $path) .'</div>';
   }
   if ($search->get_text() != '') {
     $form['text'] = array(
@@ -511,7 +504,7 @@ function faceted_search_ui_form($search) {
   }
   $form['stage'] = array(
     '#type' => 'hidden',
-    '#value' => ($search->ui_state['stage'] == 'select' ? 'results' : $search->ui_state['stage']),
+    '#value' => $current_stage == 'select' ? 'results' : $current_stage,
   );
   $form['style'] = array(
     '#type' => 'hidden',
@@ -541,6 +534,16 @@ function faceted_search_ui_form($search) {
     '#type' => 'submit',
     '#value' => t('Search'),
   );
+  if ($current_stage == 'select') {
+    $ui_state['stage'] = 'results';
+    $path = faceted_search_ui_build_path($ui_state, $search->get_text());
+    $form['go-results']['#value'] = '<div>'. l(t('Standard search'), $path) .'</div>';
+  }
+  else {
+    $ui_state['stage'] = 'select';
+    $path = faceted_search_ui_build_path($ui_state, $search->get_text());
+    $form['go-select']['#value'] = '<div>'. l(t('Advanced search'), $path) .'</div>';
+  }
   
   return $form;
 }
