@@ -171,11 +171,11 @@ function faceted_search_ui_stage_select() {
 
   faceted_search_ui_set_title($_faceted_search_ui_current_search);
 
-  if ($box = faceted_search_ui_show_keyword_search($_faceted_search_ui_current_search)) {
-    $output .= theme('box', t('Keyword search'), $box);
+  if ($box_content = faceted_search_ui_show_keyword_search($_faceted_search_ui_current_search)) {
+    $output .= theme('faceted_search_ui_box', t('Keyword search'), $box_content, t('Find content...'));
   }
-  if ($box = faceted_search_ui_show_guided_search($_faceted_search_ui_current_search)) {
-    $output .= theme('box', t('Guided search'), $box);
+  if ($box_content = faceted_search_ui_show_guided_search($_faceted_search_ui_current_search)) {
+    $output .= theme('faceted_search_ui_box', t('Guided search'), $box_content, t('Browse content...'));
   }
   if ($output) {
     return theme('faceted_search_ui_page', $_faceted_search_ui_current_search, $output);
@@ -794,6 +794,16 @@ function theme_faceted_search_ui_page($search, $content) {
     'faceted-search-sort-'. $search->ui_state['sort'],
   );
   return '<div class="'. implode(' ', $classes) .'">'. $content .'</div>'."\n";
+}
+
+function theme_faceted_search_ui_box($title, $content, $description = '') {
+  $form = array(
+    '#type' => 'fieldset',
+    '#title' => $title,
+    '#description' => $description,
+    '#value' => $content,
+  );
+  return drupal_render($form);
 }
 
 /**
