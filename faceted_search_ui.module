@@ -247,7 +247,7 @@ function faceted_search_ui_stage_categories() {
   $categories = faceted_search_ui_build_categories($_faceted_search_ui_current_search, $index, 0, $max_count, FALSE);
   if (count($categories)) {
     $content = '<p>'. t('Subcategories:') .'</p>';
-    $content .= theme('faceted_search_ui_categories', $facet, $categories, 2); // TODO: Avoid hardcoded number of columns 
+    $content .= theme('faceted_search_ui_categories', $facet, $categories, $_faceted_search_ui_current_search->ui_state['stage']);
   }
   else {
     $content = '<p>'. t('No subcategories.') .'</p>'; 
@@ -312,9 +312,7 @@ function faceted_search_ui_show_guided_search($search) {
     $categories = faceted_search_ui_build_categories($search, $index, 0, $max_count);
     if (count($categories) > 0 || $facet->is_active()) {
       $content = theme('faceted_search_ui_facet_heading', $search->ui_state, $search->get_facets(), $index, 'guided');
-      if (count($categories) > 0) {
-        $content .= theme('faceted_search_ui_categories', $facet, $categories, $search->ui_state['stage'] == 'select' ? 2 : 1); // TODO: Avoid hardcoded number of columns
-      }
+      $content .= theme('faceted_search_ui_categories', $facet, $categories, $search->ui_state['stage']);
       $facet_content[] = theme('faceted_search_ui_facet_wrapper', $facet, 'guided', $content);
     }
   }
@@ -867,8 +865,19 @@ function theme_faceted_search_ui_facet_heading($ui_state, $facets, $index, $cont
   return $output;
 }
 
-function theme_faceted_search_ui_categories($facet, $categories, $column_count = 1) {
+function theme_faceted_search_ui_categories($facet, $categories, $stage) {
   if (count($categories)) {
+    switch ($stage) {
+      case 'select':
+      case 'categories':
+        $column_count = 2;
+        break;
+      case 'facet':
+        $column_count = 4;
+        break;
+      default:
+        $column_count = 1;
+    }
     if ($column_count > 1) {
       $columns = array_chunk($categories, ceil(count($categories) / $column_count));
       $row = array();
@@ -977,9 +986,7 @@ function theme_faceted_search_ui_stage_select($search, $keyword_search_content, 
 function theme_faceted_search_ui_stage_facet($search, $index, $facet, $categories) {
   $content .= '<p>'. ($search->get_text() ? t('Click a term to refine your current search.') : t('Click a term to initiate a search.')) .'</p>';
   $content .= theme('faceted_search_ui_facet_heading', $search->ui_state, $search->get_facets(), $index, 'guided');
-  if (count($categories)) {
-    $content .= theme('faceted_search_ui_categories', $facet, $categories, 4); // TODO: Avoid hardcoded number of columns
-  }
+  $content .= theme('faceted_search_ui_categories', $facet, $categories, $search->ui_state['stage']);
   $content = theme('faceted_search_ui_facet_wrapper', $facet, 'guided', $content);
   return theme('faceted_search_ui_page', $search, $content);
 }
