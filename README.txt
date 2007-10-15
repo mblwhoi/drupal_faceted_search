@@ -9,11 +9,11 @@ Description
 The Faceted Search module provides a search API and a search interface for
 allowing users to navigate content in such a way that they can rapidly get
 acquainted with the scope and nature of the content, and never feel lost in the
-data.
+data. More than a search interface, this is an information discovery tool.
 
 The interface exposes metadata in such a way that users can build their queries
 as they go, refining or expanding the current query, with results automatically
-reflecting the current query. This interface also integrates free-text search,
+reflecting the current query. This interface also combines free-text search,
 fully leveraging Drupal's search engine. It avoids complex search forms (which
 break the navigation flow), and never offers facets that would lead to empty
 result sets.
@@ -32,18 +32,18 @@ Faceted Search is in fact a bundle of modules.
 
 - Faceted Search UI: This module provides the search user interface.
 
-- Taxonomy Facets: This modules allows users to search content through
-  taxonomy. Any vocabulary can become a facet that can be used to refine the
-  current search.
+- Author Facet: This module allows users to refine the current search based on
+  content author.
 
 - Content Type Facet: This module allows users to refine the current search
   based on content type.
 
-- Author Facet: This module allows users to refine the current search based on
-  content author.
-
 - Date Authored Facet: This module allows users to refine the current search
   based on content creation date.
+
+- Taxonomy Facets: This modules allows users to search content through
+  taxonomy. Any vocabulary can become a facet that can be used to refine the
+  current search.
 
 Hopefully, many more facets will be developed. The API is meant to make it easy
 to implement new facets.
