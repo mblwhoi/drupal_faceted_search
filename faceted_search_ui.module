@@ -316,27 +316,7 @@ function faceted_search_ui_show_guided_search($search) {
       $facet_content[] = theme('faceted_search_ui_facet_wrapper', $facet, 'guided', $content);
     }
   }
-  if (count($facet_content)) {
-    $output .= '<p>'. ($search->get_text() ? t('Click a term to refine your current search.') : t('Click a term to initiate a search.')) .'</p>';
-    if ($search->ui_state['stage'] == 'select') {
-      $column_count = 2; // TODO: Avoid hardcoded number of columns
-      $columns = array_chunk($facet_content, ceil(count($facet_content) / $column_count));
-      $row = array();
-      for ($column_index = 0; $column_index < $column_count && $column_index < count($columns); $column_index++) {
-        $row[] = implode('', $columns[$column_index]);
-      }
-      // Ensure a consistent number of columns
-      while ($column_index < $column_count) {
-        $column_index++;
-        $row[] = '';
-      }
-      $output .= theme('table', array(), array($row), array('class' => 'faceted-search'));
-    }
-    else {
-      $output = implode('', $facet_content);
-    }
-  }
-  return $output;
+  return theme('faceted_search_ui_guided_search', $search, $facet_content);
 }
 
 /**
@@ -989,6 +969,41 @@ function theme_faceted_search_ui_stage_facet($search, $index, $facet, $categorie
   $content .= theme('faceted_search_ui_categories', $facet, $categories, $search->ui_state['stage']);
   $content = theme('faceted_search_ui_facet_wrapper', $facet, 'guided', $content);
   return theme('faceted_search_ui_page', $search, $content);
+}
+
+/**
+ * Renders a set of facets.
+ *
+ * @param $search
+ *   The search context.
+ *
+ * @param $facets
+ *   Array of individually rendered facets.
+ */
+function theme_faceted_search_ui_guided_search($search, $facets) {
+  if (count($facets)) {
+    $output .= '<p>'. ($search->get_text() ? t('Click a term to refine your current search.') : t('Click a term to initiate a search.')) .'</p>';
+    if ($search->ui_state['stage'] == 'select') {
+      // Show facets in two columns in stage 'select'.
+      $column_count = 2;
+      $columns = array_chunk($facets, ceil(count($facets) / $column_count));
+      $row = array();
+      for ($column_index = 0; $column_index < $column_count && $column_index < count($columns); $column_index++) {
+        $row[] = implode('', $columns[$column_index]);
+      }
+      // Ensure a consistent number of columns
+      while ($column_index < $column_count) {
+        $column_index++;
+        $row[] = '';
+      }
+      $output .= theme('table', array(), array($row), array('class' => 'faceted-search'));
+    }
+    else {
+      // In other stages, just concat all the facets.
+      $output .= implode('', $facets);
+    }
+  }
+  return $output;
 }
 
 // --------------------------------------------------------------------------
