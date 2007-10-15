@@ -89,8 +89,7 @@ function faceted_search_ui_block($op = 'list', $delta = 0, $edit = array()) {
       case 'guided':
         if ($_faceted_search_ui_current_search->ui_state['stage'] == 'results' && $_faceted_search_ui_current_search->ui_state['style'] != 'full') {
           $block['subject'] = t('Guided search');
-          $info = '<p>'. ($_faceted_search_ui_current_search->get_text() ? t('Click a term to refine your current search.') : t('Click a term to initiate a search.')) .'</p>';
-          $block['content'] = $info . faceted_search_ui_show_guided_search($_faceted_search_ui_current_search);
+          $block['content'] = faceted_search_ui_show_guided_search($_faceted_search_ui_current_search);
         }
         break;
 
@@ -320,6 +319,7 @@ function faceted_search_ui_show_guided_search($search) {
     }
   }
   if (count($facet_content)) {
+    $output .= '<p>'. ($search->get_text() ? t('Click a term to refine your current search.') : t('Click a term to initiate a search.')) .'</p>';
     if ($search->ui_state['stage'] == 'select') {
       $column_count = 2; // TODO: Avoid hardcoded number of columns
       $columns = array_chunk($facet_content, ceil(count($facet_content) / $column_count));
@@ -966,7 +966,6 @@ function theme_faceted_search_ui_stage_select($search, $keyword_search_content, 
     $form['guided'] = array(
       '#type' => 'fieldset',
       '#title' => t('Guided search'),
-      '#description' => $search->get_text() ? t('Click a term to refine your current search.') : t('Click a term to initiate a search.'),
       '#value' => $guided_search_content,
       '#weight' => 1,
       '#attributes' => array('class' => 'faceted-search-guided'),
