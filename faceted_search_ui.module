@@ -44,7 +44,7 @@ function faceted_search_ui_menu($may_cache) {
     );
     $items[] = array(
       'path' => 'faceted_search/categories',
-      'callback' => 'faceted_search_ui_categories',
+      'callback' => 'faceted_search_ui_stage_categories',
       'access' => user_access('use faceted search'),
       'type' => MENU_CALLBACK,
     );
@@ -214,7 +214,7 @@ function faceted_search_ui_stage_facet() {
  * Menu callback to display an HTML chunk with categories related to a given
  * facet (using AJAX).
  */
-function faceted_search_ui_categories() {
+function faceted_search_ui_stage_categories() {
   global $_faceted_search_ui_current_search;
 
   // We are returning JavaScript, so tell the browser.
@@ -1005,7 +1005,7 @@ function theme_faceted_search_ui_stage_facet($search, $index, $facet, $categorie
  *
  *   'facet' shows subcategories in their own dedicated page.
  *
- *   'categories' shows an HTML chunk with subcategories (AHAH).
+ *   'categories' shows an HTML chunk with subcategories.
  *
  * 'key:id' specifies the facet class and facet id to show. Only present in the
  * 'facet' and 'categories' stage.
