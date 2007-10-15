@@ -296,7 +296,7 @@ function faceted_search_ui_show_keyword_search($search) {
 function faceted_search_ui_show_guided_search($search) {
   faceted_search_ui_add_tooltips();
   
-  $facet_views = array();
+  $facet_content = array();
   foreach ($search->get_facets() as $index => $facet) {
     if ($facet->get_key() == 'keyword') {
       // Keyword "facets" are ignored in guided search.
@@ -316,13 +316,13 @@ function faceted_search_ui_show_guided_search($search) {
       if (count($categories) > 0) {
         $content .= theme('faceted_search_ui_categories', $facet, $categories, $search->ui_state['stage'] == 'select' ? 2 : 1); // TODO: Avoid hardcoded number of columns
       }
-      $facet_views[] = theme('faceted_search_ui_facet_wrapper', $facet, 'guided', $content);
+      $facet_content[] = theme('faceted_search_ui_facet_wrapper', $facet, 'guided', $content);
     }
   }
-  if (count($facet_views)) {
+  if (count($facet_content)) {
     if ($search->ui_state['stage'] == 'select') {
       $column_count = 2; // TODO: Avoid hardcoded number of columns
-      $columns = array_chunk($facet_views, ceil(count($facet_views) / $column_count));
+      $columns = array_chunk($facet_content, ceil(count($facet_content) / $column_count));
       $row = array();
       for ($column_index = 0; $column_index < $column_count && $column_index < count($columns); $column_index++) {
         $row[] = implode('', $columns[$column_index]);
@@ -335,7 +335,7 @@ function faceted_search_ui_show_guided_search($search) {
       $output .= theme('table', array(), array($row), array('class' => 'faceted-search'));
     }
     else {
-      $output = implode('', $facet_views);
+      $output = implode('', $facet_content);
     }
   }
   return $output;
