@@ -89,7 +89,8 @@ function faceted_search_ui_block($op = 'list', $delta = 0, $edit = array()) {
       case 'guided':
         if ($_faceted_search_ui_current_search->ui_state['stage'] == 'results' && $_faceted_search_ui_current_search->ui_state['style'] != 'full') {
           $block['subject'] = t('Guided search');
-          $block['content'] = faceted_search_ui_show_guided_search($_faceted_search_ui_current_search);
+          $info = '<p>'. ($_faceted_search_ui_current_search->get_text() ? t('Click a term to refine your current search.') : t('Click a term to initiate a search.')) .'</p>';
+          $block['content'] = $info . faceted_search_ui_show_guided_search($_faceted_search_ui_current_search);
         }
         break;
 
@@ -128,6 +129,17 @@ function faceted_search_ui_form_alter($form_id, &$form) {
       '#options' => array('extract' => t('Extracts'), 'teaser' => t('Teasers')),
       '#default_value' => variable_get('faceted_search_ui_default_style', 'extract'),
     );
+    $form['paths'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Paths'),
+    );
+    $form['paths']['faceted_search_ui_start_page'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Start page'),
+      '#description' => t("Path to go to when the current search is cleared. Enter <code>faceted_search/select</code> if you wish to use Faceted Search's full search page for this purpose. Leave empty to use your site's front page."),
+      '#default_value' => variable_get('faceted_search_ui_start_page', ''),
+    );
+    $form['buttons']['#weight'] = 5; // Keep the buttons at the bottom.
   }
 }
 
@@ -147,14 +159,11 @@ function faceted_search_ui_stage_results() {
     $results = faceted_search_ui_format_results($_faceted_search_ui_current_search);
     
     faceted_search_ui_set_title($_faceted_search_ui_current_search);
-    $content = theme('faceted_search_ui_results', $results);
+    $content = theme('faceted_search_ui_stage_results', $results);
     return theme('faceted_search_ui_page', $_faceted_search_ui_current_search, $content);
   }
-  elseif ($_faceted_search_ui_current_search->ui_state['stage'] == 'select') {
-    drupal_goto('faceted_search/select');
-  }
   else {
-    drupal_goto();
+    drupal_goto(variable_get('faceted_search_ui_start_page', ''));
   }
 }
 
@@ -171,9 +180,9 @@ function faceted_search_ui_stage_select() {
 
   faceted_search_ui_set_title($_faceted_search_ui_current_search);
 
-  $keyword_search = faceted_search_ui_show_keyword_search($_faceted_search_ui_current_search);
-  $guided_search = faceted_search_ui_show_guided_search($_faceted_search_ui_current_search);
-  if ($output = theme('faceted_search_ui_select', $keyword_search, $guided_search)) {
+  $keyword_search_content = faceted_search_ui_show_keyword_search($_faceted_search_ui_current_search);
+  $guided_search_content = faceted_search_ui_show_guided_search($_faceted_search_ui_current_search);
+  if ($output = theme('faceted_search_ui_stage_select', $_faceted_search_ui_current_search, $keyword_search_content, $guided_search_content)) {
     return theme('faceted_search_ui_page', $_faceted_search_ui_current_search, $output);
   }
 }
@@ -198,14 +207,8 @@ function faceted_search_ui_stage_facet() {
   }
 
   faceted_search_ui_set_title($_faceted_search_ui_current_search);
-
-  $content = theme('faceted_search_ui_facet_heading', $_faceted_search_ui_current_search->ui_state, $_faceted_search_ui_current_search->get_facets(), $index, 'guided-search');
   $categories = faceted_search_ui_build_categories($_faceted_search_ui_current_search, $index); // TODO: paging
-  if (count($categories)) {
-    $content .= theme('faceted_search_ui_categories', $facet, $categories, 4); // TODO: Avoid hardcoded number of columns
-  }
-  $content = theme('faceted_search_ui_facet_wrapper', $facet, 'guided-search', $content);
-  return theme('faceted_search_ui_page', $_faceted_search_ui_current_search, $content);
+  return theme('faceted_search_ui_stage_facet', $_faceted_search_ui_current_search, $index, $facet, $categories);
 }
 
 /**
@@ -464,6 +467,13 @@ function faceted_search_ui_form($search) {
   $ui_state = $search->ui_state;
   $current_stage = $ui_state['stage'];
   if ($current_stage == 'select') {
+    $form['advanced'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Advanced search'),
+      '#collapsible' => TRUE,
+      '#collapsed' => TRUE,
+      '#attributes' => array('class' => 'faceted-search-advanced'),
+    );
     $form['advanced']['keywords']['phrase'] = array(
       '#type' => 'textfield',
       '#title' => t('With the exact phrase'),
@@ -531,14 +541,21 @@ function faceted_search_ui_form($search) {
     '#value' => t('Search'),
   );
   if ($current_stage == 'select') {
-    $ui_state['stage'] = 'results';
-    $path = faceted_search_ui_build_path($ui_state, $search->get_text());
-    $form['go-results']['#value'] = '<div>'. l(t('Standard search'), $path) .'</div>';
+    if ($search->get_text()) {
+      $ui_state['stage'] = 'results';
+      $path = faceted_search_ui_build_path($ui_state, $search->get_text());
+      $form['go-results']['#value'] = l(t('Back to results'), $path);
+    }
+    elseif (variable_get('faceted_search_ui_start_page', '') != 'faceted_search/select') {
+      $ui_state['stage'] = 'results';
+      $path = faceted_search_ui_build_path($ui_state, $search->get_text());
+      $form['go-results']['#value'] = l(t('Cancel'), $path);
+    }
   }
   else {
     $ui_state['stage'] = 'select';
     $path = faceted_search_ui_build_path($ui_state, $search->get_text());
-    $form['go-select']['#value'] = '<div>'. l(t('Advanced search'), $path) .'</div>';
+    $form['go-select']['#value'] = l(t('More options'), $path);
   }
   
   return $form;
@@ -627,7 +644,7 @@ function faceted_search_ui_build_remover_path($ui_state, $facets, $index) {
   // Remove current facet for remover.
   unset($facets[$index]); 
   // Switch to results stage.
-  if ($ui_state['stage'] == 'select') {
+  if ($ui_state['stage'] == 'select' || $ui_state['stage'] == 'facet') {
     $ui_state['stage'] = 'results';
   }
   return faceted_search_ui_build_path($ui_state, '', $facets);
@@ -792,28 +809,6 @@ function theme_faceted_search_ui_page($search, $content) {
   return '<div class="'. implode(' ', $classes) .'">'. $content .'</div>'."\n";
 }
 
-function theme_faceted_search_ui_select($keyword_search, $guided_search) {
-  if ($keyword_search) {
-    $form['keyword'] = array(
-      '#type' => 'fieldset',
-      '#title' => t('Keyword search'),
-      '#description' => t('Find content...'),
-      '#value' => $keyword_search,
-      '#weight' => 0,
-    );
-  }
-  if ($guided_search) {
-    $form['guided'] = array(
-      '#type' => 'fieldset',
-      '#title' => t('Guided search'),
-      '#description' => t('Browse content...'),
-      '#value' => $guided_search,
-      '#weight' => 1,
-    );
-  }
-  return drupal_render($form);
-}
-
 /**
  * Render a wrapper around a facet.
  *
@@ -896,7 +891,7 @@ function theme_faceted_search_ui_categories($facet, $categories, $column_count =
 }
 
 function theme_faceted_search_ui_label($facet) {
-  return '<strong>'. check_plain($facet->get_label()) .'</strong>';
+  return '<h3>'. check_plain($facet->get_label()) .'</h3>';
 }
 
 function theme_faceted_search_ui_category($category, $path) {
@@ -930,7 +925,7 @@ function theme_faceted_search_ui_sort_options($options) {
   return '<p>'. t('Sort by: !options', array('!options' => implode(' | ', $options))) .'</p>';
 }
 
-function theme_faceted_search_ui_results($results) {
+function theme_faceted_search_ui_stage_results($results) {
   global $pager_total, $pager_total_items, $pager_page_array;
   if ($pager_total_items[0] > 0) {
     $limit = variable_get('default_nodes_main', 10);
@@ -957,6 +952,39 @@ function theme_faceted_search_ui_results($results) {
   else {
     return theme('box', t('Your search yielded no results'), search_help('search#noresults'));
   }
+}
+
+function theme_faceted_search_ui_stage_select($search, $keyword_search_content, $guided_search_content) {
+  if ($keyword_search_content) {
+    $form['keyword'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Keyword search'),
+      '#value' => $keyword_search_content,
+      '#weight' => 0,
+      '#attributes' => array('class' => 'faceted-search-keyword'),
+    );
+  }
+  if ($guided_search_content) {
+    $form['guided'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Guided search'),
+      '#description' => $search->get_text() ? t('Click a term to refine your current search.') : t('Click a term to initiate a search.'),
+      '#value' => $guided_search_content,
+      '#weight' => 1,
+      '#attributes' => array('class' => 'faceted-search-guided'),
+    );
+  }
+  return drupal_render($form);
+}
+
+function theme_faceted_search_ui_stage_facet($search, $index, $facet, $categories) {
+  $content .= '<p>'. ($search->get_text() ? t('Click a term to refine your current search.') : t('Click a term to initiate a search.')) .'</p>';
+  $content .= theme('faceted_search_ui_facet_heading', $search->ui_state, $search->get_facets(), $index, 'guided-search');
+  if (count($categories)) {
+    $content .= theme('faceted_search_ui_categories', $facet, $categories, 4); // TODO: Avoid hardcoded number of columns
+  }
+  $content = theme('faceted_search_ui_facet_wrapper', $facet, 'guided-search', $content);
+  return theme('faceted_search_ui_page', $search, $content);
 }
 
 // --------------------------------------------------------------------------
