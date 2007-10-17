@@ -136,7 +136,7 @@ function faceted_search_ui_form_alter($form_id, &$form) {
       '#type' => 'textfield',
       '#title' => t('Start page'),
       '#description' => t("Path to go to when the current search is cleared. Enter <code>faceted_search/select</code> if you wish to use Faceted Search's full search page for this purpose. Leave empty to use your site's front page."),
-      '#default_value' => variable_get('faceted_search_ui_start_page', ''),
+      '#default_value' => variable_get('faceted_search_ui_start_page', 'faceted_search/select'),
     );
     $form['buttons']['#weight'] = 5; // Keep the buttons at the bottom.
   }
@@ -162,7 +162,7 @@ function faceted_search_ui_stage_results() {
     return theme('faceted_search_ui_page', $_faceted_search_ui_current_search, $content);
   }
   else {
-    drupal_goto(variable_get('faceted_search_ui_start_page', ''));
+    drupal_goto(variable_get('faceted_search_ui_start_page', 'faceted_search/select'));
   }
 }
 
@@ -525,7 +525,7 @@ function faceted_search_ui_form($search) {
       $path = faceted_search_ui_build_path($ui_state, $search->get_text());
       $form['go-results']['#value'] = l(t('Back to results'), $path);
     }
-    elseif (variable_get('faceted_search_ui_start_page', '') != 'faceted_search/select') {
+    elseif (variable_get('faceted_search_ui_start_page', 'faceted_search/select') != 'faceted_search/select') {
       // Add a Cancel button if there's a 'start page' other than faceted search's select page.
       $ui_state['stage'] = 'results';
       $path = faceted_search_ui_build_path($ui_state, $search->get_text());
@@ -590,7 +590,7 @@ function faceted_search_ui_build_path($ui_state, $text, $facets = array()) {
   
   if (!$text && $ui_state['stage'] == 'results') {
     // No search text, go to the start page.
-    return variable_get('faceted_search_ui_start_page', '');
+    return variable_get('faceted_search_ui_start_page', 'faceted_search/select');
   }
   
   if (($ui_state['stage'] == 'facet' || $ui_state['stage'] == 'categories') && $ui_state['facet-key'] && $ui_state['facet-id']) {
