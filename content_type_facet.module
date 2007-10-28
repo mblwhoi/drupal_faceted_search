@@ -147,15 +147,16 @@ class content_type_facet extends faceted_search_facet {
   /**
    * Handler for the 'count' sort criteria.
    */
-  function get_query_orderby_count() {
-    return array('count DESC', 't.name ASC');
+  function build_sort_query_count(&$query) {
+    $query->add_orderby('count', 'DESC');
+    $query->add_orderby('node_type_name', 'ASC');
   }
 
   /**
    * Handler for the 'type' sort criteria.
    */
-  function get_query_orderby_type() {
-    return array('t.name ASC');
+  function build_sort_query_type(&$query) {
+    $query->add_orderby('node_type_name', 'ASC');
   }
 
   /**
@@ -170,25 +171,22 @@ class content_type_facet extends faceted_search_facet {
   }
 
   /**
-   * Returns query elements required to retrieve the root categories of this
-   * facet and their associated nodes within the current search results.
+   * Updates a query for retrieving the root categories of this facet and their
+   * associated nodes within the current search results. 
+   *
+   * @param $query
+   *   The query object to update.
+   *
+   * @return
+   *   FALSE if this facet can't have root categories.
    */
-  function get_root_categories_query() {
-    return array(
-      'select' => array(
-        't.type',
-        't.name',
-      ),
-      'joins' => array(
-        'INNER JOIN {node_type} t ON n.type = t.type',
-      ),
-      'wheres' => array(
-        "t.type IN ('". implode("', '", content_type_facet_get_types()) ."')",
-      ),
-      'groupby' => array(
-        't.type',
-      ),
-    );
+  function build_root_categories_query(&$query) {
+    $query->add_table('node_type', 'type', 'node', 'type');
+    $query->add_field('node_type', 'type');
+    $query->add_field('node_type', 'name');
+    $query->add_where("node_type.type IN ('". implode("', '", content_type_facet_get_types()) ."')");
+    $query->add_groupby('node_type_type');
+    return TRUE;
   }
 
   /**
@@ -204,7 +202,7 @@ class content_type_facet extends faceted_search_facet {
   function build_categories($results) {
     $categories = array();
     while ($result = db_fetch_object($results)) {
-      $categories[] = new content_type_facet_category($result->type, $result->name, $result->count);
+      $categories[] = new content_type_facet_category($result->node_type_type, $result->node_type_name, $result->count);
     }
     return $categories;
   }
@@ -234,16 +232,12 @@ class content_type_facet_category extends faceted_search_category {
   }
 
   /**
-   * Returns query elements required to search nodes matching this category.
+   * Updates a query for selecting nodes matching this category.
    *
-   * @return
-   *   Structured array as expected by _faceted_search_query::build(), with
-   *   appropriate query parts.
+   * @param $query
+   *   The query object to update.
    */
-  function get_results_query() {
-    return array(
-      'wheres' => array("n.type = '%s'"),
-      'arguments' => array($this->_type),
-    );
+  function build_results_query(&$query) {
+    $query->add_where("node.type = '%s'", $this->_type);
   }  
 }

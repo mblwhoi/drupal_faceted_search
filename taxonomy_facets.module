@@ -311,15 +311,18 @@ class taxonomy_facet extends faceted_search_facet {
   /**
    * Handler for the 'count' sort criteria.
    */
-  function get_query_orderby_count() {
-    return array('count DESC', 't.weight ASC', 't.name ASC');
+  function build_sort_query_count(&$query) {
+    $query->add_orderby('count', 'DESC');
+    $query->add_orderby('term_data.weight', 'ASC');
+    $query->add_orderby('term_data.name', 'ASC');
   }
 
   /**
    * Handler for the 'term' sort criteria.
    */
-  function get_query_orderby_term() {
-    return array('t.weight ASC', 't.name ASC');
+  function build_sort_query_term(&$query) {
+    $query->add_orderby('term_data.weight', 'ASC');
+    $query->add_orderby('term_data.name', 'ASC');
   }
 
   /**
@@ -331,29 +334,25 @@ class taxonomy_facet extends faceted_search_facet {
   }
 
   /**
-   * Returns query elements required to retrieve the root categories of this
-   * facet and their associated nodes within the current search results.
+   * Updates a query for retrieving the root categories of this facet and their
+   * associated nodes within the current search results. 
+   *
+   * @param $query
+   *   The query object to update.
+   *
+   * @return
+   *   FALSE if this facet can't have root categories.
    */
-  function get_root_categories_query() {
-    return array(
-      'select' => array(
-        't.tid',
-        't.name',
-      ),
-      'joins' => array(
-        'INNER JOIN {taxonomy_facets_term_node} taxonomy_facets_term_node ON n.nid = taxonomy_facets_term_node.nid',
-        'INNER JOIN {term_data} t ON taxonomy_facets_term_node.tid = t.tid',
-        'INNER JOIN {term_hierarchy} h ON taxonomy_facets_term_node.tid = h.tid',
-      ),
-      'wheres' => array(
-        't.vid = %d',
-        'h.parent = 0',
-      ),
-      'groupby' => array(
-        't.tid',
-      ),
-      'arguments' => array($this->_vocabulary->vid),
-    );
+  function build_root_categories_query(&$query) {
+    $query->add_table('taxonomy_facets_term_node', 'nid');
+    $query->add_table('term_data', 'tid', 'taxonomy_facets_term_node', 'tid');
+    $query->add_table('term_hierarchy', 'tid', 'taxonomy_facets_term_node', 'tid');
+    $query->add_field('term_data', 'tid');
+    $query->add_field('term_data', 'name');
+    $query->add_where('term_data.vid = %d', $this->_vocabulary->vid);
+    $query->add_where('term_hierarchy.parent = 0');
+    $query->add_groupby('term_data_tid'); // Needed for counting matching nodes.
+    return TRUE;
   }
   
   /**
@@ -369,7 +368,7 @@ class taxonomy_facet extends faceted_search_facet {
   function build_categories($results) {
     $categories = array();
     while ($result = db_fetch_object($results)) {
-      $categories[] = new taxonomy_facet_category($result->tid, $result->name, $result->count);
+      $categories[] = new taxonomy_facet_category($result->term_data_tid, $result->term_data_name, $result->count);
     }
     return $categories;
   }
@@ -401,47 +400,41 @@ class taxonomy_facet_category extends faceted_search_category {
   }
 
   /**
-   * Returns query elements required to retrive the subcategories of this
-   * category and their number of associated nodes within the current search
-   * results.
+   * Updates a query for retrieving the subcategories of this category and their
+   * associated nodes within the current search results. 
+   *
+   * This only needs to be overridden for hierarchical facets.
+   *
+   * @param $query
+   *   The query object to update.
+   *
+   * @return
+   *   FALSE if this facet can't have subcategories.
    */
-  function get_subcategories_query() {
-    return array(
-      'select' => array(
-        't.tid',
-        't.name',
-      ),
-      'joins' => array(
-        'INNER JOIN {taxonomy_facets_term_node} taxonomy_facets_term_node ON n.nid = taxonomy_facets_term_node.nid',
-        'INNER JOIN {term_data} t ON taxonomy_facets_term_node.tid = t.tid',
-        'INNER JOIN {term_hierarchy} h ON taxonomy_facets_term_node.tid = h.tid',
-      ),
-      'wheres' => array(
-        'h.parent = %d',
-      ),
-      'groupby' => array(
-        't.tid', // Needed for counting matching nodes.
-      ),
-      'arguments' => array($this->_tid),
-    );
+  function build_subcategories_query(&$query) {
+    $query->add_table('taxonomy_facets_term_node', 'nid');
+    $query->add_table('term_data', 'tid', 'taxonomy_facets_term_node', 'tid');
+    $query->add_table('term_hierarchy', 'tid', 'taxonomy_facets_term_node', 'tid');
+    $query->add_field('term_data', 'tid');
+    $query->add_field('term_data', 'name');
+    $query->add_where('term_hierarchy.parent = %d', $this->_tid);
+    $query->add_groupby('term_data_tid'); // Needed for counting matching nodes.
+    return TRUE;
   }
 
   /**
-   * Returns query elements required to search nodes matching this category.
+   * Updates a query for selecting nodes matching this category.
    *
-   * @return
-   *   Structured array as expected by _faceted_search_query::build(), with
-   *   appropriate query parts.
+   * @param $query
+   *   The query object to update.
    */
-  function get_results_query() {
-    $tid = $this->_tid;
-    return array(
-      // Using $tid in table name to avoid duplicate table names in JOINs
-      'joins' => array("INNER JOIN {taxonomy_facets_term_node} taxonomy_facets_term_node_$tid ON n.nid = taxonomy_facets_term_node_$tid.nid"),
-      'wheres' => array("taxonomy_facets_term_node_$tid.tid = %d"),
-      'arguments' => array($tid),
-    );
-  }  
+  function build_results_query(&$query) {
+    // Since multiple terms might be used and cause multiple joins of
+    // taxonomy_facets_term_node, we add the tid into the table alias to ensure
+    // a unique alias.
+    $query->add_table('taxonomy_facets_term_node', 'nid', 'node', 'nid', "taxonomy_facets_term_node_{$this->_tid}");
+    $query->add_where("taxonomy_facets_term_node_{$this->_tid}.tid = %d", $this->_tid);
+  }
 }
 
 // --------------------------------------------------------------------------
