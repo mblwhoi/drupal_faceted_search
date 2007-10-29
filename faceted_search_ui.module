@@ -498,10 +498,6 @@ function faceted_search_ui_form($search) {
     '#type' => 'hidden',
     '#value' => $search->ui_state['sort'],
   );
-  $form['aim'] = array(
-    '#type' => 'hidden',
-    '#value' => $search->ui_state['aim'],
-  );
   $form['facet-key'] = array(
     '#type' => 'hidden',
     '#value' => $search->ui_state['facet-key'],
@@ -607,10 +603,7 @@ function faceted_search_ui_build_path($ui_state, $text, $facets = array()) {
     $facet_sort = '-';
   }
   
-  if ($ui_state['style'] != 'full') {
-    $ui_state['aim'] = '-';
-  }
-  return "faceted_search/{$ui_state['stage']}/{$facet}/{$facet_sort}/{$ui_state['style']}/{$ui_state['sort']}/{$ui_state['aim']}/{$text}";
+  return "faceted_search/{$ui_state['stage']}/{$facet}/{$facet_sort}/{$ui_state['style']}/{$ui_state['sort']}/{$text}";
 }
 
 /**
@@ -1021,7 +1014,7 @@ function theme_faceted_search_ui_guided_search($search, $facets) {
  *
  * The faceted search UI uses paths of the following form:
  *
- * faceted_search/stage/key:id/facet-sort/style/sort/aim/text
+ * faceted_search/stage/key:id/facet-sort/style/sort/text
  *
  * Meaning of each path component:
  *
@@ -1043,27 +1036,17 @@ function theme_faceted_search_ui_guided_search($search, $facets) {
  * categories. Only used in the 'facet' stage.
  *
  * 'style' indicates how to present the search results. Options are 'extract',
- * 'teaser', 'full'. This option is useful only in the 'results' stage, but its
- * current value is always carried along (to survive across various stages).
+ * 'teaser'. This option is useful only in the 'results' stage, but its current
+ * value is always carried along (to survive across various stages).
  *
  * 'sort' indicates the sort option for search results. Options are 'relevance',
  * 'title', 'date'. This option is useful only in the 'results' stage, but its
  * current value is always carried along (to survive across various stages).
  *
- * 'aim' affects the links provided when the relevant facets of a node are
- * displayed. Options are 'new' and 'refine', meaning the links will launch
- * either a new search or search within the current results. This option is
- * useful only in 'full' style and in the 'results' stage, and its current value
- * is not carried along because it should not survive across various styles
- * (this helps usability by making sure the aim is predictable and by following
- * the same behavior as the "new" and "refine" options of the keyword search
- * form).
- *
  * 'text' specifies the actual search text. Note: It is best to keep this as the
  * last component because it allows to clear the search text while preserving
  * all the other options.
  */
-// TODO: actually implement all the options! (sort, style, aim, etc)
 function _faceted_search_ui_init() {
   global $_faceted_search_ui_current_search;
 
@@ -1074,7 +1057,6 @@ function _faceted_search_ui_init() {
     $form_stage = $_POST['stage'];
     $form_style = $_POST['style'];
     $form_sort = $_POST['sort'];
-    $form_aim = $_POST['aim'];
     $form_text = $_POST['text'];
     $form_facet_key = $_POST['facet-key'];
     $form_facet_id = $_POST['facet-id'];
@@ -1127,28 +1109,15 @@ function _faceted_search_ui_init() {
     $arg++;
 
     // Sort.
+    // TODO: Implement sort options
     $input_sort = $form ? $form_sort : arg($arg);
     switch ($input_sort) {
       case 'relevance':
-      case 'title':
-      case 'date':
         $ui_state['sort'] = $input_sort;
         break;
     }
     $arg++;
   
-    // Aim.
-    if ($ui_state['style'] == 'full') {
-      $input_aim = $form ? $form_aim : arg($arg);
-      switch ($input_aim) {
-        case 'new':
-        case 'refine':
-          $ui_state['aim'] = $input_aim;
-          break;
-      }
-    }
-    $arg++;
-
     // Text.
     $text = trim($form ? $form_text : arg($arg));
   }
@@ -1175,7 +1144,6 @@ function _faceted_search_ui_defaults() {
     'stage' => 'results',
     'style' => variable_get('faceted_search_ui_default_style', 'extract'),
     'sort' => 'relevance',
-    'aim' => 'new',
     'facet-key' => '',
     'facet-id' => '',
     'facet-sort' => '',
