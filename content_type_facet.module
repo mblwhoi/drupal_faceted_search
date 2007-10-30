@@ -181,7 +181,7 @@ class content_type_facet extends faceted_search_facet {
    *   FALSE if this facet can't have root categories.
    */
   function build_root_categories_query(&$query) {
-    $query->add_table('node_type', 'type', 'node', 'type');
+    $query->add_table('node_type', 'type', 'n', 'type');
     $query->add_field('node_type', 'type');
     $query->add_field('node_type', 'name');
     $query->add_where("node_type.type IN ('". implode("', '", content_type_facet_get_types()) ."')");
@@ -238,6 +238,6 @@ class content_type_facet_category extends faceted_search_category {
    *   The query object to update.
    */
   function build_results_query(&$query) {
-    $query->add_where("node.type = '%s'", $this->_type);
+    $query->add_where("n.type = '%s'", $this->_type);
   }  
 }

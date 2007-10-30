@@ -569,7 +569,7 @@ class faceted_search {
     
     // Build first query
     $query1 = new faceted_search_query;
-    $query1->add_where("node.status = 1");
+    $query1->add_where("n.status = 1");
     
     $query_parts = search_parse_query($this->_keywords);
     if ($query_parts[2] && $query_parts[3]) {
@@ -580,7 +580,7 @@ class faceted_search {
     
     if ($query_parts[0] || $query_parts[2]) {
       // Has some positive or negative keywords
-      $query1->add_table('search_index', 'sid', 'node', 'nid', 'i');
+      $query1->add_table('search_index', 'sid', 'n', 'nid', 'i');
       $query1->add_table('search_total', 'word', 'i', 'word', 't');
       $query1->add_where("i.type = 'node'");
       $query1->add_field(NULL, 'SUM(i.score * t.count)', 'relevance');
@@ -602,15 +602,15 @@ class faceted_search {
     // uniform distribution in the range 0..1).
     
     // Always join the table resulting from $query1.
-    $query2->add_table('temp_faceted_search_nids', 'nid', 'node', 'nid', 'i');
+    $query2->add_table('temp_faceted_search_nids', 'nid', 'n', 'nid', 'i');
     if ($query_parts[0] || $query_parts[2]) {
       // Has some positive or negative keywords
-      $query2->add_table('search_dataset', 'sid', 'node', 'nid', 'd');
+      $query2->add_table('search_dataset', 'sid', 'n', 'nid', 'd');
     }
 
     // Apply node type filter
     if ($excluded_types = faceted_search_excluded_types()) {
-      $query2->add_where("node.type NOT IN ('". implode("','", $excluded_types) ."')");
+      $query2->add_where("n.type NOT IN ('". implode("','", $excluded_types) ."')");
     }
     // Used to avoid joining on node_comment_statistics twice
     $stats_added = FALSE;
@@ -623,8 +623,8 @@ class faceted_search {
     }
     if ($weight = (int)variable_get('node_rank_recent', 5)) {
       // Exponential decay with half-life of 6 months, starting at last indexed node
-      $ranking[] = sprintf('%d * POW(2, (GREATEST(node.created, node.changed, IFNULL(c.last_comment_timestamp, 0)) - %d) * 6.43e-8)', $weight, (int)variable_get('node_cron_last', 0)); // TODO: see http://drupal.org/node/106659
-      $query2->add_table('node_comment_statistics', 'nid', 'node', 'nid', 'c', 'LEFT');
+      $ranking[] = sprintf('%d * POW(2, (GREATEST(n.created, n.changed, IFNULL(c.last_comment_timestamp, 0)) - %d) * 6.43e-8)', $weight, (int)variable_get('node_cron_last', 0)); // TODO: see http://drupal.org/node/106659
+      $query2->add_table('node_comment_statistics', 'nid', 'n', 'nid', 'c', 'LEFT');
       $stats_added = TRUE;
       $this->_results_total += $weight;
     }
@@ -633,7 +633,7 @@ class faceted_search {
       $scale = variable_get('node_cron_comments_scale', 0.0);
       $ranking[] = sprintf('%d * (2.0 - 2.0 / (1.0 + IFNULL(c.comment_count, 0) * %f))', $weight, $scale);
       if (!$stats_added) {
-        $query2->add_table('node_comment_statistics', 'nid', 'node', 'nid', 'c', 'LEFT');
+        $query2->add_table('node_comment_statistics', 'nid', 'n', 'nid', 'c', 'LEFT');
       }
       $this->_results_total += $weight;
     }
@@ -641,7 +641,7 @@ class faceted_search {
       // Inverse law that maps the highest view count on the site to 1 and 0 to 0.
       $scale = variable_get('node_cron_views_scale', 0.0);
       $ranking[] = sprintf('%d * (2.0 - 2.0 / (1.0 + IFNULL(nc.totalcount, 0) * %f))', $weight, $scale);
-      $query2->add_table('node_counter', 'nid', 'node', 'nid', 'nc', 'LEFT');
+      $query2->add_table('node_counter', 'nid', 'n', 'nid', 'nc', 'LEFT');
       $this->_results_total += $weight;
     }
     if (count($ranking)) {
@@ -717,14 +717,14 @@ class faceted_search {
     // Prepare the base query components to include the current search results
     // and to count nodes.
     $query = new faceted_search_query;
-    $query->add_field(NULL, 'COUNT(node.nid)', 'count');
+    $query->add_field(NULL, 'COUNT(n.nid)', 'count');
     if ($this->_results_count > 0) {
       // Search within results.
-      $query->add_table($this->_results_table, 'nid', 'node', 'nid', 'results');
+      $query->add_table($this->_results_table, 'nid', 'n', 'nid', 'results');
     }
     elseif (empty($this->_text)) {
       // No search text, search within all nodes.
-      $query->add_where('node.status = 1');
+      $query->add_where('n.status = 1');
     }
     else {
       // There is a search text but the results count is 0, thus no categories
@@ -748,7 +748,7 @@ class faceted_search {
     
     // Apply node type filter.
     if ($excluded_types = faceted_search_excluded_types()) {
-      $query->add_where("node.type NOT IN ('". implode("','", $excluded_types) ."')");
+      $query->add_where("n.type NOT IN ('". implode("','", $excluded_types) ."')");
     }
     
     // Run the query and return the categories.
@@ -925,8 +925,8 @@ class faceted_search {
  * This class allows to build queries piece by piece.
  */
 class faceted_search_query {
-  var $primary_table = '';
-  var $primary_field = '';
+  var $primary_table_alias = '';
+  var $primary_field_alias = '';
   var $table_queue = array(); // Ordered array of tables aliases to join.
   var $tables = array(); // Tables to join, keyed by their alias.
   var $fields = array(); // Fields, keyed by their alias.
@@ -940,19 +940,19 @@ class faceted_search_query {
   /**
    * Constructor. Specifies the primary table and field for this query.
    */
-  function faceted_search_query($primary_table = 'node', $primary_field = 'nid') {
-    $this->primary_table = $primary_table;
-    $this->primary_field = $primary_field;
-    $this->tables[$primary_table] = array(
+  function faceted_search_query($primary_table = 'node', $primary_field = 'nid', $primary_table_alias = 'n', $primary_field_alias = 'nid') {
+    $this->primary_table_alias = $primary_table_alias;
+    $this->primary_field_alias = $primary_field_alias;
+    $this->tables[$primary_table_alias] = array(
       'table' => $primary_table,
       'field' => NULL,
       'left_table_alias' => NULL,
       'left_field' => NULL,
       'join' => NULL,
     );
-    $this->fields[$primary_field] = array(
+    $this->fields[$primary_field_alias] = array(
       'field' => $primary_field,
-      'table_alias' => $primary_table,
+      'table_alias' => $primary_table_alias,
     );
   }
 
@@ -988,9 +988,9 @@ class faceted_search_query {
     $this->table_queue[] = $alias;
     $this->tables[$alias] = array(
       'table' => $table,
-      'field' => $field ? $field : $this->primary_field,
-      'left_table_alias' => $left_table_alias ? $left_table_alias : $this->primary_table,
-      'left_field' => $left_field ? $left_field : $this->primary_field,
+      'field' => $field ? $field : $this->fields[$this->primary_field_alias]['field'],
+      'left_table_alias' => $left_table_alias ? $left_table_alias : $this->primary_table_alias,
+      'left_field' => $left_field ? $left_field : $this->fields[$this->primary_field_alias]['field'],
       'join' => $join,
     );
     return $alias;
@@ -1108,7 +1108,7 @@ class faceted_search_query {
     $fields = array();
     foreach ($this->fields as $field_alias => $field) {
       if ($field['table_alias']) {
-        $table = $this->tables[$field['table_alias']]['table'];
+        $table = $field['table_alias'];
         $fields[] = "$table.$field[field] AS $field_alias";
       }
       else {
@@ -1116,7 +1116,7 @@ class faceted_search_query {
       }
     }
     $fields = implode(', ', $fields);
-    $primary = '{'. $this->primary_table .'} AS '. $this->primary_table;
+    $primary = '{'. $this->tables[$this->primary_table_alias]['table'] .'} AS '. $this->primary_table_alias;
 
     // Joins.
     $joins = array();

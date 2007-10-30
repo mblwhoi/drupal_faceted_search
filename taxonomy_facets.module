@@ -432,7 +432,7 @@ class taxonomy_facet_category extends faceted_search_category {
     // Since multiple terms might be used and cause multiple joins of
     // taxonomy_facets_term_node, we add the tid into the table alias to ensure
     // a unique alias.
-    $query->add_table('taxonomy_facets_term_node', 'nid', 'node', 'nid', "taxonomy_facets_term_node_{$this->_tid}");
+    $query->add_table('taxonomy_facets_term_node', 'nid', 'n', 'nid', "taxonomy_facets_term_node_{$this->_tid}");
     $query->add_where("taxonomy_facets_term_node_{$this->_tid}.tid = %d", $this->_tid);
   }
 }

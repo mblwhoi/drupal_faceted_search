@@ -208,7 +208,7 @@ class author_facet extends faceted_search_facet {
    *   FALSE if this facet can't have root categories.
    */
   function build_root_categories_query(&$query) {
-    $query->add_table('users', 'uid', 'node', 'uid');
+    $query->add_table('users', 'uid', 'n', 'uid');
     $query->add_field('users', 'uid');
     $query->add_field('users', 'name');
     $query->add_where('users.status = 1');
@@ -262,6 +262,6 @@ class author_facet_category extends faceted_search_category {
    *   The query object to update.
    */
   function build_results_query(&$query) {
-    $query->add_where('node.uid = %d', $this->_uid);
+    $query->add_where('n.uid = %d', $this->_uid);
   }
 }

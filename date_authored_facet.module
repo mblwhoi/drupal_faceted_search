@@ -230,21 +230,21 @@ class date_authored_facet extends faceted_search_facet {
    */
   function build_sort_query_count(&$query) {
     $query->add_orderby('count', 'DESC');
-    $query->add_orderby('node.created', 'ASC');
+    $query->add_orderby('n.created', 'ASC');
   }
 
   /**
    * Handler for the 'oldest' sort criteria.
    */
   function build_sort_query_oldest(&$query) {
-    $query->add_orderby('node.created', 'ASC');
+    $query->add_orderby('n.created', 'ASC');
   }
 
   /**
    * Handler for the 'latest' sort criteria.
    */
   function build_sort_query_latest(&$query) {
-    $query->add_orderby('node.created', 'DESC');
+    $query->add_orderby('n.created', 'DESC');
   }
 
   /**
@@ -270,7 +270,7 @@ class date_authored_facet extends faceted_search_facet {
    */
   function build_root_categories_query(&$query) {
     $timezone = _date_authored_facet_get_timezone();
-    $query->add_field(NULL, "YEAR(FROM_UNIXTIME(node.created + $timezone))", 'node_created_year');
+    $query->add_field(NULL, "YEAR(FROM_UNIXTIME(n.created + $timezone))", 'node_created_year');
     $query->add_groupby('node_created_year');
     return TRUE;
   }
@@ -379,20 +379,20 @@ class date_authored_facet_category extends faceted_search_category {
     }
     if (isset($this->_month)) {
       $from = sprintf("'%04d-%02d-01 00:00:00'", $this->_year, $this->_month);
-      $query->add_field(NULL, "YEAR(FROM_UNIXTIME(node.created + $timezone))", 'node_created_year');
-      $query->add_field(NULL, "MONTH(FROM_UNIXTIME(node.created + $timezone))", 'node_created_month');
-      $query->add_field(NULL, "DAY(FROM_UNIXTIME(node.created + $timezone))", 'node_created_day');
-      $query->add_where("(node.created + $timezone >= UNIX_TIMESTAMP($from))");
-      $query->add_where("(node.created + $timezone < UNIX_TIMESTAMP($from + INTERVAL 1 MONTH))");
+      $query->add_field(NULL, "YEAR(FROM_UNIXTIME(n.created + $timezone))", 'node_created_year');
+      $query->add_field(NULL, "MONTH(FROM_UNIXTIME(n.created + $timezone))", 'node_created_month');
+      $query->add_field(NULL, "DAY(FROM_UNIXTIME(n.created + $timezone))", 'node_created_day');
+      $query->add_where("(n.created + $timezone >= UNIX_TIMESTAMP($from))");
+      $query->add_where("(n.created + $timezone < UNIX_TIMESTAMP($from + INTERVAL 1 MONTH))");
       $query->add_groupby('node_created_day'); // Needed for counting matching nodes.
       return TRUE;
     }
     if (isset($this->_year)) {
       $from = sprintf("'%04d-01-01 00:00:00'", $this->_year);
-      $query->add_field(NULL, "YEAR(FROM_UNIXTIME(node.created + $timezone))", 'node_created_year');
-      $query->add_field(NULL, "MONTH(FROM_UNIXTIME(node.created + $timezone))", 'node_created_month');
-      $query->add_where("(node.created + $timezone >= UNIX_TIMESTAMP($from))");
-      $query->add_where("(node.created + $timezone < UNIX_TIMESTAMP($from + INTERVAL 1 YEAR))");
+      $query->add_field(NULL, "YEAR(FROM_UNIXTIME(n.created + $timezone))", 'node_created_year');
+      $query->add_field(NULL, "MONTH(FROM_UNIXTIME(n.created + $timezone))", 'node_created_month');
+      $query->add_where("(n.created + $timezone >= UNIX_TIMESTAMP($from))");
+      $query->add_where("(n.created + $timezone < UNIX_TIMESTAMP($from + INTERVAL 1 YEAR))");
       $query->add_groupby('node_created_month'); // Needed for counting matching nodes.
       return TRUE;
     }
@@ -409,18 +409,18 @@ class date_authored_facet_category extends faceted_search_category {
     $timezone = _date_authored_facet_get_timezone();
     if (isset($this->_day)) {
       $from = sprintf("'%04d-%02d-%02d 00:00:00'", $this->_year, $this->_month, $this->_day);
-      $query->add_where("(node.created + $timezone >= UNIX_TIMESTAMP($from))");
-      $query->add_where("(node.created + $timezone < UNIX_TIMESTAMP($from + INTERVAL 1 DAY))");
+      $query->add_where("(n.created + $timezone >= UNIX_TIMESTAMP($from))");
+      $query->add_where("(n.created + $timezone < UNIX_TIMESTAMP($from + INTERVAL 1 DAY))");
     }
     elseif (isset($this->_month)) {
       $from = sprintf("'%04d-%02d-01 00:00:00'", $this->_year, $this->_month);
-      $query->add_where("(node.created + $timezone >= UNIX_TIMESTAMP($from))");
-      $query->add_where("(node.created + $timezone < UNIX_TIMESTAMP($from + INTERVAL 1 MONTH))");
+      $query->add_where("(n.created + $timezone >= UNIX_TIMESTAMP($from))");
+      $query->add_where("(n.created + $timezone < UNIX_TIMESTAMP($from + INTERVAL 1 MONTH))");
     }
     elseif (isset($this->_year)) {
       $from = sprintf("'%04d-01-01 00:00:00'", $this->_year);
-      $query->add_where("(node.created + $timezone >= UNIX_TIMESTAMP($from))");
-      $query->add_where("(node.created + $timezone < UNIX_TIMESTAMP($from + INTERVAL 1 YEAR))");
+      $query->add_where("(n.created + $timezone >= UNIX_TIMESTAMP($from))");
+      $query->add_where("(n.created + $timezone < UNIX_TIMESTAMP($from + INTERVAL 1 YEAR))");
     }
   }
 }
