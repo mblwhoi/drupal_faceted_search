@@ -52,11 +52,8 @@ to implement new facets.
 Current status
 **************
 
-This module is undergoing development. It might not be a good idea to use it on
-a production site. The provided features and API might still change without
-warning.
-
-The user interface still has some rough edges, but should work pretty well.
+This module is undergoing development. The provided features and API might still
+change without warning.
 
 Although this code uses some object-oriented programming, it is still compatible
 with PHP 4 at the moment.
