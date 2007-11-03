@@ -602,7 +602,7 @@ class faceted_search {
     // uniform distribution in the range 0..1).
     
     // Always join the table resulting from $query1.
-    $query2->add_table('temp_faceted_search_nids', 'nid', 'n', 'nid', 'i');
+    $query2->add_table('temp_faceted_search_nids', 'nid', 'n', 'nid', 'i', 'INNER', FALSE);
     if ($query_parts[0] || $query_parts[2]) {
       // Has some positive or negative keywords
       $query2->add_table('search_dataset', 'sid', 'n', 'nid', 'd');
@@ -720,7 +720,7 @@ class faceted_search {
     $query->add_field(NULL, 'COUNT(n.nid)', 'count');
     if ($this->_results_count > 0) {
       // Search within results.
-      $query->add_table($this->_results_table, 'nid', 'n', 'nid', 'results');
+      $query->add_table($this->_results_table, 'nid', 'n', 'nid', 'results', 'INNER', FALSE);
     }
     elseif (empty($this->_text)) {
       // No search text, search within all nodes.
@@ -940,7 +940,7 @@ class faceted_search_query {
   /**
    * Constructor. Specifies the primary table and field for this query.
    */
-  function faceted_search_query($primary_table = 'node', $primary_field = 'nid', $primary_table_alias = 'n', $primary_field_alias = 'nid') {
+  function faceted_search_query($primary_table = 'node', $primary_field = 'nid', $primary_table_alias = 'n', $primary_field_alias = 'nid', $prefixing = TRUE) {
     $this->primary_table_alias = $primary_table_alias;
     $this->primary_field_alias = $primary_field_alias;
     $this->tables[$primary_table_alias] = array(
@@ -949,6 +949,7 @@ class faceted_search_query {
       'left_table_alias' => NULL,
       'left_field' => NULL,
       'join' => NULL,
+      'prefixing' => $prefixing,
     );
     $this->fields[$primary_field_alias] = array(
       'field' => $primary_field,
@@ -982,8 +983,12 @@ class faceted_search_query {
    *
    * @param $join
    *   Type of join clause to use. Default is 'INNER'.
+   *
+   * @param $prefixing
+   *   TRUE when the table should be prefixed via db_prefix_tables(). This
+   *   should usually be FALSE when joining a temporary table.
    */
-  function add_table($table, $field = NULL, $left_table_alias = NULL, $left_field = NULL, $alias = NULL, $join = 'INNER') {
+  function add_table($table, $field = NULL, $left_table_alias = NULL, $left_field = NULL, $alias = NULL, $join = 'INNER', $prefixing = TRUE) {
     $alias = $alias ? $alias : $table;
     $this->table_queue[] = $alias;
     $this->tables[$alias] = array(
@@ -992,6 +997,7 @@ class faceted_search_query {
       'left_table_alias' => $left_table_alias ? $left_table_alias : $this->primary_table_alias,
       'left_field' => $left_field ? $left_field : $this->fields[$this->primary_field_alias]['field'],
       'join' => $join,
+      'prefixing' => $prefixing,
     );
     return $alias;
   }
@@ -1116,13 +1122,27 @@ class faceted_search_query {
       }
     }
     $fields = implode(', ', $fields);
-    $primary = '{'. $this->tables[$this->primary_table_alias]['table'] .'} AS '. $this->primary_table_alias;
+    if ($this->tables[$this->primary_table_alias]['prefixing']) {
+      $wrapper_begin = '{';
+      $wrapper_end = '}';
+    }
+    else {
+      $wrapper_begin = $wrapper_end = '';
+    }
+    $primary = $wrapper_begin . $this->tables[$this->primary_table_alias]['table'] . $wrapper_end .' AS '. $this->primary_table_alias;
 
     // Joins.
     $joins = array();
     foreach ($this->table_queue as $table_alias) {
       $table = $this->tables[$table_alias];
-      $joins[] = "$table[join] JOIN {". $table['table'] ."} AS $table_alias ON $table[left_table_alias].$table[left_field] = $table_alias.$table[field]";
+      if ($table['prefixing']) {
+        $wrapper_begin = '{';
+        $wrapper_end = '}';
+      }
+      else {
+        $wrapper_begin = $wrapper_end = '';
+      }
+      $joins[] = "$table[join] JOIN $wrapper_begin". $table['table'] ."$wrapper_end AS $table_alias ON $table[left_table_alias].$table[left_field] = $table_alias.$table[field]";
     }
     $joins = count($joins) ? ' '. implode(' ', $joins) : '';
 
