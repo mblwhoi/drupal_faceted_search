@@ -128,11 +128,18 @@ function faceted_search_ui_form_alter($form_id, &$form) {
       '#options' => array('extract' => t('Extracts'), 'teaser' => t('Teasers')),
       '#default_value' => variable_get('faceted_search_ui_default_style', 'extract'),
     );
-    $form['paths'] = array(
+    $form['behavior'] = array(
       '#type' => 'fieldset',
-      '#title' => t('Paths'),
+      '#title' => t('Behavior'),
     );
-    $form['paths']['faceted_search_ui_start_page'] = array(
+    $form['behavior']['faceted_search_ui_keyword_search_behavior'] = array(
+      '#type' => 'radios',
+      '#title' => t('Default mode for keyword search'),
+      '#description' => t("Choose the mode to select by default in keyword search. <em>New search</em> might be more intuitive to users not familiar with Faceted Search's interface since it behaves like most search engines."),
+      '#default_value' => variable_get('faceted_search_ui_keyword_search_behavior', 'new'),
+      '#options' => array('new' => t('New search'), 'refine' => t('Search within results')),
+    );
+    $form['behavior']['faceted_search_ui_start_page'] = array(
       '#type' => 'textfield',
       '#title' => t('Start page'),
       '#description' => t("Path to go to when the current search is cleared. Enter <code>faceted_search/select</code> if you wish to use Faceted Search's full search page for this purpose. Leave empty to use your site's front page."),
@@ -482,7 +489,7 @@ function faceted_search_ui_form($search) {
     $form['refine'] = array(
       '#type' => 'radios',
       '#title' => '',
-      '#default_value' => 'new',
+      '#default_value' => variable_get('faceted_search_ui_keyword_search_behavior', 'new'),
       '#options' => array('new' => t('New search'), 'refine' => t('Search within results')),
     );
   }
