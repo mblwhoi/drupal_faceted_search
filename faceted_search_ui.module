@@ -80,14 +80,14 @@ function faceted_search_ui_block($op = 'list', $delta = 0, $edit = array()) {
         break;
 
       case 'keyword':
-        if ($_faceted_search_ui_current_search->ui_state['stage'] == 'results' && $_faceted_search_ui_current_search->ui_state['style'] != 'full') {
+        if ($_faceted_search_ui_current_search->ui_state['stage'] == 'results') {
           $block['subject'] = t('Keyword search'); 
           $block['content'] = faceted_search_ui_show_keyword_search($_faceted_search_ui_current_search);
         }
         break;
 
       case 'guided':
-        if ($_faceted_search_ui_current_search->ui_state['stage'] == 'results' && $_faceted_search_ui_current_search->ui_state['style'] != 'full') {
+        if ($_faceted_search_ui_current_search->ui_state['stage'] == 'results') {
           $block['subject'] = t('Guided search');
           $block['content'] = faceted_search_ui_show_guided_search($_faceted_search_ui_current_search);
         }
@@ -425,7 +425,7 @@ function faceted_search_ui_format_results($search) {
     
     return theme('search_page', $results, 'node');
   }
-  elseif ($search->ui_state['style'] == 'full' || $search->ui_state['style'] == 'teaser') {
+  elseif ($search->ui_state['style'] == 'teaser') {
     $limit = variable_get('default_nodes_main', 10);
     $found_items = $search->load_results($limit);
     
@@ -1113,7 +1113,6 @@ function _faceted_search_ui_init() {
     switch ($input_style) {
       case 'extract':
       case 'teaser':
-      case 'full':
         $ui_state['style'] = $input_style;
         break;
     }
