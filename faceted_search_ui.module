@@ -1057,6 +1057,10 @@ function theme_faceted_search_ui_guided_search($search, $facets) {
 function _faceted_search_ui_init() {
   global $_faceted_search_ui_current_search;
 
+  // We don't use arg() because we need a limit on explode(), in case '/' is
+  // used in the search text. The search text is the last argument.
+  $args = explode('/', $_GET['q'], 7); 
+  
   // We have to consider form values at this point, because we need an
   // initialized search object before anything else tries to use it.
   if (isset($_POST['form_id']) && $_POST['form_id'] == 'faceted-search-ui-form') {
@@ -1075,25 +1079,25 @@ function _faceted_search_ui_init() {
   $text = '';
 
   // Validate and assign search options.
-  if ($form || arg(0) == 'faceted_search') {
-    $arg = 1;
+  if ($form || $args[0] == 'faceted_search') {
+    $arg_index = 1;
 
     // Stage.
-    $input_stage = $form ? $form_stage : arg($arg);
+    $input_stage = $form ? $form_stage : $args[$arg_index];
     switch ($input_stage) {
       case 'results':
       case 'select':
         $ui_state['stage'] = $input_stage;
-        $arg += 2; // Skip args that are only used by 'facet' stage.
+        $arg_index += 2; // Skip args that are only used by 'facet' stage.
         break;
       case 'facet':
       case 'categories':
-        $arg++;
-        $facet = explode(':', arg($arg));
+        $arg_index++;
+        $facet = explode(':', $args[$arg_index]);
         $input_facet_key = $form ? $form_facet_key : $facet[0];
         $input_facet_id = $form ? $form_facet_id : $facet[1];
-        $arg++;
-        $input_facet_sort = $form ? $form_facet_sort : arg($arg);
+        $arg_index++;
+        $input_facet_sort = $form ? $form_facet_sort : $args[$arg_index];
         if ($input_facet_key && $input_facet_id) {
           $ui_state['stage'] = $input_stage;
           $ui_state['facet-key'] = $input_facet_key;
@@ -1102,10 +1106,10 @@ function _faceted_search_ui_init() {
         }
         break;
     }
-    $arg++;
+    $arg_index++;
   
     // Style.
-    $input_style = $form ? $form_style : arg($arg);
+    $input_style = $form ? $form_style : $args[$arg_index];
     switch ($input_style) {
       case 'extract':
       case 'teaser':
@@ -1113,20 +1117,20 @@ function _faceted_search_ui_init() {
         $ui_state['style'] = $input_style;
         break;
     }
-    $arg++;
+    $arg_index++;
 
     // Sort.
     // TODO: Implement sort options
-    $input_sort = $form ? $form_sort : arg($arg);
+    $input_sort = $form ? $form_sort : $args[$arg_index];
     switch ($input_sort) {
       case 'relevance':
         $ui_state['sort'] = $input_sort;
         break;
     }
-    $arg++;
+    $arg_index++;
   
     // Text.
-    $text = trim($form ? $form_text : arg($arg));
+    $text = trim($form ? $form_text : $args[$arg_index]);
   }
   
   // Create the current search.
