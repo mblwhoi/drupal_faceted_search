@@ -70,7 +70,9 @@ performance before deploying this package on a busy site.
 Requirements
 ************
 
-- This module requires Drupal 5.x (http://drupal.org/project/drupal).
+- Drupal 5.x (http://drupal.org/project/drupal).
+
+- MySQL 4.1 (or later version). 
 
 
 Recommended modules
