@@ -1,6 +1,6 @@
 ; $Id$
 name = Author Facet
 description = "Provides a facet for content authors."
-dependencies = faceted_search
+dependencies = faceted_search search
 package = Faceted Search
 
