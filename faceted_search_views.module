@@ -1,0 +1,134 @@
+<?php
+// $Id$
+
+/**
+ * @file
+ * Allows to use Views to display Faceted Search results.
+ *
+ * With this module, search results may be displayed in an embedded
+ * view. Results shown through a view might differ from those obtained from
+ * other display styles, because the view might provide additional filters. A
+ * view must use the "Faceted Search: In current search results" filter to
+ * become available as a display style.
+ *
+ * Note also that, because it is embedded in Faceted Search's results page, the
+ * view cannot use exposed filters or URL-based arguments.
+ */
+
+// TODO: Provide the above documentation as a user help text somewhere in the
+// settings page.
+
+// TODO: Provide a Views sort handler by search results relevance.
+
+/**
+ * Implementation of hook_faceted_search_ui_style_info().
+ */
+function faceted_search_views_faceted_search_ui_style_info() {
+  $styles = array();
+  // Only get the views that use the Faceted Search filter.
+  $results = db_query("SELECT v.name FROM {view_view} v INNER JOIN {view_filter} f ON f.vid = v.vid WHERE f.field = 'faceted_search.faceted_search_current_search' ORDER BY v.name");
+  while ($view = db_fetch_object($results)) {
+    // TODO: Have faceted_search_ui.module add the module name to the id rather
+    // than requiring client modules to ensure unique ids.
+    $styles['faceted_search_views_'. $view->name] = new faceted_search_views_style($view->name);
+  }
+  return $styles;
+}
+
+/**
+ * Implementation of hook_views_tables.
+ */
+function faceted_search_views_views_tables() {
+  $tables['faceted_search'] = array(
+    'name' => 'faceted_search',
+    'provider' => 'internal',
+    'filters' => array(
+      'faceted_search_current_search' => array(
+        'name' => t('Faceted Search: In current search results'),
+        'help' => t("Filter by Faceted Search's current search results."),
+        'operator' => array('=' => t('Equals')),
+        'value' => array('#type' => 'select', '#options' => array(1 => t('Yes'))),
+        'handler' => 'faceted_search_views_filter_handler',
+        'cacheable' => 'no',
+      ),
+    ),
+  );
+  return $tables;
+}
+
+/**
+ * A handler that updates the specified query to filter with Faceted Search's
+ * current results.
+ */
+function faceted_search_views_filter_handler($op, $filter, $filterinfo, &$query) {
+  global $_faceted_search_ui_current_search;
+
+  if ($_faceted_search_ui_current_search->get_results_count() > 0) {
+    // Thanks to the above condition, this handler has no effect when there is
+    // no current search results. This avoids a race condition between Views and
+    // Faceted Search; Faceted Search may use the query of a view containing
+    // this handler as a subquery to filter its results, and Views may call this
+    // handler afterwards to filter with Faceted Search's results.
+    $join = array(
+      'type' => 'inner',
+      'left' => array('table' => 'node', 'field' => 'nid'),
+      'right' => array('field' => 'nid'),
+    );
+    $query->add_table($_faceted_search_ui_current_search->get_results_table(), FALSE, 1, $join);
+  }
+}
+
+/**
+ * Provides a view-based display style for search results.
+ */
+class faceted_search_views_style {
+  // Name of the view to use with this style.
+  var $_name; 
+  
+  /**
+   * Constructor.
+   *
+   * @param $view_name
+   *   Name of the view to use with this style.
+   */
+  function faceted_search_views_style($view_name) {
+    $this->_name = $view_name;
+  }
+
+  /**
+   * Return the name of this style.
+   */
+  function get_label() {
+    return t('Views: @view', array('@view' => $this->_name));
+  }
+
+  /**
+   * Apply the view's query as a subquery to filter the search results.
+   *
+   * Note: We use the view's count query for this purpose because the sorting
+   * and field selection provided by its main query is not wanted here. The
+   * view's only purpose here is to filter the search results.
+   */
+  function query_alter(&$query) {
+    $view = views_get_view($this->_name);
+    if ($view) {
+      $queries = views_build_view('queries', $view);
+      // Make sure the view's query selects node.id rather than a count. This
+      // assumes that the view is counting node.id.
+      $views_query = str_replace('count(node.nid)', 'node.nid', $queries['countquery']); 
+      $views_query = db_rewrite_sql($views_query, 'node'); // TODO: Depending on issues such as http://drupal.org/node/151910, this may or may not be necessary...
+      $query->add_where('n.nid IN ('. $views_query .')'); // Add subquery.
+    }  
+  }
+
+  /**
+   * Format the search results according to this style's desire.
+   */
+  function format_results($search) {
+    if ($view = views_get_view($this->_name)) {
+      $limit = variable_get('default_nodes_main', 10);
+      return views_build_view('embed', $view, NULL, TRUE, $limit);
+    }
+  }
+}
+
