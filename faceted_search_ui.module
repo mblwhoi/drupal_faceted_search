@@ -8,6 +8,17 @@
 
 require_once('./'. drupal_get_path('module', 'faceted_search') .'/faceted_search.inc');
 
+// TODO: Have 'facet', 'facet-sort' URL arguments used only in the 'select'
+// stage. Make sure to adapt the limit in the explode('/', $_GET['q']) call
+// accordingly.
+
+// TODO: http://drupal.org/node/151910 is needed for db_rewrite_sql() to work
+// properly with subqueries. Implement a solution for the interim.
+
+// TODO: Have the option to let Faceted Search list nodes even when there is no
+// current search. Thus if the display style was a view, then the Guided search
+// would be properly filtered according to the view.
+
 // The current search.
 $_faceted_search_ui_current_search = NULL;
 
@@ -121,12 +132,17 @@ function faceted_search_ui_form_alter($form_id, &$form) {
       '#description' => t('Check this option to have tooltips displayed with subcategories when hovering over a category in the guided search. This feature works only with clients that have Javascript enabled.'),
       '#default_value' => variable_get('faceted_search_ui_tooltips', TRUE),
     );
-    $form['display']['faceted_search_ui_default_style'] = array(
-      '#type' => 'radios',
-      '#title' => t('Default display style for search results'),
-      '#description' => t('When the <em>Extracts</em> option is selected, search results show extracts relevant to the search terms. With the <em>Teasers</em> option, search results use standard teasers.'),
-      '#options' => array('extract' => t('Extracts'), 'teaser' => t('Teasers')),
-      '#default_value' => variable_get('faceted_search_ui_default_style', 'extract'),
+    $styles = faceted_search_ui_style_list();
+    $options = array();
+    foreach ($styles as $key => $style) {
+      $options[$key] = $style->get_label();
+    }
+    $form['display']['faceted_search_ui_style'] = array(
+      '#type' => 'select',
+      '#title' => t('Display style for search results'),
+      '#description' => t('When the <em>Extracts</em> option is selected, search results show extracts relevant to the search terms. With the <em>Teasers</em> option, search results use standard teasers. Other modules may provide additional display styles.'),
+      '#options' => $options,
+      '#default_value' => faceted_search_ui_get_style(),
     );
     $form['behavior'] = array(
       '#type' => 'fieldset',
@@ -146,6 +162,21 @@ function faceted_search_ui_form_alter($form_id, &$form) {
       '#default_value' => variable_get('faceted_search_ui_start_page', 'faceted_search/select'),
     );
     $form['buttons']['#weight'] = 5; // Keep the buttons at the bottom.
+  }
+}
+
+/**
+ * Implementation of hook_faceted_search_query_alter.
+ *
+ * Give the display style object an opportunity at altering the search
+ * query. The style might, for example, require additional filtering or extra
+ * fields.
+ */
+function faceted_search_ui_faceted_search_query_alter($search, &$query) {
+  $styles = faceted_search_ui_style_list(); // TODO: Do better than this!
+  $style = faceted_search_ui_get_style();
+  if (method_exists($styles[$style], 'query_alter')) {
+    $styles[$style]->query_alter($query);
   }
 }
 
@@ -171,6 +202,16 @@ function faceted_search_ui_stage_results() {
   else {
     drupal_goto(variable_get('faceted_search_ui_start_page', 'faceted_search/select'));
   }
+}
+
+/**
+ * Implementation of hook_faceted_search_ui_style_info().
+ */
+function faceted_search_ui_faceted_search_ui_style_info() {
+  return array(
+    'faceted_search_ui_extract' => new faceted_search_ui_extract_style,
+    'faceted_search_ui_teaser' => new faceted_search_ui_teaser_style,
+  );
 }
 
 /**
@@ -346,6 +387,34 @@ function faceted_search_ui_show_related_categories($node) {
 }
 
 /**
+ * Discover the available display styles by invoking
+ * hook_faceted_search_ui_style_info().
+ *
+ * @return
+ *   An associative array keyed on style id. The id should contain the module's
+ *   name to ensure it is globally unique. The value of each key is an array
+ *   containing information about the style: 'label', 'callback', 'args'.
+ *
+ * @see faceted_search_ui_views_faceted_search_ui_style_info()
+ */
+function faceted_search_ui_style_list() {
+  static $styles;
+  if (!isset($styles)) {
+    $styles = module_invoke_all('faceted_search_ui_style_info');
+  }
+  return (array)$styles;
+}
+
+/**
+ * Indicate how to present search results.
+ *
+ * @return Id of the style to use.
+ */
+function faceted_search_ui_get_style() {
+  return variable_get('faceted_search_ui_style', 'faceted_search_ui_extract');
+}
+
+/**
  * Display sort options.
  */
 function faceted_search_ui_show_sort_options($search) {
@@ -388,53 +457,14 @@ function faceted_search_ui_set_title($search) {
 }
 
 /**
- * Formats the specified search results items.
+ * Format the results of the specified search according to the current display
+ * style.
  */
 function faceted_search_ui_format_results($search) {
-  if ($search->ui_state['style'] == 'extract') {
-    drupal_add_css(drupal_get_path('module', 'search') .'/search.css');
-    
-    $found_items = $search->load_results(variable_get('default_nodes_main', 10));
-      
-    // Taken from node_search() (node.module 1.764) - BEGIN
-    $results = array();
-    foreach ($found_items as $item) {
-      // Build the node body.
-      $node = node_load($item->nid);
-      $node = node_build_content($node, FALSE, FALSE);
-      $node->body = drupal_render($node->content);
-
-      // Fetch comments for snippet
-      $node->body .= module_invoke('comment', 'nodeapi', $node, 'update index');
-      // Fetch terms for snippet
-      $node->body .= module_invoke('taxonomy', 'nodeapi', $node, 'update index');
-
-      $extra = node_invoke_nodeapi($node, 'search result');
-      $results[] = array(
-        'link' => url('node/'. $item->nid, NULL, NULL, TRUE),
-        'type' => node_get_types('name', $node),
-        'title' => $node->title,
-        'user' => theme('username', $node),
-        'date' => $node->changed,
-        'node' => $node,
-        'extra' => $extra,
-        'score' => $item->score,
-        'snippet' => search_excerpt($search->get_keywords(), $node->body));
-    }
-    // Taken from node_search() - END
-    
-    return theme('search_page', $results, 'node');
-  }
-  elseif ($search->ui_state['style'] == 'teaser') {
-    $limit = variable_get('default_nodes_main', 10);
-    $found_items = $search->load_results($limit);
-    
-    foreach ($found_items as $item) {
-      $output .= node_view(node_load($item->nid), $search->ui_state['style'] == 'teaser');
-    }      
-    $output .= theme('pager', NULL, $limit);
-    
-    return $output;
+  $styles = faceted_search_ui_style_list(); // TODO: Do better than this!
+  $style = faceted_search_ui_get_style();
+  if (method_exists($styles[$style], 'format_results')) {
+    return $styles[$style]->format_results($search);
   }
 }
   
@@ -496,10 +526,6 @@ function faceted_search_ui_form($search) {
   $form['stage'] = array(
     '#type' => 'hidden',
     '#value' => $current_stage == 'select' ? 'results' : $current_stage,
-  );
-  $form['style'] = array(
-    '#type' => 'hidden',
-    '#value' => $search->ui_state['style'],
   );
   $form['sort'] = array(
     '#type' => 'hidden',
@@ -610,7 +636,7 @@ function faceted_search_ui_build_path($ui_state, $text, $facets = array()) {
     $facet_sort = '-';
   }
   
-  return "faceted_search/{$ui_state['stage']}/{$facet}/{$facet_sort}/{$ui_state['style']}/{$ui_state['sort']}/{$text}";
+  return "faceted_search/{$ui_state['stage']}/{$facet}/{$facet_sort}/{$ui_state['sort']}/{$text}";
 }
 
 /**
@@ -775,6 +801,84 @@ function faceted_search_ui_add_tooltips() {
 }
 
 /**
+ * Provides the 'extracts' display style for search results.
+ */
+class faceted_search_ui_extract_style {
+
+  /**
+   * Return the name of this style.
+   */
+  function get_label() {
+    return t('Extracts');
+  }
+
+  /**
+   * Format the search results to display node extracts showing relevant
+   * keywords.
+   */
+  function format_results($search) {
+    drupal_add_css(drupal_get_path('module', 'search') .'/search.css');
+    
+    $found_items = $search->load_results(variable_get('default_nodes_main', 10));
+      
+    // Taken from node_search() (node.module 1.764) - BEGIN
+    $results = array();
+    foreach ($found_items as $item) {
+      // Build the node body.
+      $node = node_load($item->nid);
+      $node = node_build_content($node, FALSE, FALSE);
+      $node->body = drupal_render($node->content);
+
+      // Fetch comments for snippet
+      $node->body .= module_invoke('comment', 'nodeapi', $node, 'update index');
+      // Fetch terms for snippet
+      $node->body .= module_invoke('taxonomy', 'nodeapi', $node, 'update index');
+
+      $extra = node_invoke_nodeapi($node, 'search result');
+      $results[] = array(
+        'link' => url('node/'. $item->nid, NULL, NULL, TRUE),
+        'type' => node_get_types('name', $node),
+        'title' => $node->title,
+        'user' => theme('username', $node),
+        'date' => $node->changed,
+        'node' => $node,
+        'extra' => $extra,
+        'score' => $item->score,
+        'snippet' => search_excerpt($search->get_keywords(), $node->body));
+    }
+    // Taken from node_search() - END
+    
+    return theme('search_page', $results, 'node');
+  }
+}
+
+/**
+ * Provides the 'teasers' display style for search results.
+ */
+class faceted_search_ui_teaser_style {
+
+  /**
+   * Return the name of this style.
+   */
+  function get_label() {
+    return t('Teasers');
+  }
+
+  /**
+   * Format the search results to display node teasers.
+   */
+  function format_results($search) {
+    $limit = variable_get('default_nodes_main', 10);
+    $found_items = $search->load_results($limit);
+    
+    foreach ($found_items as $item) {
+      $output .= node_view(node_load($item->nid), TRUE);
+    }      
+    return $output . theme('pager', NULL, $limit);
+  }
+}
+
+/**
  * Render a faceted search page.
  *
  * @param $search
@@ -787,8 +891,6 @@ function theme_faceted_search_ui_page($search, $content) {
   $classes = array(
     'faceted-search-page',
     'faceted-search-stage-'. $search->ui_state['stage'],
-    'faceted-search-style-'. $search->ui_state['style'],
-    'faceted-search-sort-'. $search->ui_state['sort'],
   );
   return '<div class="'. implode(' ', $classes) .'">'. $content .'</div>'."\n";
 }
@@ -1021,7 +1123,7 @@ function theme_faceted_search_ui_guided_search($search, $facets) {
  *
  * The faceted search UI uses paths of the following form:
  *
- * faceted_search/stage/key:id/facet-sort/style/sort/text
+ * faceted_search/stage/key:id/facet-sort/sort/text
  *
  * Meaning of each path component:
  *
@@ -1042,10 +1144,6 @@ function theme_faceted_search_ui_guided_search($search, $facets) {
  * 'facet-sort' specifies the sort criteria to use when listing the facet's
  * categories. Only used in the 'facet' stage.
  *
- * 'style' indicates how to present the search results. Options are 'extract',
- * 'teaser'. This option is useful only in the 'results' stage, but its current
- * value is always carried along (to survive across various stages).
- *
  * 'sort' indicates the sort option for search results. Options are 'relevance',
  * 'title', 'date'. This option is useful only in the 'results' stage, but its
  * current value is always carried along (to survive across various stages).
@@ -1059,14 +1157,13 @@ function _faceted_search_ui_init() {
 
   // We don't use arg() because we need a limit on explode(), in case '/' is
   // used in the search text. The search text is the last argument.
-  $args = explode('/', $_GET['q'], 7); 
+  $args = explode('/', $_GET['q'], 6); 
   
   // We have to consider form values at this point, because we need an
   // initialized search object before anything else tries to use it.
   if (isset($_POST['form_id']) && $_POST['form_id'] == 'faceted-search-ui-form') {
     $form = TRUE;
     $form_stage = $_POST['stage'];
-    $form_style = $_POST['style'];
     $form_sort = $_POST['sort'];
     $form_text = $_POST['text'];
     $form_facet_key = $_POST['facet-key'];
@@ -1108,16 +1205,6 @@ function _faceted_search_ui_init() {
     }
     $arg_index++;
   
-    // Style.
-    $input_style = $form ? $form_style : $args[$arg_index];
-    switch ($input_style) {
-      case 'extract':
-      case 'teaser':
-        $ui_state['style'] = $input_style;
-        break;
-    }
-    $arg_index++;
-
     // Sort.
     // TODO: Implement sort options
     $input_sort = $form ? $form_sort : $args[$arg_index];
@@ -1152,12 +1239,10 @@ function _faceted_search_ui_init() {
 function _faceted_search_ui_defaults() {
   return array(
     'stage' => 'results',
-    'style' => variable_get('faceted_search_ui_default_style', 'extract'),
     'sort' => 'relevance',
     'facet-key' => '',
     'facet-id' => '',
     'facet-sort' => '',
   );
 }
-
 

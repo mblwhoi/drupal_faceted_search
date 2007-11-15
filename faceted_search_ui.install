@@ -12,3 +12,15 @@ function faceted_search_ui_update_1() {
   $ret[] = update_sql("UPDATE {blocks} SET delta = 'related' WHERE module = 'faceted_search_ui' AND delta = 3");
   return $ret;
 }
+
+/**
+ * Renamed variable 'faceted_search_ui_default_style' to 'faceted_search_ui_style'.
+ */
+function faceted_search_ui_update_2() {
+  $style = variable_get('faceted_search_ui_default_style', NULL);
+  if (isset($style)) {
+    variable_set('faceted_search_ui_style', $style);
+    variable_del('faceted_search_ui_default_style');
+  }
+  return array();
+}

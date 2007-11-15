@@ -668,6 +668,10 @@ class faceted_search {
       }
     }
 
+    // Give other modules an opportunity at altering the final query (e.g. for
+    // additional filtering).
+    module_invoke_all('faceted_search_query_alter', $this, $query2);
+    
     // Perform search
     $this->_execute_search_query($query1, $query2);
   }
@@ -700,6 +704,13 @@ class faceted_search {
     return $this->_results_count;
   }
 
+  /**
+   * Return the name of this search's (temporary) results table.
+   */
+  function get_results_table() {
+    return $this->_results_table;
+  }
+  
   /**
    * Return the categories for the given facet and count matching nodes within
    * results.
