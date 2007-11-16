@@ -445,7 +445,7 @@ function faceted_search_ui_set_title($search) {
     foreach ($search->get_facets() as $facet) {
       if ($facet->is_active()) {
         $category = $facet->get_active_category();
-        $labels[] = check_plain($category->get_label());
+        $labels[] = check_plain(strip_tags($category->get_label()));
       }
     }
     if ($labels) {
@@ -705,7 +705,8 @@ function faceted_search_ui_build_breadcrumb($ui_state, $facets, $index, $breadcr
     if ($category && $context != 'related-categories') {
       // The last category needs not be a link to itself since it is already in
       // the current search.
-      $breadcrumb[count($breadcrumb) - 1] = check_plain($category->get_label());
+      // Note: theme_faceted_search_keyword_or_label() uses <em> in the label.
+      $breadcrumb[count($breadcrumb) - 1] = filter_xss($category->get_label(), array('em', 'strong')); 
     }
   }
 
@@ -987,7 +988,8 @@ function theme_faceted_search_ui_categories($facet, $categories, $stage) {
 }
 
 function theme_faceted_search_ui_facet_label($facets, $index, $label) {
-  return '<h3>'. check_plain($facets[$index]->get_label()) .'</h3>';
+  // Note: theme_faceted_search_keyword_or_label() uses <em> in the label.
+  return '<h3>'. filter_xss($facets[$index]->get_label(), array('em', 'strong')) .'</h3>';
 }
 
 function theme_faceted_search_ui_category($category, $path) {
