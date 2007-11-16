@@ -28,22 +28,23 @@ The package
 
 Faceted Search is in fact a bundle of modules.
 
-- Faceted Search: This module provides the search framework and API.
+- Faceted Search: Provides the search framework and API.
 
-- Faceted Search UI: This module provides the search user interface.
+- Faceted Search UI: Provides the search user interface.
 
-- Author Facet: This module allows users to refine the current search based on
-  content author.
+- Faceted Search Views: Allows to use Views to display the search results.
 
-- Content Type Facet: This module allows users to refine the current search
-  based on content type.
+- Author Facet: Allows users to refine the current search based on content
+  author.
 
-- Date Authored Facet: This module allows users to refine the current search
-  based on content creation date.
+- Content Type Facet: Allows users to refine the current search based on content
+  type.
 
-- Taxonomy Facets: This modules allows users to search content through
-  taxonomy. Any vocabulary can become a facet that can be used to refine the
-  current search.
+- Date Authored Facet: Allows users to refine the current search based on
+  content creation date.
+
+- Taxonomy Facets: Allows users to search content through taxonomy. Any
+  vocabulary can become a facet that can be used to refine the current search.
 
 Hopefully, many more facets will be developed. The API is meant to make it easy
 to implement new facets.
@@ -77,6 +78,11 @@ Requirements
 
 Recommended modules
 *******************
+
+- Views (http://drupal.org/project/views): In combination with the Faceted
+  Search Views module, the Views module can give you tremendous flexibility for
+  displaying Faceted Search's results, and even for performing additional
+  filtering of the search results.
 
 - jQuery Update (http://drupal.org/project/jquery_update): If you wish to use
   Faceted Search UI's tooltips feature (for showing subcategories when hovering
