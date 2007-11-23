@@ -443,7 +443,6 @@ function faceted_search_ui_show_sort_options($search) {
       return theme('faceted_search_ui_sort_options', $sort_links);
     }
   }
-  // TODO: Sort options for search results.
 }
 
 /**
@@ -536,10 +535,6 @@ function faceted_search_ui_form($search) {
   $form['stage'] = array(
     '#type' => 'hidden',
     '#value' => $current_stage == 'select' ? 'results' : $current_stage,
-  );
-  $form['sort'] = array(
-    '#type' => 'hidden',
-    '#value' => $search->ui_state['sort'],
   );
   $form['facet-key'] = array(
     '#type' => 'hidden',
@@ -646,7 +641,7 @@ function faceted_search_ui_build_path($ui_state, $text, $facets = array()) {
     $facet_sort = '-';
   }
   
-  return "faceted_search/{$ui_state['stage']}/{$facet}/{$facet_sort}/{$ui_state['sort']}/{$text}";
+  return "faceted_search/{$ui_state['stage']}/{$facet}/{$facet_sort}/{$text}";
 }
 
 /**
@@ -1135,7 +1130,7 @@ function theme_faceted_search_ui_guided_search($search, $facets) {
  *
  * The faceted search UI uses paths of the following form:
  *
- * faceted_search/stage/key:id/facet-sort/sort/text
+ * faceted_search/stage/key:id/facet-sort/text
  *
  * Meaning of each path component:
  *
@@ -1156,10 +1151,6 @@ function theme_faceted_search_ui_guided_search($search, $facets) {
  * 'facet-sort' specifies the sort criteria to use when listing the facet's
  * categories. Only used in the 'facet' stage.
  *
- * 'sort' indicates the sort option for search results. Options are 'relevance',
- * 'title', 'date'. This option is useful only in the 'results' stage, but its
- * current value is always carried along (to survive across various stages).
- *
  * 'text' specifies the actual search text. Note: It is best to keep this as the
  * last component because it allows to clear the search text while preserving
  * all the other options.
@@ -1169,14 +1160,13 @@ function _faceted_search_ui_init() {
 
   // We don't use arg() because we need a limit on explode(), in case '/' is
   // used in the search text. The search text is the last argument.
-  $args = explode('/', $_GET['q'], 6); 
+  $args = explode('/', $_GET['q'], 5); 
   
   // We have to consider form values at this point, because we need an
   // initialized search object before anything else tries to use it.
   if (isset($_POST['form_id']) && $_POST['form_id'] == 'faceted-search-ui-form') {
     $form = TRUE;
     $form_stage = $_POST['stage'];
-    $form_sort = $_POST['sort'];
     $form_text = $_POST['text'];
     $form_facet_key = $_POST['facet-key'];
     $form_facet_id = $_POST['facet-id'];
@@ -1217,16 +1207,6 @@ function _faceted_search_ui_init() {
     }
     $arg_index++;
   
-    // Sort.
-    // TODO: Implement sort options
-    $input_sort = $form ? $form_sort : $args[$arg_index];
-    switch ($input_sort) {
-      case 'relevance':
-        $ui_state['sort'] = $input_sort;
-        break;
-    }
-    $arg_index++;
-  
     // Text.
     $text = trim($form ? $form_text : $args[$arg_index]);
   }
@@ -1251,7 +1231,6 @@ function _faceted_search_ui_init() {
 function _faceted_search_ui_defaults() {
   return array(
     'stage' => 'results',
-    'sort' => 'relevance',
     'facet-key' => '',
     'facet-id' => '',
     'facet-sort' => '',
