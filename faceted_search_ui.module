@@ -209,8 +209,8 @@ function faceted_search_ui_stage_results() {
  */
 function faceted_search_ui_faceted_search_ui_style_info() {
   return array(
-    'faceted_search_ui_extract' => new faceted_search_ui_extract_style,
-    'faceted_search_ui_teaser' => new faceted_search_ui_teaser_style,
+    'extracts' => new faceted_search_ui_extract_style,
+    'teasers' => new faceted_search_ui_teaser_style,
   );
 }
 
@@ -382,7 +382,7 @@ function faceted_search_ui_show_related_categories($node) {
     $heading = theme('faceted_search_ui_facet_heading', _faceted_search_ui_defaults(), array($facet), 0, 'related-categories');
     $output .= theme('faceted_search_ui_facet_wrapper', $facet, 'related-categories', $heading);
   }
-
+  
   return $output;
 }
 
@@ -391,8 +391,8 @@ function faceted_search_ui_show_related_categories($node) {
  * hook_faceted_search_ui_style_info().
  *
  * @return
- *   An associative array keyed on style id. The id should contain the module's
- *   name to ensure it is globally unique. The value of each key is an array
+ *   An associative array keyed on style id. The id contains the module's name
+ *   to ensure it is globally unique. The value of each key is an array
  *   containing information about the style: 'label', 'callback', 'args'.
  *
  * @see faceted_search_ui_views_faceted_search_ui_style_info()
@@ -400,9 +400,19 @@ function faceted_search_ui_show_related_categories($node) {
 function faceted_search_ui_style_list() {
   static $styles;
   if (!isset($styles)) {
-    $styles = module_invoke_all('faceted_search_ui_style_info');
+    $styles = array();
+    foreach (module_implements('faceted_search_ui_style_info') as $module) {
+      $function = $module .'_faceted_search_ui_style_info';
+      if ($module_styles = $function()) {
+        foreach ($module_styles as $id => $style) {
+          // Add each of the styles provided by the module to the global array,
+          // prepending the style id with the module name.
+          $styles[$module .':'. $id] = $style;
+        }
+      }
+    }  
   }
-  return (array)$styles;
+  return $styles;
 }
 
 /**

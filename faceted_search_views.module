@@ -14,9 +14,7 @@ function faceted_search_views_faceted_search_ui_style_info() {
   // Only get the views that use the Faceted Search filter.
   $results = db_query("SELECT v.name FROM {view_view} v INNER JOIN {view_filter} f ON f.vid = v.vid WHERE f.field = 'faceted_search.faceted_search_current_search' ORDER BY v.name");
   while ($view = db_fetch_object($results)) {
-    // TODO: Have faceted_search_ui.module add the module name to the id rather
-    // than requiring client modules to ensure unique ids.
-    $styles['faceted_search_views_'. $view->name] = new faceted_search_views_style($view->name);
+    $styles[$view->name] = new faceted_search_views_style($view->name);
   }
   return $styles;
 }
