@@ -18,8 +18,6 @@
 // TODO: Provide the above documentation as a user help text somewhere in the
 // settings page.
 
-// TODO: Provide a Views sort handler by search results relevance.
-
 /**
  * Implementation of hook_faceted_search_ui_style_info().
  */
@@ -52,6 +50,13 @@ function faceted_search_views_views_tables() {
         'cacheable' => 'no',
       ),
     ),
+    'sorts' => array(
+      'score' => array(
+        'name' => t('Faceted search: Score'),
+        'help' => t('Sort by relevance score in the context of the current search results. The higher the score, the more relevant the node.'),
+        'handler' => 'faceted_search_views_score_sort_handler',
+      ),
+    ),
   );
   return $tables;
 }
@@ -75,6 +80,17 @@ function faceted_search_views_filter_handler($op, $filter, $filterinfo, &$query)
       'right' => array('field' => 'nid'),
     );
     $query->add_table($_faceted_search_ui_current_search->get_results_table(), FALSE, 1, $join);
+  }
+}
+
+/**
+ * A handler that sorts the view according to relevance score in the search results.
+ */
+function faceted_search_views_score_sort_handler($op, &$query, $sortinfo, $sortdata) {
+  global $_faceted_search_ui_current_search;
+
+  if (isset($query->tables[$_faceted_search_ui_current_search->get_results_table()])) {
+    $query->add_orderby($_faceted_search_ui_current_search->get_results_table(), 'score', $sortdata['sortorder']);
   }
 }
 
