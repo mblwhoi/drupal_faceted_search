@@ -32,14 +32,14 @@ function faceted_search_views_views_tables() {
         'help' => t("Filter by Faceted Search's current search results."),
         'operator' => array('=' => t('Equals')),
         'value' => array('#type' => 'select', '#options' => array(1 => t('Yes'))),
-        'handler' => 'faceted_search_views_filter_handler',
+        'handler' => 'faceted_search_views_current_search_filter_handler',
         'cacheable' => 'no',
       ),
     ),
     'sorts' => array(
       'score' => array(
         'name' => t('Faceted search: Score'),
-        'help' => t('Sort by relevance score in the context of the current search results. The higher the score, the more relevant the node.'),
+        'help' => t('Sort by relevance score in the context of the current search. The higher the score, the more relevant the node.'),
         'handler' => 'faceted_search_views_score_sort_handler',
       ),
     ),
@@ -51,7 +51,7 @@ function faceted_search_views_views_tables() {
  * A handler that updates the specified query to filter with Faceted Search's
  * current results.
  */
-function faceted_search_views_filter_handler($op, $filter, $filterinfo, &$query) {
+function faceted_search_views_current_search_filter_handler($op, $filter, $filterinfo, &$query) {
   global $_faceted_search_ui_current_search;
 
   if ($_faceted_search_ui_current_search->get_results_count() > 0) {
