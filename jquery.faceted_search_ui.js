@@ -101,7 +101,7 @@ jQuery.facetedSearchUI = {
 
   makeId : function(url) {
     // Extract the search text to use as id.
-    return decodeURIComponent(url.substr(url.lastIndexOf('/') + 1)).replace(/\+/, ' ');
+    return decodeURIComponent(url.substr(url.lastIndexOf('/') + 1)).replace(/\+/g, ' ');
   }
 };
 
