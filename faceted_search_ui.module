@@ -417,7 +417,7 @@ function faceted_search_ui_style_list() {
  * @return Id of the style to use.
  */
 function faceted_search_ui_get_style() {
-  return variable_get('faceted_search_ui_style', 'faceted_search_ui_extract');
+  return variable_get('faceted_search_ui_style', 'faceted_search_ui:extracts');
 }
 
 /**
