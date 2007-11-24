@@ -24,3 +24,18 @@ function faceted_search_ui_update_2() {
   }
   return array();
 }
+
+/**
+ * Changed display style ids.
+ */
+function faceted_search_ui_update_3() {
+  switch (variable_get('faceted_search_ui_style', '')) {
+    case 'extract':
+      variable_set('faceted_search_ui_style', 'faceted_search_ui:extracts');
+      break;
+    case 'teaser':
+      variable_set('faceted_search_ui_style', 'faceted_search_ui:teasers');
+      break;
+  }
+  return array();
+}
