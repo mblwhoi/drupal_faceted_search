@@ -8,10 +8,6 @@
 
 require_once('./'. drupal_get_path('module', 'faceted_search') .'/faceted_search.inc');
 
-// TODO: Have 'facet', 'facet-sort' URL arguments used only in the 'select'
-// stage. Make sure to adapt the limit in the explode('/', $_GET['q']) call
-// accordingly.
-
 // TODO: http://drupal.org/node/151910 is needed for db_rewrite_sql() to work
 // properly with subqueries. Implement a solution for the interim.
 
@@ -626,22 +622,21 @@ function faceted_search_ui_build_path($ui_state, $text, $facets = array()) {
     // No search text, go to the start page.
     return variable_get('faceted_search_ui_start_page', 'faceted_search/select');
   }
-  
+
+  $facet = '';
+  $facet_sort = '';
   if (($ui_state['stage'] == 'facet' || $ui_state['stage'] == 'categories') && $ui_state['facet-key'] && $ui_state['facet-id']) {
-    $facet = "{$ui_state['facet-key']}:{$ui_state['facet-id']}";
-  }
-  else {
-    $facet = '-';
+    $facet = "/{$ui_state['facet-key']}:{$ui_state['facet-id']}";
+
+    if ($ui_state['stage'] == 'facet' && $ui_state['facet-sort']) {
+      $facet_sort = "/${ui_state['facet-sort']}";
+    }
+    else {
+      $facet_sort = '/-';
+    }
   }
 
-  if ($ui_state['stage'] == 'facet' && $ui_state['facet-sort']) {
-    $facet_sort = $ui_state['facet-sort'];
-  }
-  else {
-    $facet_sort = '-';
-  }
-  
-  return "faceted_search/{$ui_state['stage']}/{$facet}/{$facet_sort}/{$text}";
+  return "faceted_search/{$ui_state['stage']}{$facet}{$facet_sort}/{$text}";
 }
 
 /**
@@ -1146,21 +1141,16 @@ function theme_faceted_search_ui_guided_search($search, $facets) {
  *   'categories' shows an HTML chunk with subcategories.
  *
  * 'key:id' specifies the facet class and facet id to show. Only present in the
- * 'facet' and 'categories' stage.
+ * 'facet' and 'categories' stages.
  *
  * 'facet-sort' specifies the sort criteria to use when listing the facet's
- * categories. Only used in the 'facet' stage.
+ * categories. Only present in the 'facet' and 'categories' stages. Only used in
+ * the 'facet' stage.
  *
- * 'text' specifies the actual search text. Note: It is best to keep this as the
- * last component because it allows to clear the search text while preserving
- * all the other options.
+ * 'text' specifies the actual search text.
  */
 function _faceted_search_ui_init() {
   global $_faceted_search_ui_current_search;
-
-  // We don't use arg() because we need a limit on explode(), in case '/' is
-  // used in the search text. The search text is the last argument.
-  $args = explode('/', $_GET['q'], 5); 
   
   // We have to consider form values at this point, because we need an
   // initialized search object before anything else tries to use it.
@@ -1178,25 +1168,22 @@ function _faceted_search_ui_init() {
   $text = '';
 
   // Validate and assign search options.
-  if ($form || $args[0] == 'faceted_search') {
-    $arg_index = 1;
-
-    // Stage.
-    $input_stage = $form ? $form_stage : $args[$arg_index];
+  if ($form || arg(0) == 'faceted_search') {
+    // Extract the stage.
+    $input_stage = $form ? $form_stage : arg(1);
     switch ($input_stage) {
       case 'results':
       case 'select':
         $ui_state['stage'] = $input_stage;
-        $arg_index += 2; // Skip args that are only used by 'facet' stage.
+        $arg_count = 3;
         break;
       case 'facet':
       case 'categories':
-        $arg_index++;
-        $facet = explode(':', $args[$arg_index]);
+        $arg_count = 5;
+        $facet = explode(':', arg(2));
         $input_facet_key = $form ? $form_facet_key : $facet[0];
         $input_facet_id = $form ? $form_facet_id : $facet[1];
-        $arg_index++;
-        $input_facet_sort = $form ? $form_facet_sort : $args[$arg_index];
+        $input_facet_sort = $form ? $form_facet_sort : arg(3);
         if ($input_facet_key && $input_facet_id) {
           $ui_state['stage'] = $input_stage;
           $ui_state['facet-key'] = $input_facet_key;
@@ -1205,10 +1192,12 @@ function _faceted_search_ui_init() {
         }
         break;
     }
-    $arg_index++;
-  
-    // Text.
-    $text = trim($form ? $form_text : $args[$arg_index]);
+
+    // Extract the search text.
+    // Note: We avoid using arg() here because '/' might be used in the search
+    // text. We need to explode the query up to the search text argument.
+    $args = explode('/', $_GET['q'], $arg_count);
+    $text = trim($form ? $form_text : $args[$arg_count - 1]);
   }
   
   // Create the current search.
