@@ -783,10 +783,10 @@ class faceted_search {
     
     // Run the query and return the categories.
     if (isset($from) && isset($max_count)) {
-      $results = db_query_range(db_rewrite_sql($query->query()), $query->args(), $from, $max_count);
+      $results = db_query_range($query->query(), $query->args(), $from, $max_count);
     }
     else {
-      $results = db_query(db_rewrite_sql($query->query()), $query->args());
+      $results = db_query($query->query(), $query->args());
     }
     return $facet->build_categories($results);
   }
@@ -934,7 +934,7 @@ class faceted_search {
     db_query('DROP TEMPORARY TABLE IF EXISTS temp_faceted_search_nids'); 
     
     // Execute query1
-    db_query_temporary(db_rewrite_sql($query1->query()), $query1->args(), 'temp_faceted_search_nids');
+    db_query_temporary($query1->query(), $query1->args(), 'temp_faceted_search_nids');
 
     // Calculate maximum relevance and normalize it.
     $normalize = db_result(db_query('SELECT MAX(relevance) FROM temp_faceted_search_nids'));
@@ -945,7 +945,7 @@ class faceted_search {
     }
     
     // Execute query2
-    db_query_temporary(db_rewrite_sql($query2->query()), $query2->args(), $this->_results_table);
+    db_query_temporary($query2->query(), $query2->args(), $this->_results_table);
     $this->_results_count = db_result(db_query('SELECT COUNT(*) FROM '. $this->_results_table));
     $this->_results_ready = TRUE;
   }
@@ -966,6 +966,8 @@ class faceted_search_query {
   var $orderby = array();
   var $where = array();
   var $where_args = array();
+  var $subqueries = array();
+  var $subqueries_args = array();
 
   /**
    * Constructor. Specifies the primary table and field for this query.
@@ -1078,6 +1080,29 @@ class faceted_search_query {
   }
 
   /**
+   * Adds a subquery as a WHERE condition.
+   *
+   * @param $clause
+   *   The condition to add. The caller must ensure that any field is fully
+   *   qualified using its table's alias as returned by add_table(). The caller
+   *   is responsible for calling db_rewrite_sql() on the subquery.
+   *
+   * @param ...
+   *   A variable number of arguments which are substituted into the query using
+   *   printf) syntax. The query arguments can be enclosed in one array
+   *   instead. Valid %-modifiers are: %s, %d, %f, %b (binary data, do not
+   *   enclose in '') and %%.
+   */
+  function add_subquery($clause) {
+    $this->subqueries[] = $clause;
+    $args = func_get_args();
+    array_shift($args); // Skip $clause.
+    if (count($args)) {
+      $this->subqueries_args = array_merge($this->subqueries_args, $args);
+    }
+  }
+  
+  /**
    * Adds a GROUP BY clause.
    *
    * @param $clause
@@ -1131,7 +1156,7 @@ class faceted_search_query {
    * Returns all arguments that need to be substituted into the query.
    */
   function args() {
-    return array_merge($this->where_args, $this->having_args);
+    return array_merge($this->where_args, $this->subqueries_args, $this->having_args);
   }
 
   /**
@@ -1179,6 +1204,13 @@ class faceted_search_query {
     // Where clauses.
     $where = count($this->where) ? ' WHERE (('. implode(') AND (', $this->where) .'))' : '';
 
+    // Where subqueries (added as $SUBQUERY$n tokens, which are replaced after the call
+    // to db_rewrite_sql(). See related issue: http://drupal.org/node/151910).
+    if (count($this->subqueries)) {
+      $subqueries = $where == '' ? ' WHERE ' : ' AND ';
+      $subqueries .= '$SUBQUERY$'. implode(' AND $SUBQUERY$', array_keys($this->subqueries));
+    }
+      
     // Group by clauses.
     $groupby = count($this->groupby) ? ' GROUP BY '. implode(', ', $this->groupby) : '';
 
@@ -1189,7 +1221,17 @@ class faceted_search_query {
     $orderby = count($this->orderby) ? ' ORDER BY '. implode(', ', $this->orderby) : '';
     
     // Create the query string.
-    return "SELECT $fields FROM $primary$joins$where$groupby$having$orderby";
+    $query = db_rewrite_sql("SELECT $fields FROM $primary$joins$where$subqueries$groupby$having$orderby");
+    if (count($this->subqueries)) {
+      foreach ($this->subqueries as $key => $subquery) {
+        $search[] = '$SUBQUERY$'. $key;
+        $replace[] = $subquery;
+      }
+      // Replace subquery tokens.
+      $query = str_replace($search, $replace, $query);
+    }
+    
+    return $query;
   }
 }
 

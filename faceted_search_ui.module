@@ -8,13 +8,6 @@
 
 require_once('./'. drupal_get_path('module', 'faceted_search') .'/faceted_search.inc');
 
-// TODO: http://drupal.org/node/151910 is needed for db_rewrite_sql() to work
-// properly with subqueries. Implement a solution for the interim.
-
-// TODO: Have the option to let Faceted Search list nodes even when there is no
-// current search. Thus if the display style was a view, then the Guided search
-// would be properly filtered according to the view.
-
 // The current search.
 $_faceted_search_ui_current_search = NULL;
 
