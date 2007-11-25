@@ -75,7 +75,7 @@ function faceted_search_ui_block($op = 'list', $delta = 0, $edit = array()) {
     $blocks['sort'] = array('info' => t('Faceted search / Sort options'));
     return $blocks;
   }
-  elseif ($op == 'view') {
+  elseif ($op == 'view' && user_access('use faceted search')) {
     global $_faceted_search_ui_current_search;
 
     faceted_search_ui_add_css();
