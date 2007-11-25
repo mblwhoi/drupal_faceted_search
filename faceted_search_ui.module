@@ -154,7 +154,7 @@ function faceted_search_ui_form_alter($form_id, &$form) {
     $form['behavior']['faceted_search_ui_start_page'] = array(
       '#type' => 'textfield',
       '#title' => t('Start page'),
-      '#description' => t("Path to go to when the current search is cleared. Enter <code>faceted_search/select</code> if you wish to use Faceted Search's full search page for this purpose. Leave empty to use your site's front page."),
+      '#description' => t("Path to go to when the current search is cleared. Popular options are: <code>faceted_search/select</code> to go to Faceted Search's full search page, <code>faceted_search/results</code> to go to a results page that's based on the current display style, <code>&lt;front&gt;</code> to go to your site's front page."),
       '#default_value' => variable_get('faceted_search_ui_start_page', 'faceted_search/select'),
     );
     $form['buttons']['#weight'] = 5; // Keep the buttons at the bottom.
