@@ -166,8 +166,8 @@ Installation
 Views integration
 *****************
 
-You may use Views to display search results through the Faceted Search Views
-module. This allows to display results in an embedded view.
+You may use the Views module to display search results through the Faceted
+Search Views module, which allows to display results in an embedded view.
 
 Results shown through a view might differ from those obtained from other display
 styles, because the view might provide additional filters. A view must use the
@@ -177,7 +177,7 @@ Faceted Search as a display style.
 Note also that, because it is embedded in Faceted Search's results page, the
 view cannot use exposed filters or URL-based arguments.
 
-Assuming that Faceted Search is already installed and configured on your site,
+Assuming that both Views and Faceted Search are already installed on your site,
 here are the step-by-step instructions to use a View to display search results:
 
 1. Go to Administer > Site building > Views, and click Add to create a new view.
