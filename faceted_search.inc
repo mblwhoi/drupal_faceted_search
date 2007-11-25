@@ -723,6 +723,10 @@ class faceted_search {
    *
    * @param $max_count
    *   Number of categories to load.
+   *
+   * @return
+   *   Array of categories (objects having the faceted_search_category
+   *   interface).
    */
   function load_categories($facet, $from = NULL, $max_count = NULL) {
     // Prepare the base query components to include the current search results
@@ -736,6 +740,13 @@ class faceted_search {
     elseif (empty($this->_text)) {
       // No search text, search within all nodes.
       $query->add_where('n.status = 1');
+
+      // Let other modules alter the categories query. This is usually not
+      // needed since the results query is altered through this hook, and then
+      // the categories query is run against the temporary results table. But
+      // here there is no results table because the search text is empty, hence
+      // the need for altering the categories query.
+      module_invoke_all('faceted_search_query_alter', $this, $query);
     }
     else {
       // There is a search text but the results count is 0, thus no categories
