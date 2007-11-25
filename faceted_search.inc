@@ -482,6 +482,11 @@ class faceted_search {
   var $_results_count = 0;
 
   /**
+   * Flag to indicate whether the results table has been created.
+   */
+  var $_results_ready = FALSE;
+  
+  /**
    * Collection of facets currently used by this search.
    */
   var $_facets = array();
@@ -677,12 +682,13 @@ class faceted_search {
   }
 
   /**
-   * Return the formatted results.
+   * Fetch the items from the current search results, or from all available
+   * nodes if no search text has been given.
    *
    * execute() must have been called beforehand.
    *
    * @return
-   *   Array of objects with nid and score members.
+   *   Array of objects with nid and score members. 
    */
   function load_results($limit = 10) {
     $found_items = array();
@@ -733,24 +739,26 @@ class faceted_search {
     // and to count nodes.
     $query = new faceted_search_query;
     $query->add_field(NULL, 'COUNT(n.nid)', 'count');
-    if ($this->_results_count > 0) {
+    if (!$this->_results_ready) {
+      // No temporary table available, search within all nodes.
+      $query->add_where('n.status = 1');
+
+      // Apply node type filter.
+      if ($excluded_types = faceted_search_excluded_types()) {
+        $query->add_where("n.type NOT IN ('". implode("','", $excluded_types) ."')");
+      }
+      
+      // There is no results table at this point, so we can't rely on the
+      // results table having been filtered already. Therefore, we ask modules
+      // to alter the categories query instead.
+      module_invoke_all('faceted_search_query_alter', $this, $query);
+    }
+    elseif ($this->_results_count > 0) {
       // Search within results.
       $query->add_table($this->_results_table, 'nid', 'n', 'nid', 'results', 'INNER', FALSE);
     }
-    elseif (empty($this->_text)) {
-      // No search text, search within all nodes.
-      $query->add_where('n.status = 1');
-
-      // Let other modules alter the categories query. This is usually not
-      // needed since the results query is altered through this hook, and then
-      // the categories query is run against the temporary results table. But
-      // here there is no results table because the search text is empty, hence
-      // the need for altering the categories query.
-      module_invoke_all('faceted_search_query_alter', $this, $query);
-    }
     else {
-      // There is a search text but the results count is 0, thus no categories
-      // are possible!
+      // Current search yields no results, thus no categories are possible.
       return array(); 
     }
 
@@ -764,7 +772,7 @@ class faceted_search {
     if (!$has_categories) {
       return array();
     }
-
+    
     // Apply sort criteria.
     $facet->build_sort_query($query);
     
@@ -930,16 +938,16 @@ class faceted_search {
 
     // Calculate maximum relevance and normalize it.
     $normalize = db_result(db_query('SELECT MAX(relevance) FROM temp_faceted_search_nids'));
-    if (!$normalize) {
-      return array();
+    if ($normalize) {
+      foreach ($query2->fields as $alias => $field) {
+        $query2->fields[$alias] = str_replace('i.relevance', '('. (1.0 / $normalize) .' * i.relevance)', $field);
+      }
     }
-    foreach ($query2->fields as $alias => $field) {
-      $query2->fields[$alias] = str_replace('i.relevance', '('. (1.0 / $normalize) .' * i.relevance)', $field);
-    }
-
+    
     // Execute query2
     db_query_temporary(db_rewrite_sql($query2->query()), $query2->args(), $this->_results_table);
     $this->_results_count = db_result(db_query('SELECT COUNT(*) FROM '. $this->_results_table));
+    $this->_results_ready = TRUE;
   }
 }
 
