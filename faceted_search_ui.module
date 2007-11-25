@@ -169,7 +169,7 @@ function faceted_search_ui_form_alter($form_id, &$form) {
  * fields.
  */
 function faceted_search_ui_faceted_search_query_alter($search, &$query) {
-  $styles = faceted_search_ui_style_list(); // TODO: Do better than this!
+  $styles = faceted_search_ui_style_list();
   $style = faceted_search_ui_get_style();
   if (method_exists($styles[$style], 'query_alter')) {
     $styles[$style]->query_alter($query);
@@ -182,22 +182,15 @@ function faceted_search_ui_faceted_search_query_alter($search, &$query) {
 function faceted_search_ui_stage_results() {
   global $_faceted_search_ui_current_search;
 
-  // Check if we should really enter the 'results' stage (when no search text
-  // has been specified, we should enter the 'select' stage).
-  if ($_faceted_search_ui_current_search->get_text()) {
-    faceted_search_ui_add_css();
+  faceted_search_ui_add_css();
     
-    // Collect the search results
-    $_faceted_search_ui_current_search->execute();
-    $results = faceted_search_ui_format_results($_faceted_search_ui_current_search);
+  // Collect the search results.
+  $_faceted_search_ui_current_search->execute();
+  $results = faceted_search_ui_format_results($_faceted_search_ui_current_search);
     
-    faceted_search_ui_set_title($_faceted_search_ui_current_search);
-    $content = theme('faceted_search_ui_stage_results', $results);
-    return theme('faceted_search_ui_page', $_faceted_search_ui_current_search, $content);
-  }
-  else {
-    drupal_goto(variable_get('faceted_search_ui_start_page', 'faceted_search/select'));
-  }
+  faceted_search_ui_set_title($_faceted_search_ui_current_search);
+  $content = theme('faceted_search_ui_stage_results', $results);
+  return theme('faceted_search_ui_page', $_faceted_search_ui_current_search, $content);
 }
 
 /**
@@ -466,7 +459,7 @@ function faceted_search_ui_set_title($search) {
  * style.
  */
 function faceted_search_ui_format_results($search) {
-  $styles = faceted_search_ui_style_list(); // TODO: Do better than this!
+  $styles = faceted_search_ui_style_list();
   $style = faceted_search_ui_get_style();
   if (method_exists($styles[$style], 'format_results')) {
     return $styles[$style]->format_results($search);
