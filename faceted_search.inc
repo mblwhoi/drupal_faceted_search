@@ -466,7 +466,7 @@ class faceted_search {
 
   /**
    * Name of the temporary results table. While it exists, this table can be
-   * re-used for other purposes, such as building the search interface.
+   * queried for various purposes, such as building the search interface.
    */
   var $_results_table = '';
 
@@ -564,7 +564,7 @@ class faceted_search {
    */
   function execute() {
     if (!$this->_keywords && !$this->_facets) {
-      return array(); // Nothing to search
+      return; // Nothing to search
     }
     
     // Build first query
