@@ -363,27 +363,20 @@ function faceted_search_ui_show_related_categories($node) {
 
   $facets = faceted_search_collect_facets($node);
 
-  // Render facets and organize them so that those that have a common label are
-  // grouped together.
+  // Organize facets so that those that have a common label are grouped together.
   $groups = array(); // All groups of facets.
-  $labels = array(); // Contains the labels for each group of facets.
   $index = -1; // Index of the current group of facets.
   $last_facet = '';
   foreach ($facets as $facet) {
     $current_facet = $facet->get_key() .'-'. $facet->get_id();
     if ($current_facet != $last_facet) {
-      $index++;
-      // Output the new group's label.
-      $label = theme('faceted_search_ui_facet_label', array($facet), 0, 'related-categories');
-      $labels[$index] = theme('faceted_search_ui_facet_wrapper', $facet, 'related-categories', $label);
+      $index++; // Start a new group.
     }
-    // Output the facet's active path.
-    $heading = theme('faceted_search_ui_facet_heading', _faceted_search_ui_defaults(), array($facet), 0, 'related-categories', FALSE);
-    $groups[$index][] = theme('faceted_search_ui_facet_wrapper', $facet, 'related-categories', $heading);
+    $groups[$index][] = $facet;
     $last_facet = $current_facet;
   }
 
-  return theme('faceted_search_ui_related_categories', $node, $labels, $groups);
+  return theme('faceted_search_ui_related_categories', $node, $groups);
 }
 
 /**
@@ -1125,41 +1118,40 @@ function theme_faceted_search_ui_guided_search($search, $facets) {
 }
 
 /**
- * Display a list of rendered facets related to a node.
- *
- * Note: The faceted-search-first and faceted-search-next classes might be
- * useful in CSS to style borders between groups.
+ * Display a list of facets related to a node.
  *
  * @param $node
  *   The node whose related categories are being themed.
  *
- * @param $labels
- *   Labels for each facet type involved.
- *
  * @param $groups
- *   Groups of rendered facets, where facets within a group have a common
- *   label. A group's label is found in the $labels array at the same index.
+ *   Groups of facets, where facets within a group have a common label.
  */
-function theme_faceted_search_ui_related_categories($node, $labels, $groups) {
+function theme_faceted_search_ui_related_categories($node, $groups) {
   $items = array();
-  foreach ($labels as $key => $label) {
+  foreach ($groups as $group) {
     $first = TRUE;
-    foreach ($groups[$key] as $facet) {
+    foreach ($group as $facet) {
+      $rendered_facet = theme('faceted_search_ui_facet_heading', _faceted_search_ui_defaults(), array($facet), 0, 'related-categories', FALSE);
+      $rendered_facet = theme('faceted_search_ui_facet_wrapper', $facet, 'related-categories', $rendered_facet);
       if ($first) {
         // Output a row with two cells: the label and the first facet of the group.
-        $items[] = array(
+        $label = theme('faceted_search_ui_facet_label', array($facet), 0, 'related-categories');
+        $label = theme('faceted_search_ui_facet_wrapper', $facet, 'related-categories', $label);
+        $items[] = array( // Row.
           'data' => array(
-            array('data' => $label, 'rowspan' => count($groups[$key])), // 1st cell.
-            $facet, // 2nd cell.
+            array( // 1st cell.
+              'data' => $label,
+              'rowspan' => count($group)), 
+            $rendered_facet, // 2nd cell.
           ),
           'class' => 'faceted-search-first', // Mark the first row of a group.
         );
       }
       else {
         // Output a row with a single cell containing the facet.
-        $items[] = array(
+        $items[] = array( // Row.
           'data' => array(
-            $facet // The cell's content.
+            $rendered_facet // 1st (and only) cell.
           ),
           'class' => 'faceted-search-next',
         );
