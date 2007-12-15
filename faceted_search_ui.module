@@ -133,6 +133,17 @@ function faceted_search_ui_form_alter($form_id, &$form) {
       '#options' => $options,
       '#default_value' => faceted_search_ui_get_style(),
     );
+    $form['display']['faceted_search_ui_style_related_categories'] = array(
+      '#type' => 'select',
+      '#title' => t('Display style for the related categories block'),
+      '#description' => t('Related categories may be grouped by facet (when a node uses more than one category per facet), or ungrouped (flat list of categories).'),
+      '#options' => array(
+        'list_ungrouped' => t('List - Ungrouped'),
+        'list_grouped' => t('List - Grouped by facet'),
+        'table' => t('Table - Grouped by facet'),
+      ),
+      '#default_value' => variable_get('faceted_search_ui_style_related_categories', 'list_ungrouped'),
+    );
     $form['behavior'] = array(
       '#type' => 'fieldset',
       '#title' => t('Behavior'),
@@ -376,7 +387,7 @@ function faceted_search_ui_show_related_categories($node) {
     $last_facet = $current_facet;
   }
 
-  return theme('faceted_search_ui_related_categories', $node, $groups);
+  return theme('faceted_search_ui_related_categories_'. variable_get('faceted_search_ui_style_related_categories', 'list_ungrouped'), $node, $groups);
 }
 
 /**
@@ -1118,7 +1129,7 @@ function theme_faceted_search_ui_guided_search($search, $facets) {
 }
 
 /**
- * Display a list of facets related to a node.
+ * Display a list of facets related to a node in a list.
  *
  * @param $node
  *   The node whose related categories are being themed.
@@ -1126,7 +1137,54 @@ function theme_faceted_search_ui_guided_search($search, $facets) {
  * @param $groups
  *   Groups of facets, where facets within a group have a common label.
  */
-function theme_faceted_search_ui_related_categories($node, $groups) {
+function theme_faceted_search_ui_related_categories_list_ungrouped($node, $groups) {
+  $output = '';
+  foreach ($groups as $group) {
+    foreach ($group as $facet) {
+      $rendered_facet = theme('faceted_search_ui_facet_heading', _faceted_search_ui_defaults(), array($facet), 0, 'related-categories');
+      $output .= theme('faceted_search_ui_facet_wrapper', $facet, 'related-categories', $rendered_facet);
+    }
+  }
+  return $output;
+}
+
+/**
+ * Display a list of facets related to a node in a list, with categories grouped by facet.
+ *
+ * @param $node
+ *   The node whose related categories are being themed.
+ *
+ * @param $groups
+ *   Groups of facets, where facets within a group have a common label.
+ */
+function theme_faceted_search_ui_related_categories_list_grouped($node, $groups) {
+  $output = '';
+  foreach ($groups as $group) {
+    $first = TRUE;
+    foreach ($group as $facet) {
+      if ($first) {
+        $rendered_facets = array(); // Start a new group.
+        $label = theme('faceted_search_ui_facet_label', array($facet), 0, 'related-categories');
+      }
+      $rendered_facets[] = theme('faceted_search_ui_facet_heading', _faceted_search_ui_defaults(), array($facet), 0, 'related-categories', FALSE);
+      $first = FALSE;
+    }
+    $output .= theme('faceted_search_ui_facet_wrapper', $facet, 'related-categories', $label . theme('item_list', $rendered_facets));
+  }
+  return $output;
+}
+
+
+/**
+ * Display a list of facets related to a node in a table.
+ *
+ * @param $node
+ *   The node whose related categories are being themed.
+ *
+ * @param $groups
+ *   Groups of facets, where facets within a group have a common label.
+ */
+function theme_faceted_search_ui_related_categories_table($node, $groups) {
   $items = array();
   foreach ($groups as $group) {
     $first = TRUE;
