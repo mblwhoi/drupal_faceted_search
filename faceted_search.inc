@@ -738,7 +738,7 @@ class faceted_search {
     // Prepare the base query components to include the current search results
     // and to count nodes.
     $query = new faceted_search_query;
-    $query->add_field(NULL, 'COUNT(n.nid)', 'count');
+    $query->add_field(NULL, 'COUNT(DISTINCT(n.nid))', 'count');
     if (!$this->_results_ready) {
       // No temporary table available, search within all nodes.
       $query->add_where('n.status = 1');
