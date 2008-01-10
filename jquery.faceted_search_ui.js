@@ -39,10 +39,10 @@ jQuery.facetedSearchUI = {
     jQuery.facetedSearchUI.id = null;
 
     // Wait a little bit before requesting the tooltip.
-    window.setTimeout(function() { jQuery.facetedSearchUI.delayedActivate(jQuery.facetedSearchUI.url, facetKey, facetId); }, 500);
+    window.setTimeout(function() { jQuery.facetedSearchUI.delayedActivate(jQuery.facetedSearchUI.url); }, 500);
   },
   
-  delayedActivate : function(url, facetKey, facetId) {
+  delayedActivate : function(url) {
     // If tooltip has not been deactivated yet.
     if (jQuery.facetedSearchUI.url != null && jQuery.facetedSearchUI.url == url) {
       // Prepare the tooptip.
