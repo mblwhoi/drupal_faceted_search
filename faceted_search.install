@@ -2,9 +2,42 @@
 // $Id$
 
 /**
+ * Implementation of hook_install().
+ */
+function faceted_search_install() {
+  switch ($GLOBALS['db_type']) {
+    case 'mysql':
+    case 'mysqli':
+      db_query("CREATE TABLE {faceted_search_facets} (
+        env_id int(10) unsigned NOT NULL default '0',
+        facet_key varchar(32) NOT NULL default '',
+        facet_id varchar(32) NOT NULL default '',
+        status int(11) NOT NULL default '0',
+        weight int(11) NOT NULL default '0',
+        sort varchar(32) NOT NULL default '',
+        max_categories int(11) NOT NULL default '0',
+        PRIMARY KEY (env_id, facet_key, facet_id),
+        KEY status (status)
+      ) /*!40100 DEFAULT CHARACTER SET UTF8 */ ");
+
+      db_query("CREATE TABLE {faceted_search_variables} (
+        env_id int(10) unsigned NOT NULL default '0',
+        name varchar(48) NOT NULL default '',
+        value longtext NOT NULL,
+        PRIMARY KEY (env_id, name)
+      ) /*!40100 DEFAULT CHARACTER SET UTF8 */ ");
+      break;
+
+    case 'pgsql':
+      // TODO
+      break;
+  }
+}
+
+/**
  * Implementation of hook_uninstall().
  */
 function faceted_search_uninstall() {
-  db_query("DELETE FROM {variable} WHERE name LIKE 'faceted_search_%'");
-  cache_clear_all('variables', 'cache');
+  db_query('DROP TABLE {faceted_search_facets}');
+  db_query('DROP TABLE {faceted_search_variables}');
 }

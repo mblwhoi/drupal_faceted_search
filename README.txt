@@ -9,18 +9,46 @@ Description
 The Faceted Search module provides a search API and a search interface for
 allowing users to navigate content in such a way that they can rapidly get
 acquainted with the scope and nature of the content, and never feel lost in the
-data. More than a search interface, this is an information discovery tool.
+data. More than a search interface, this is an information navigation and
+discovery tool.
 
 The interface exposes metadata in such a way that users can build their queries
 as they go, refining or expanding the current query, with results automatically
 reflecting the current query. This interface also combines free-text search,
-fully leveraging Drupal's search engine. It avoids complex search forms (which
-break the navigation flow), and never offers facets that would lead to empty
-result sets.
+fully leveraging Drupal's search engine. It avoids complex search forms, and
+never offers facets that would lead to empty result sets.
 
 The most obvious metadata for faceted searches is provided by Drupal's taxonomy
 module. However, Faceted Search's API allows developers to expose other
 metadata, therefore providing more more facets to users for browsing content.
+
+Any of the following cases might prompt you to use Faceted Search:
+
+- Users need to filter content using multiple taxonomy terms at the same time.
+
+- Users want to combine text searches, taxonomy term filtering, and other search
+  criteria.
+
+- Users don't know precisely what they can find on your site, or what to search
+  for.
+
+- You want to hint users at related content they might not have thought of
+  looking for, but that could be of interest to them.
+
+- You want to clearly show users what subject areas are the most comprehensive
+  on your site.
+
+- Your site has too much content for it to be displayed through fixed
+  navigational structures, but you still want it to be navigable.
+
+- You want to use a faceted classification
+  [http://en.wikipedia.org/wiki/Faceted_classification] because a single
+  taxonomic order or a single folksonomy is not suitable or sufficient for your
+  content.
+
+- Users often get empty result sets when searching your site.
+
+- You know that "advanced" search forms suck.
 
 
 The package
@@ -65,7 +93,7 @@ Caution
 
 Faceted searches are database-intensive. If your server can barely keep up with
 your traffic, this package will make things worst. Make sure to benchmark
-performance before deploying this package on a busy site.
+performance before deploying this system on a busy site.
 
 
 Requirements
@@ -123,40 +151,33 @@ Installation
    - Search (Drupal core module)
    - Taxonomy (Drupal core module -- only needed if you intend to use Taxonomy Facets)
 
-3. Go to the Administer > Site building > Blocks page, and enable the following
-   blocks:
+3. Go to the Administer > Site configuration > Faceted Search page, and click
+   the Add Environment tab.
 
-   - Faceted search / Current search
-   - Faceted search / Keyword search
-   - Faceted search / Guided search
-   - Faceted search / Related categories
-   - Faceted search / Sort options
+4. Define a faceted search environment by filling the "Add a faceted search
+   environment" form. Hopefully it is self-explanatory enough, but don't be
+   afraid to experiment. You can always change any of the settings later.
 
-   It is most intuitive for users to have the Current search block located above
-   the Keyword search and Guided search blocks, and the Related categories and
-   Sort options blocks displayed under the content.
+   Click Save to save the new environment. This takes you back to the 
+   Administer > Site configuration > Faceted Search page.
 
-4. Go to the Administer > Site configuration > Faceted Search page.
+5. Go to the Administer > Site building > Blocks page, and enable the following
+   blocks (where my_search is the name of the faceted search environment you
+   have just created):
 
-4a. If you have enabled the Author Facet module, click the Author Facet tab and
-    check the roles you'd like to exclude from faceted searches.
+   - my_search / Current search
+   - my_search / Keyword search
+   - my_search / Guided search
+   - my_search / Related categories
+   - my_search / Sort options
 
-4b. If you have enabled the Content Type Facet module, click the Content Type
-    Facet tab and check the content types you'd like to use in faceted searches.
+   Use Weight to order the blocks. Having the Current search block located above
+   the Keyword search and Guided search blocks is generally most intuitive for
+   users.
 
-4c. If you have enabled the Date Authored Facet module, click the Date Authored
-    Facet tab and select the date formats you'd like to use in faceted searches.
-
-4d. If you have enabled the Taxonomy Facets module, click the Taxonomy Facets
-    tab and check the vocabularies you'd like to use in faceted searches.
-
-    If your site does not have vocabularies, you'll have to create them, and
-    populate them with terms. See the Drupal handbook pages on taxonomy for more
-    information (http://drupal.org/handbook/modules/taxonomy).
-
-5. Click the Settings tab and assign weights and maximum number of categories to
-   each facet. These options apply to the Current search and Guided search
-   blocks.
+   When using multiple faceted search environments, you'll have to configure
+   block visibility to avoid showing multiple Keyword search and Guided search
+   blocks at the same time.
 
 6. Go to the Administer > User management > Access control page, and grant the
    "use faceted search" permission to the roles you intend to give access to
@@ -171,8 +192,8 @@ Search Views module, which allows to display results in an embedded view.
 
 Results shown through a view might differ from those obtained from other display
 styles, because the view might provide additional filters. A view must use the
-"Faceted Search: In current search results" filter to become available to
-Faceted Search as a display style.
+"Faceted Search: Environment ID" argument to become available to Faceted Search
+as a display style.
 
 Note also that, because it is embedded in Faceted Search's results page, the
 view cannot use exposed filters or URL-based arguments.
@@ -188,19 +209,15 @@ here are the step-by-step instructions to use a View to display search results:
    text" and "Nodes per Page" options are ignored when the view is embedded
    within Faceted Search's results page.
 
-4. In the Filters section, add the "Faceted Search: In current search results"
-   filter. Then select Equals as operator, and Yes as value.
+4. In the Arguments section, add the "Faceted Search: Environment ID" filter.
+   You may then select one of Faceted Search's sort options in the argument's
+   "Option" field.
 
-5. Optional: In the Sort Criteria section, add the "Faceted Search: Score"
-   field. Then select the Descending order.
+5. Save your new view.
 
-6. Save your new view.
-
-7. Go to Administer > Site configuration > Faceted search, and select your new
-   view in the "Display style for search results" field.
-
-Note: If you provide a Page view, the Faceted Search filter and sort field will
-be ignored when using the view directly from its URL.
+6. Go to Administer > Site configuration > Faceted search, choose to edit your
+   faceted search environment, and select your new view in the "Display style"
+   field of the "Results page" section.
 
 
 Support
@@ -209,6 +226,12 @@ Support
 For support requests, bug reports, and feature requests, please use Faceted
 Search's issue queue on http://drupal.org/project/issues/faceted_search.
 
+Please DO NOT send bug reports through e-mail or personal contact forms, use the
+aforementioned issue queue instead.
+
+For general discussions about Faceted Search (or other Drupal search solutions),
+you are invited to join the Search group on http://groups.drupal.org/node/4102.
+
 You may also contact the author for paid customizations to this module
 (http://davidlesieur.com/contact).
 
@@ -216,20 +239,20 @@ You may also contact the author for paid customizations to this module
 Credits
 *******
 
-* Project initiated and developed by David Lesieur (http://davidlesieur.com,
+- Project initiated and developed by David Lesieur (http://davidlesieur.com,
   http://drupal.org/user/17157).
 
-* Sponsored in part by Laboratoire NT2 (http://www.labo-nt2.uqam.ca) and Eyos BV
+- Sponsored in part by Laboratoire NT2 (http://www.labo-nt2.uqam.ca) and Eyos BV
   (http://www.eyos.nl).
 
-* The superb Flamenco search interface (http://flamenco.berkeley.edu) has
-  provided, and still provides, most of the inspiration for this project.
+- The superb Flamenco search interface (http://flamenco.berkeley.edu) has
+  provided much inspiration for this project.
 
 
 See also
 ********
 
-* Biblio Facets (http://drupal.org/project/biblio_facets): Integrates Faceted
+- Biblio Facets (http://drupal.org/project/biblio_facets): Integrates Faceted
   Search with Biblio (http://drupal.org/project/biblio) to navigate Biblio's
   types and fields as facets.
 

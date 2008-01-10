@@ -18,7 +18,7 @@ function date_authored_facet_menu($may_cache) {
   if ($may_cache) {
     $items[] = array(
       'path' => 'admin/settings/faceted_search/date_authored_facet',
-      'title' => t('Date Authored Facet'),
+      'title' => t('Date formats'),
       'callback' => 'drupal_get_form',
       'callback arguments' => array('date_authored_facet_admin_settings_form'),
       'access' => user_access('administer site configuration'),
@@ -30,82 +30,75 @@ function date_authored_facet_menu($may_cache) {
 }
 
 /**
- * Implementation of hook_faceted_search_list().
+ * Implementation of hook_faceted_search_collect().
  */
-function date_authored_facet_faceted_search_list() {
-  return new date_authored_facet();
-}
+function date_authored_facet_faceted_search_collect(&$facets, $domain, $env_id, $filter, $arg = NULL) {
+  switch ($domain) {
+    case 'all':
+      // If the date authored facet is allowed.
+      if (!isset($filter) || isset($filter['date_authored'][1])) {
+        $facets[] = new date_authored_facet();
+      }
+      break;
 
-/**
- * Implementation of hook_faceted_search_parse().
- *
- * Scan the given search text for a 'date_authored:date' token, and extract a
- * facet from it. Date is formatted as either YYYY, YYYY-MM, or YYYY-MM-DD. 
- *
- * @param &$text
- *   Text to parse. Once the desired token has been extracted, it is removed
- *   from the text.
- *
- * @return
- *   Array of facets to include in the current search.
- */
-function date_authored_facet_faceted_search_parse(&$text) {
-  $facets = array();
-  if ($date = search_query_extract($text, 'date_authored')) {
-    $matches = array();
-    // Match YYYY(-MM(-DD)).
-    if (preg_match('/^([12][0-9][0-9][0-9])(-([01][0-9])(-([0-3][0-9]))?)?$/', $date, $matches)) {
-      if (_date_authored_facet_check_date($matches[1], $matches[3], $matches[5])) {
-        $path = array(); // Array to build the path of categories.
-        if (isset($matches[1])) {
-          // Found year.
-          $path[] = new date_authored_facet_category($matches[1]);
-        }
-        if (isset($matches[3])) {
-          // Found month.
-          $path[] = new date_authored_facet_category($matches[1], $matches[3]);
-        }
-        if (isset($matches[5])) {
-          // Found day.
-          $path[] = new date_authored_facet_category($matches[1], $matches[3], $matches[5]);
-        }
-        if (!empty($path)) {
-          $facets[] = new date_authored_facet($path);
+    case 'text':
+      // If the date authored facet is allowed.
+      if (!isset($filter) || isset($filter['date_authored'][1])) {
+        // Scan the given search text for a 'date_authored:date' token, and
+        // extract a category from it. Date is formatted as either YYYY,
+        // YYYY-MM, or YYYY-MM-DD.
+        if ($date = search_query_extract($arg, 'date_authored')) {
+          $matches = array();
+          // Match the three possible date formats.
+          if (preg_match('/^([12][0-9][0-9][0-9])(-([01][0-9])(-([0-3][0-9]))?)?$/', $date, $matches)) {
+            if (_date_authored_facet_check_date($matches[1], $matches[3], $matches[5])) {
+              $path = array(); // Array to build the path of categories.
+              if (isset($matches[1])) {
+                // Found year.
+                $path[] = new date_authored_facet_category($matches[1]);
+              }
+              if (isset($matches[3])) {
+                // Found month.
+                $path[] = new date_authored_facet_category($matches[1], $matches[3]);
+              }
+              if (isset($matches[5])) {
+                // Found day.
+                $path[] = new date_authored_facet_category($matches[1], $matches[3], $matches[5]);
+              }
+              if (!empty($path)) {
+                // Create a facet with the date found in the search text as the
+                // active category.
+                $facets[] = new date_authored_facet($path);
+              }
+            }
+          }
+          // Remove the parsed token from the search text.
+          $arg = search_query_insert($arg, 'date_authored');
         }
       }
-    }
-    // Remove the parsed text
-    $text = search_query_insert($text, 'date_authored');
+      return $arg;
+
+    case 'node':
+      // If the date authored facet is allowed.
+      if (!isset($filter) || isset($filter['date_authored'][1])) {
+        // Convert the node's creation date into the user's timezone.
+        $timestamp = $arg->created + _date_authored_facet_get_user_timezone();
+        $year = gmdate('Y', $timestamp);
+        $month = gmdate('n', $timestamp);
+        $day = gmdate('j', $timestamp);
+  
+        // Build the path of categories.
+        $path = array(
+          new date_authored_facet_category($year),
+          new date_authored_facet_category($year, $month),
+          new date_authored_facet_category($year, $month, $day),
+        );
+  
+        // Create a facet with the node's creation date as the active category.
+        $facets[] = new date_authored_facet($path);
+      }
+      break;
   }
-
-  return $facets;
-}
-
-/**
- * Implementation of hook_faceted_search_collect().
- *
- * Return a facet based on the specified node's date of creation. The returned
- * facet will have an active path reflecting the node's date of creation.
- *
- * @return
- *   Array of facets.
- */
-function date_authored_facet_faceted_search_collect($node) {
-  // Convert the node's creation date into the user's timezone.
-  $timestamp = $node->created + _date_authored_facet_get_user_timezone();
-  $year = gmdate('Y', $timestamp);
-  $month = gmdate('n', $timestamp);
-  $day = gmdate('j', $timestamp);
-  
-  // Build the path of categories.
-  $path = array(
-    new date_authored_facet_category($year),
-    new date_authored_facet_category($year, $month),
-    new date_authored_facet_category($year, $month, $day),
-  );
-  
-  // Return an active facet with the node's date created.
-  return array(new date_authored_facet($path));
 }
 
 /**
@@ -169,7 +162,7 @@ function date_authored_facet_admin_settings_form() {
   $form['format'] = array(
     '#type' => 'fieldset',
     '#title' => t('Date formats'),
-    '#description' => t('Choose the display formats to use when navigating this facet.'),
+    '#description' => t('Choose the display formats to use when navigating the date authored facet.'),
   );
   $form['format']['date_authored_facet_format_y'] = array(
     '#type' => 'select',

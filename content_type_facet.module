@@ -9,106 +9,91 @@
 require_once('./'. drupal_get_path('module', 'faceted_search') .'/faceted_search.inc');
 
 /**
- * Implementation of hook_menu().
+ * Implementation of hook_form_alter().
  */
-function content_type_facet_menu($may_cache) {
-  $items = array();
-  if ($may_cache) {
-    $items[] = array(
-      'path' => 'admin/settings/faceted_search/content_type_facet',
-      'title' => t('Content Type Facet'),
-      'callback' => 'drupal_get_form',
-      'callback arguments' => array('content_type_facet_admin_settings_form'),
-      'access' => user_access('administer site configuration'),
-      'type' => MENU_LOCAL_TASK,
+function content_type_facet_form_alter($form_id, &$form) {
+  if ($form_id == 'faceted_search_edit_form') {
+    $env_id = $form['env_id']['#value'];
+    
+    $form['content_type_facet'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Content Type Facet options'),
+      '#collapsible' => TRUE,
+      '#collapsed' => TRUE,
+      '#weight' => 10,
     );
-  }
-  
-  return $items;
-}
-
-/**
- * Implementation of hook_faceted_search_list().
- */
-function content_type_facet_faceted_search_list() {
-  return new content_type_facet();
-}
-
-/**
- * Implementation of hook_faceted_search_parse().
- *
- * Scan the given search text for a 'content_type:name' token, and extract a
- * facet from it.
- *
- * @param &$text
- *   Text to parse. Once the desired token has been extracted, it is removed
- *   from the text.
- *
- * @return
- *   Array of facets to include in the current search.
- */
-function content_type_facet_faceted_search_parse(&$text) {
-  $types = content_type_facet_get_types();
-  $facets = array();
-  if ($type = search_query_extract($text, 'content_type')) {
-    // Create an active facet with the type found in search text
-    if (isset($types[$type])) {
-      $facets[] = new content_type_facet($type);
+    
+    $types = node_get_types('names');
+    if (count($types)) {
+      $form['content_type_facet']['content_type_facet_types'] = array( // TODO: Ensure that all types are displayed when none is checked.
+        '#type' => 'checkboxes',
+        '#title' => t('Content types to display in the Content type facet'),
+        '#description' => t('Check the content types that shall be displayed in the Content type facet. Note that this setting is not a filter for search results; other content types can still be searchable through other facets or from text searches.'),
+        '#options' => $types,
+        '#default_value' => isset($env_id) ? content_type_facet_get_types($env_id) : array(),
+      );
     }
-    // Remove the parsed text
-    $text = search_query_insert($text, 'content_type');
+    else {
+      $form['content_type_facet']['content_type_facet_help'] = array(
+        '#type' => 'markup',
+        '#value' => '<p>'. t('No content types are currently defined.') .'</p>',
+      );
+    }
   }
-  return $facets;
 }
 
 /**
  * Implementation of hook_faceted_search_collect().
- *
- * Return a facet based on the specified node's type. The returned facet will
- * have an active category reflecting the node's type.
- *
- * @return
- *   Array of facets.
  */
-function content_type_facet_faceted_search_collect($node) {
-  $types = content_type_facet_get_types();
-  $facets = array();
-  if (isset($types[$node->type])) {
-    $facets[] = new content_type_facet($node->type);
-  }
-  return $facets;
-}
+function content_type_facet_faceted_search_collect(&$facets, $domain, $env_id, $filter, $arg = NULL) {
+  switch ($domain) {
+    case 'all':
+      // If the content type facet is allowed.
+      if (!isset($filter) || isset($filter['content_type'][1])) {
+        $types = content_type_facet_get_types($env_id);
+        $facets[] = new content_type_facet($types);
+      }
+      break;
 
-/**
- * Menu callback for the administration settings.
- */
-function content_type_facet_admin_settings_form() {
-  $types = node_get_types('names');
-  if (count($types)) {
-    $form['content_type_facet_types'] = array(
-      '#type' => 'checkboxes',
-      '#title' => t('Content types to display in the Content type facet'),
-      '#description' => t('Check the content types that shall be displayed in the Content type facet. Note that this setting is not a filter for search results; other content types can still be searchable through other facets or from text searches.'),
-      '#options' => $types,
-      '#default_value' => content_type_facet_get_types(),
-    );
+    case 'text':
+      // If the content type facet is allowed.
+      if (!isset($filter) || isset($filter['content_type'][1])) {
+        $types = content_type_facet_get_types($env_id);
+        // Scan the search text for a 'content_type:type' token, and extract a
+        // facet from it.
+        if ($type = search_query_extract($arg, 'content_type')) {
+          // Create a facet with the type found in search text as the active
+          // category.
+          if (isset($types[$type])) {
+            $facets[] = new content_type_facet($types, $type);
+          }
+          // Remove the parsed token from the search text.
+          $arg = search_query_insert($arg, 'content_type');
+        }
+      }
+      return $arg;
+
+    case 'node':
+      // If the content type facet is allowed.
+      if (!isset($filter) || isset($filter['content_type'][1])) {
+        $types = content_type_facet_get_types($env_id);
+        if (isset($types[$arg->type])) {
+          // Create a facet with the node's type as the active category.
+          $facets[] = new content_type_facet($types, $arg->type);
+        }
+      }
+      break;
   }
-  else {
-    $form['message'] = array(
-      '#value' => '<p>'. t('There are currently no content types. Go to the !page first to create content types.', array('!page' => l(t('Content types page'), 'admin/content/types'))) .'</p>',
-    );
-  }
-  return system_settings_form($form);
 }
 
 /**
  * Return an array of all node types that have been enabled for use in faceted
  * searches.
  */
-function content_type_facet_get_types() {
+function content_type_facet_get_types($env_id) {
   // Intersecting with node_get_types() ensures that only types that still exist
   // are returned.
-  return array_filter(array_intersect(variable_get('content_type_facet_types', array()), array_keys(node_get_types())));
+  return array_filter(array_intersect(faceted_search_variable_get($env_id, 'content_type_facet_types', array()), array_keys(node_get_types())));
 }
 
 /**
@@ -116,15 +101,23 @@ function content_type_facet_get_types() {
  */
 class content_type_facet extends faceted_search_facet {
 
+  var $_types = array();
+  
   /**
    * Constructor. Optionally assigns the active type of the facet.
+   *
+   * @param $types
+   *   Array of possible type names for this facet.
+   * @param $type
+   *   Optional. Type to set as this facet's active category.
    */
-  function content_type_facet($type = NULL) {
+  function content_type_facet($types, $type = NULL) {
     $active_path = array();
     if ($type) {
       $active_path[] = new content_type_facet_category($type, node_get_types('name', $type));
     }
     parent::faceted_search_facet('content_type', $active_path);
+    $this->_types = $types;
   }
 
   function get_id() {
@@ -184,7 +177,7 @@ class content_type_facet extends faceted_search_facet {
     $query->add_table('node_type', 'type', 'n', 'type');
     $query->add_field('node_type', 'type');
     $query->add_field('node_type', 'name');
-    $query->add_where("node_type.type IN ('". implode("', '", content_type_facet_get_types()) ."')");
+    $query->add_where("node_type.type IN ('". implode("', '", $this->_types) ."')");
     $query->add_groupby('node_type_type');
     return TRUE;
   }

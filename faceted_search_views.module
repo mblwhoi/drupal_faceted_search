@@ -8,11 +8,12 @@
 
 /**
  * Implementation of hook_faceted_search_ui_style_info().
+ *
+ * Return display styles based on views that use the Faceted Search argument.
  */
 function faceted_search_views_faceted_search_ui_style_info() {
   $styles = array();
-  // Only get the views that use the Faceted Search filter.
-  $results = db_query("SELECT v.name FROM {view_view} v INNER JOIN {view_filter} f ON f.vid = v.vid WHERE f.field = 'faceted_search.faceted_search_current_search' ORDER BY v.name");
+  $results = db_query("SELECT v.name FROM {view_view} v INNER JOIN {view_argument} a ON a.vid = v.vid WHERE a.type = 'faceted_search_results' ORDER BY v.name");
   while ($view = db_fetch_object($results)) {
     $styles[$view->name] = new faceted_search_views_style($view->name);
   }
@@ -20,63 +21,63 @@ function faceted_search_views_faceted_search_ui_style_info() {
 }
 
 /**
- * Implementation of hook_views_tables.
+ * Implementation of hook_views_arguments().
  */
-function faceted_search_views_views_tables() {
-  $tables['faceted_search'] = array(
-    'name' => 'faceted_search',
-    'provider' => 'internal',
-    'filters' => array(
-      'faceted_search_current_search' => array(
-        'name' => t('Faceted Search: In current search results'),
-        'help' => t("Filter by Faceted Search's current search results."),
-        'operator' => array('=' => t('Equals')),
-        'value' => array('#type' => 'select', '#options' => array(1 => t('Yes'))),
-        'handler' => 'faceted_search_views_current_search_filter_handler',
-        'cacheable' => 'no',
+function faceted_search_views_views_arguments() {
+  $arguments['faceted_search_results'] = array(
+    'name' => t('Faceted Search: Environment ID'),
+    'help' => t("Filter by the current results of a Faceted Search environment. The option field allows you to sort the results by relevance score. If a sort option is selected, it is applied before all other sort criteria of the view. The higher the score, the more relevant the item."), 
+    'handler' => 'faceted_search_views_results_argument_handler',
+    'option' => array(
+      '#type' => 'select',
+      '#options' => array(
+        'none' => t('No sort'),
+        'ASC' => t('Sort by score - Ascending'),
+        'DESC' => t('Sort by score - Descending'),
       ),
+      '#default_value' => 0,
     ),
-    'sorts' => array(
-      'score' => array(
-        'name' => t('Faceted search: Score'),
-        'help' => t('Sort by relevance score in the context of the current search. The higher the score, the more relevant the node.'),
-        'handler' => 'faceted_search_views_score_sort_handler',
-      ),
-    ),
+    // Note: Sort options are provided here, because a sort handler would not
+    // have access to the environment id argument, and thus would not know the
+    // name of the results table to get its score field (unless ugly hacks were
+    // done).
   );
-  return $tables;
+  return $arguments;
 }
 
 /**
- * A handler that updates the specified query to filter with Faceted Search's
- * current results.
+ * An argument handler that updates the specified query to filter with a Faceted
+ * Search environment's current results.
  */
-function faceted_search_views_current_search_filter_handler($op, $filter, $filterinfo, &$query) {
-  global $_faceted_search_ui_current_search;
+function faceted_search_views_results_argument_handler($op, &$query, $a1, $a2 = NULL) {
+  global $faceted_search;
+  
+  if ($op == 'filter' && isset($faceted_search[$a2])) {
+    if ($faceted_search[$a2]->ready()) {
+      // Thanks to the above condition, this handler has no effect when there is
+      // no current search results. This avoids a race condition between Views
+      // and Faceted Search; Faceted Search may use this query in a subquery to
+      // build its results, and Views may call this handler afterwards to filter
+      // by Faceted Search's results.
+      
+      if ($faceted_search[$a2]->get_results_count() > 0) {
+        // Join results table.
+        $join = array(
+          'type' => 'inner',
+          'left' => array('table' => 'node', 'field' => 'nid'),
+          'right' => array('field' => 'nid'),
+        );
+        $query->add_table($faceted_search[$a2]->get_results_table(), FALSE, 1, $join);
 
-  if ($_faceted_search_ui_current_search->get_results_count() > 0) {
-    // Thanks to the above condition, this handler has no effect when there is
-    // no current search results. This avoids a race condition between Views and
-    // Faceted Search; Faceted Search may use the query of a view containing
-    // this handler as a subquery to filter its results, and Views may call this
-    // handler afterwards to filter with Faceted Search's results.
-    $join = array(
-      'type' => 'inner',
-      'left' => array('table' => 'node', 'field' => 'nid'),
-      'right' => array('field' => 'nid'),
-    );
-    $query->add_table($_faceted_search_ui_current_search->get_results_table(), FALSE, 1, $join);
-  }
-}
-
-/**
- * A handler that sorts the view according to relevance score in the search results.
- */
-function faceted_search_views_score_sort_handler($op, &$query, $sortinfo, $sortdata) {
-  global $_faceted_search_ui_current_search;
-
-  if (isset($query->tables[$_faceted_search_ui_current_search->get_results_table()])) {
-    $query->add_orderby($_faceted_search_ui_current_search->get_results_table(), 'score', $sortdata['sortorder']);
+        // Apply sort option.
+        if ($a1['options'] != 'none') {
+          $query->add_orderby($faceted_search[$a2]->get_results_table(), 'score', $a1['options']);
+        }
+      }
+      else {
+        $query->add_where('FALSE'); // Ensure the view shows no results.
+      }
+    }
   }
 }
 
@@ -111,10 +112,10 @@ class faceted_search_views_style {
    * and field selection provided by its main query is not wanted here. The
    * view's only purpose here is to filter the search results.
    */
-  function query_alter(&$query) {
+  function query_alter(&$query, $search) {
     $view = views_get_view($this->_name);
     if ($view) {
-      $queries = views_build_view('queries', $view);
+      $queries = views_build_view('queries', $view, array($search->get_env_id()));
       // Make sure the view's query selects node.id rather than a count. This
       // assumes that the view is counting node.id.
       $views_query = str_replace('count(node.nid)', 'node.nid', $queries['countquery']); 
@@ -129,7 +130,7 @@ class faceted_search_views_style {
   function format_results($search) {
     if ($view = views_get_view($this->_name)) {
       $limit = variable_get('default_nodes_main', 10);
-      return views_build_view('embed', $view, NULL, TRUE, $limit);
+      return views_build_view('embed', $view, array($search->get_env_id()), TRUE, $limit);
     }
   }
 }

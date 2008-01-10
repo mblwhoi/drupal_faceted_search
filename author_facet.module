@@ -9,98 +9,82 @@
 require_once('./'. drupal_get_path('module', 'faceted_search') .'/faceted_search.inc');
 
 /**
- * Implementation of hook_menu().
+ * Implementation of hook_form_alter().
  */
-function author_facet_menu($may_cache) {
-  $items = array();
-  if ($may_cache) {
-    $items[] = array(
-      'path' => 'admin/settings/faceted_search/author_facet',
-      'title' => t('Author Facet'),
-      'callback' => 'drupal_get_form',
-      'callback arguments' => array('author_facet_admin_settings_form'),
-      'access' => user_access('administer site configuration'),
-      'type' => MENU_LOCAL_TASK,
+function author_facet_form_alter($form_id, &$form) {
+  if ($form_id == 'faceted_search_edit_form') {
+    $env_id = $form['env_id']['#value'];
+    
+    $form['author_facet'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Author Facet options'),
+      '#collapsible' => TRUE,
+      '#collapsed' => TRUE,
+      '#weight' => 10,
     );
-  }
-  
-  return $items;
-}
-
-/**
- * Implementation of hook_faceted_search_list().
- */
-function author_facet_faceted_search_list() {
-  return new author_facet();
-}
-
-/**
- * Implementation of hook_faceted_search_parse().
- *
- * Scan the given search text for a 'author:uid' token, and extract a
- * facet from it.
- *
- * @param &$text
- *   Text to parse. Once the desired token has been extracted, it is removed
- *   from the text.
- *
- * @return
- *   Array of facets to include in the current search.
- */
-function author_facet_faceted_search_parse(&$text) {
-  $facets = array();
-  if ($uid = search_query_extract($text, 'author')) {
-    if (is_numeric($uid)) {
-      if ($name = author_facet_get_user_name($uid)) {
-        // Create an active facet with the user found in the search text.
-        $facets[] = new author_facet($uid, $name);
-      }
+    
+    $roles = array_filter(user_roles(TRUE), '_author_facet_filter_role');
+    if (count($roles)) {
+      $form['author_facet']['author_facet_excluded_roles'] = array( // TODO: Invert the logic, and ensure that all roles are included when none is checked.
+        '#type' => 'checkboxes',
+        '#title' => t('Roles to exclude from the Author facet'),
+        '#description' => t('Any user having one or more of the checked roles will not appear in the facet. Note that this setting is not a filter for search results; content from excluded users can still be searchable through other facets or from text searches.'),
+        '#options' => $roles,
+        '#default_value' => isset($env_id) ? author_facet_excluded_roles($env_id) : array(),
+      );
     }
-    // Remove the parsed text
-    $text = search_query_insert($text, 'author');
-  }    
-  return $facets;
+    else {
+      $form['author_facet']['author_facet_help'] = array(
+        '#type' => 'markup',
+        '#value' => '<p>'. t('No roles are currently available.') .'</p>',
+      );
+    }
+  }
 }
 
 /**
  * Implementation of hook_faceted_search_collect().
- *
- * Return a facet based on the specified node's author. The returned facet will
- * have an active category reflecting the node's author.
- *
- * @return
- *   Array of facets.
  */
-function author_facet_faceted_search_collect($node) {
-  $facets = array();
-  if ($node->uid && $name = author_facet_get_user_name($node->uid)) {
-    // Create an active facet with the node's author.
-    $facets[] = new author_facet($node->uid, $name);
-  }
-  return $facets;
-}
+function author_facet_faceted_search_collect(&$facets, $domain, $env_id, $filter, $arg = NULL) {
+  switch ($domain) {
+    case 'all':
+      // If the author facet is allowed.
+      if (!isset($filter) || isset($filter['author'][1])) {
+        $excluded_roles = author_facet_excluded_roles($env_id);
+        $facets[] = new author_facet($excluded_roles);
+      }
+      break;
 
-/**
- * Menu callback for the administration settings.
- */
-function author_facet_admin_settings_form() {
-  $roles = array_filter(user_roles(TRUE), '_author_facet_filter_role');
-  if (count($roles)) {
-    $form['author_facet_excluded_roles'] = array(
-      '#type' => 'checkboxes',
-      '#title' => t('Roles to exclude from the Author facet'),
-      '#description' => t('Any user having one or more of the checked roles will not appear in the facet. Note that this setting is not a filter for search results; content from excluded users can still be searchable through other facets or from text searches.'),
-      '#options' => $roles,
-      '#default_value' => author_facet_excluded_roles(),
-    );
-    return system_settings_form($form);
-  }
-  else {
-    $form['help'] = array(
-      '#type' => 'markup',
-      '#value' => '<p>'. t('No roles currently available for this configuration.') .'</p>',
-    );
-    return $form;
+    case 'text':
+      // If the author facet is allowed.
+      if (!isset($filter) || isset($filter['author'][1])) {
+        // Scan the search text for a 'author:uid' token, and extract a
+        // facet from it.
+        if ($uid = search_query_extract($arg, 'author')) {
+          if (is_numeric($uid)) {
+            $excluded_roles = author_facet_excluded_roles($env_id);
+            if ($name = author_facet_get_user_name($env_id, $uid, $excluded_roles)) {
+              // Create a facet with the user found in the search text as the
+              // active category.
+              $facets[] = new author_facet($excluded_roles, $uid, $name);
+            }
+          }
+          // Remove the parsed token from the search text.
+          $arg = search_query_insert($arg, 'author');
+        }
+      }
+      return $arg;
+
+    case 'node':
+      // If the author facet is allowed.
+      if ($arg->uid && (!isset($filter) || isset($filter['author'][1]))) {
+        $excluded_roles = author_facet_excluded_roles($env_id);
+        if ($name = author_facet_get_user_name($env_id, $arg->uid, $excluded_roles)) {
+          // Create a facet with the node's author as the active category.
+          $facets[] = new author_facet($excluded_roles, $arg->uid, $name);
+        }
+      }
+      break;
   }
 }
 
@@ -110,9 +94,9 @@ function author_facet_admin_settings_form() {
  * @return The user's name, or FALSE if not found or if the user's role is not
  * allowed in the facet.
  */
-function author_facet_get_user_name($uid) {
-  if (author_facet_excluded_roles()) {
-    return db_result(db_query('SELECT u.name FROM {users} u WHERE u.uid = %d AND NOT EXISTS (SELECT r.rid FROM {users_roles} r WHERE u.uid = r.uid AND r.rid IN ('. implode(', ', author_facet_excluded_roles()) .'))', $uid));
+function author_facet_get_user_name($env_id, $uid, $excluded_roles = array()) {
+  if (count($excluded_roles)) {
+    return db_result(db_query('SELECT u.name FROM {users} u WHERE u.uid = %d AND NOT EXISTS (SELECT r.rid FROM {users_roles} r WHERE u.uid = r.uid AND r.rid IN ('. implode(', ', $excluded_roles) .'))', $uid));
   }
   else {
     return db_result(db_query('SELECT u.name FROM {users} u WHERE u.uid = %d', $uid));
@@ -122,13 +106,9 @@ function author_facet_get_user_name($uid) {
 /**
  * Returns an array with the roles that should not be used in faceted searches.
  */
-function author_facet_excluded_roles() {
-  static $excluded_roles = NULL;
-  if (!isset($excluded_roles)) {
-    $roles = array_filter(user_roles(TRUE), '_author_facet_filter_role');
-    $excluded_roles = array_intersect(variable_get('author_facet_excluded_roles', array()), array_keys($roles));
-  }
-  return $excluded_roles;
+function author_facet_excluded_roles($env_id) {
+  $roles = array_filter(user_roles(TRUE), '_author_facet_filter_role');
+  return array_intersect(faceted_search_variable_get($env_id, 'author_facet_excluded_roles', array()), array_keys($roles));
 }
 
 /**
@@ -143,15 +123,18 @@ function _author_facet_filter_role($role) {
  */
 class author_facet extends faceted_search_facet {
 
+  var $_excluded_roles;
+  
   /**
    * Constructor. Optionally assigns the active user of the facet.
    */
-  function author_facet($uid = NULL, $name = '') {
+  function author_facet($excluded_roles = array(), $uid = NULL, $name = '') {
     $active_path = array();
     if ($uid && $name) {
       $active_path[] = new author_facet_category($uid, $name);
     }
     parent::faceted_search_facet('author', $active_path);
+    $this->_excluded_roles = $excluded_roles;
   }
 
   function get_id() {
@@ -213,8 +196,8 @@ class author_facet extends faceted_search_facet {
     $query->add_field('users', 'name');
     $query->add_where('users.status = 1');
     $query->add_groupby('users_uid');
-    if (author_facet_excluded_roles()) {
-      $query->add_where('NOT EXISTS (SELECT users_roles.rid FROM {users_roles} users_roles WHERE users.uid = users_roles.uid AND users_roles.rid IN ('. implode(', ', author_facet_excluded_roles()) .'))');
+    if (count($this->_excluded_roles)) {
+      $query->add_where('NOT EXISTS (SELECT users_roles.rid FROM {users_roles} users_roles WHERE users.uid = users_roles.uid AND users_roles.rid IN ('. implode(', ', $this->_excluded_roles) .'))');
     }
     return TRUE;
   }

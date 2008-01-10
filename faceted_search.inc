@@ -66,6 +66,11 @@ class faceted_search_facet {
   var $_key = '';
 
   /**
+   * The status of this facet.
+   */
+  var $_status = FALSE;
+  
+  /**
    * The weight of this facet, for sorting purposes.
    */
   var $_weight = 0;
@@ -74,12 +79,12 @@ class faceted_search_facet {
    * The current sort criteria to use for this facet. This determines how to
    * sort the facet's categories.
    */
-  var $_sort = '';
+  var $_sort = 'count';
 
   /**
    * The maximum number of categories to show in this facet.
    */
-  var $_max_categories = 0;
+  var $_max_categories = 10;
 
   /**
    * An array representing the path of categories leading to the active category
@@ -94,7 +99,6 @@ class faceted_search_facet {
    *   Key corresponding to this class of facet. This should be the same string
    *   as used to construct the facet from the search text in the module's
    *   implementation of hook_faceted_search_parse(). 
-   *
    * @param $active_path
    *   Array representing the path leading to the active category, including the
    *   active category itself. Defaults to an empty array, meaning no active
@@ -106,22 +110,26 @@ class faceted_search_facet {
   }
 
   /**
-   * Assign this facet's settings.
+   * Assign settings to this facet.
    *
-   * @param $module
-   *   Creator module of this facet.
+   * @param $settings
+   *   Array of settings.
    */
-  function load_settings($module) {
-    // Retrieve the settings for this facet
-    $settings = variable_get('faceted_search_display', array());
-    $key = $module .'_'. $this->get_id();
-    
-    // Assign this facet's settings
-    $this->_weight = isset($settings[$key]['weight']) ? $settings[$key]['weight'] : $this->get_default_weight();
-    $this->_sort = isset($settings[$key]['sort']) ? $settings[$key]['sort'] : $this->get_default_sort();
-    $this->_max_categories = isset($settings[$key]['max']) ? $settings[$key]['max'] : $this->get_default_max_categories();
+  function set($settings) {
+    if (isset($settings['status'])) {
+      $this->_status = $settings['status'];
+    }
+    if (isset($settings['weight'])) {
+      $this->_weight = $settings['weight'];
+    }
+    if (isset($settings['sort'])) {
+      $this->_sort = $settings['sort'];
+    }
+    if (isset($settings['max_categories'])) {
+      $this->_max_categories = $settings['max_categories'];
+    }
   }
-
+  
   /**
    * Return the key for this class of facet.
    */
@@ -130,6 +138,26 @@ class faceted_search_facet {
   }
 
   /**
+   * Return the status of this facet.
+   *
+   * @return
+   *   TRUE when the facet is enabled, FALSE otherwise.
+   */
+  function get_status() {
+    return $this->_status;
+  }
+
+  /**
+   * Change the status of this facet.
+   *
+   * @param $status
+   *   TRUE to enable the facet, FALSE to disable it.
+   */
+  function set_status($status) {
+    $this->_status = $status;
+  }
+  
+  /**
    * Return the configured weight of this facet, for sorting purposes.
    */
   function get_weight() {
@@ -137,15 +165,12 @@ class faceted_search_facet {
   }
 
   /**
-   * Return the default weight of this facet.
-   *
-   * Subclasses may want to override this in order to use the some weight
-   * associated to the data underlying the facet.
+   * Assign the weight of this facet.
    */
-  function get_default_weight() {
-    return 0;
+  function set_weight($weight) {
+    $this->_weight = $weight;
   }
-
+  
   /**
    * Returns the available sort options for this facet. Each option is a key =>
    * label pair.
@@ -157,13 +182,6 @@ class faceted_search_facet {
     return array('count' => t('Count'));
   }
 
-  /**
-   * Returns the default sort criteria for this facet.
-   */
-  function get_default_sort() {
-    return 'count';
-  }
-  
   /**
    * Returns the current sort criteria for this facet.
    */
@@ -202,21 +220,22 @@ class faceted_search_facet {
    * Return the configured maximum number of categories to show in this facet.
    *
    * @return
-   *   Maximum number of categories, or 0 for no limit.
+   *   The maximum number of categories, or 0 for no limit.
    */
   function get_max_categories() {
     return $this->_max_categories;
   }
 
   /**
-   * Return the default maximum number of categories to show in this facet.
+   * Assign the maximum number of categories to show in this facet.
    *
-   * Subclasses may want to override this.
+   * @param $max_categories
+   *   The maximum number of categories, or 0 for no limit.
    */
-  function get_default_max_categories() {
-    return 10;
+  function set_max_categories($max_categories) {
+    $this->_max_categories = $max_categories;
   }
-
+  
   /**
    * Updates a query for retrieving the root categories of this facet and their
    * associated nodes within the current search results. 
@@ -324,11 +343,15 @@ class faceted_search_keyword_category extends faceted_search_category {
 
 /**
  * A keyword facet. This is the base class for other keyword facets.
+ *
+ * Keywords are not really facets, but giving them the same interface as a facet
+ * helps display them in the current search block.
  */
 class faceted_search_keyword_facet extends faceted_search_facet {
   
-  function faceted_search_keyword_facet($active_category = NULL) {
-    parent::faceted_search_facet('keyword', $active_category ? array($active_category) : array());
+  function faceted_search_keyword_facet($active_category = NULL, $settings = array()) {
+    parent::faceted_search_facet('keyword', $active_category ? array($active_category) : array(), $settings);
+    parent::set_status(TRUE); // Keyword facets are always enabled.
   }
 
   /**
@@ -354,11 +377,12 @@ class faceted_search_keyword_facet extends faceted_search_facet {
  */
 class faceted_search_keyword_and_facet extends faceted_search_keyword_facet {
 
-  function faceted_search_keyword_and_facet($keyword = '') {
+  function faceted_search_keyword_and_facet($keyword = '', $settings = array()) {
     if ($keyword) {
       $active_category = new faceted_search_keyword_category(theme('faceted_search_keyword_and_label', $keyword), $keyword);
     }
-    parent::faceted_search_keyword_facet($active_category);
+    parent::faceted_search_keyword_facet($active_category, $settings);
+    parent::set_weight(-999); // Assign default weight.
   }
 
   function get_id() {
@@ -368,11 +392,6 @@ class faceted_search_keyword_and_facet extends faceted_search_keyword_facet {
   function get_label() {
     return t('Keyword (AND)');
   }
-  
-  function get_default_weight() {
-    return -999;
-  }
-  
 }
 
 /**
@@ -380,11 +399,12 @@ class faceted_search_keyword_and_facet extends faceted_search_keyword_facet {
  */
 class faceted_search_keyword_phrase_facet extends faceted_search_keyword_facet {
 
-  function faceted_search_keyword_phrase_facet($phrase = '') {
+  function faceted_search_keyword_phrase_facet($phrase = '', $settings = array()) {
     if ($phrase) {
       $active_category = new faceted_search_keyword_category(theme('faceted_search_keyword_phrase_label', $phrase), '"'. $phrase .'"');
     }
-    parent::faceted_search_keyword_facet($active_category);
+    parent::faceted_search_keyword_facet($active_category, $settings);
+    parent::set_weight(-998); // Assign default weight.
   }
 
   function get_id() {
@@ -394,10 +414,6 @@ class faceted_search_keyword_phrase_facet extends faceted_search_keyword_facet {
   function get_label() {
     return t('Keyword (Phrase)');
   }
-  
-  function get_default_weight() {
-    return -998;
-  }
 }
 
 /**
@@ -405,11 +421,12 @@ class faceted_search_keyword_phrase_facet extends faceted_search_keyword_facet {
  */
 class faceted_search_keyword_or_facet extends faceted_search_keyword_facet {
   
-  function faceted_search_keyword_or_facet($keywords = array()) {
+  function faceted_search_keyword_or_facet($keywords = array(), $settings = array()) {
     if (count($keywords) > 0) {
       $active_category = new faceted_search_keyword_category(theme('faceted_search_keyword_or_label', $keywords), implode(' OR ', $keywords));
     }
-    parent::faceted_search_keyword_facet($active_category);
+    parent::faceted_search_keyword_facet($active_category, $settings);
+    parent::set_weight(-997); // Assign default weight.
   }
 
   function get_id() {
@@ -419,10 +436,6 @@ class faceted_search_keyword_or_facet extends faceted_search_keyword_facet {
   function get_label() {
     return t('Keyword (OR)');
   }
-  
-  function get_default_weight() {
-    return -997;
-  }
 }
 
 /**
@@ -430,11 +443,12 @@ class faceted_search_keyword_or_facet extends faceted_search_keyword_facet {
  */
 class faceted_search_keyword_not_facet extends faceted_search_keyword_facet {
 
-  function faceted_search_keyword_not_facet($keyword = '') {
+  function faceted_search_keyword_not_facet($keyword = '', $settings = array()) {
     if ($keyword) {
       $active_category = new faceted_search_keyword_category(theme('faceted_search_keyword_not_label', $keyword), '-'. $keyword);
     }
-    parent::faceted_search_keyword_facet($active_category);
+    parent::faceted_search_keyword_facet($active_category, $settings);
+    parent::set_weight(-996); // Assign default weight.
   }
 
   function get_id() {
@@ -444,16 +458,19 @@ class faceted_search_keyword_not_facet extends faceted_search_keyword_facet {
   function get_label() {
     return t('Keyword (NOT)');
   }
-  
-  function get_default_weight() {
-    return -996;
-  }
 }
 
 /**
  * This class stores and processes data related to a search.
  */
 class faceted_search {
+  /**
+   * The environment id for this search. Each search environment has its own
+   * settings which make it possible to use multiple distinct search
+   * interfaces. It is this id that allows to select the proper settings.
+   */
+  var $_env_id = 0;
+  
   /**
    * The full, unprocessed search text.
    */
@@ -482,9 +499,9 @@ class faceted_search {
   var $_results_count = 0;
 
   /**
-   * Flag to indicate whether the results table has been created.
+   * Flag to indicate whether the search has been executed.
    */
-  var $_results_ready = FALSE;
+  var $_ready = FALSE;
   
   /**
    * Collection of facets currently used by this search.
@@ -494,27 +511,68 @@ class faceted_search {
   /**
    * Constructor. Initialize the search data and parses the given search text.
    *
+   * @param $env_id
+   *   Id of the environment to use for this search.
    * @param $text
    *   Search text.
-   *
-   * @param $table
-   *   Table with search results. This must be specified if more than a single
-   *   faceted search has to be executed.
    */
-  function faceted_search($text, $table = 'temp_faceted_search_results') {
-    $this->_text = $this->_keywords = $text;
-    $this->_results_table = $table;
+  function faceted_search($env_id, $text = '') {
+    $this->_env_id = $env_id;
+    $this->_text = $text;
+    $this->_results_table = 'temp_faceted_search_results_'. $env_id;
 
-    // Will parse the given text into facets, stripping parsed text from the
-    // search text and leaving only the keywords that do not match any facet.
-    $this->_parse_facets();
+    // Load settings for all enabled facets in this search environment.
+    $all_settings = faceted_search_load_facet_settings($env_id);
+    
+    // Make a filter with all enabled facets.
+    $filter = faceted_search_get_facet_filter($all_settings);
 
-    // Parse the remaining keywords and create corresponding "keyword" facets.
-    $this->_parse_keywords();
+    // Collect all facets relevant to this search.
+    foreach (module_implements('faceted_search_collect') as $module) {
+      $module_facets = array();
+      $hook = $module .'_faceted_search_collect';
 
-    uasort($this->_facets, '_faceted_search_compare_facets');
+      // Parse the search text and obtain corresponding facets. Text is stripped
+      // from facet data so the remaining text is considered as simple keywords.
+      $text = $hook($module_facets, 'text', $env_id, $filter, $text);
+
+      // Disallow facets that have been collected from the search text.
+      foreach ($module_facets as $facet) {
+        unset($filter[$facet->get_key()][$facet->get_id()]);
+      }
+      
+      // Obtain remaining allowed facets.
+      if (!empty($filter)) {
+        $hook($module_facets, 'all', $env_id, $filter);
+      }
+      
+      // Merge the facets listed by the current module.
+      $this->_facets = array_merge($this->_facets, $module_facets);
+
+      if (empty($filter)) {
+        break; // No more facets allowed.
+      }
+    }
+    
+    // Assign the remaining text as keywords.
+    $this->_keywords = $text;
+
+    // Keyword pseudo-facets must be created after all the other facets so that
+    // no recognized facet token gets interpreted as a keyword. Keyword facets
+    // also don't need a filter since they are always enabled.
+    faceted_search_collect_keyword_facets($this->_facets, 'text', $env_id, $text);
+    
+    // Prepare facets for use, assigning them their settings are sorting them.
+    faceted_search_prepare_facets($this->_facets, $all_settings);
   }
 
+  /**
+   * Return the environment id of this search.
+   */
+  function get_env_id() {
+    return $this->_env_id;
+  }
+  
   /**
    * Return the original search text of this search (i.e. the text that was
    * passed to the constructor).
@@ -554,6 +612,13 @@ class faceted_search {
         return array($index, $facet);
       }
     }
+  }
+
+  /**
+   * Return TRUE when the search has been executed.
+   */
+  function ready() {
+    return $this->_ready;
   }
   
   /**
@@ -607,14 +672,14 @@ class faceted_search {
     // uniform distribution in the range 0..1).
     
     // Always join the table resulting from $query1.
-    $query2->add_table('temp_faceted_search_nids', 'nid', 'n', 'nid', 'i', 'INNER', FALSE);
+    $query2->add_table('temp_faceted_search_nids_'. $this->_env_id, 'nid', 'n', 'nid', 'i', 'INNER', FALSE);
     if ($query_parts[0] || $query_parts[2]) {
       // Has some positive or negative keywords
       $query2->add_table('search_dataset', 'sid', 'n', 'nid', 'd');
     }
 
     // Apply node type filter
-    if ($excluded_types = faceted_search_excluded_types()) {
+    if ($excluded_types = faceted_search_excluded_types($this->_env_id)) {
       $query2->add_where("n.type NOT IN ('". implode("','", $excluded_types) ."')");
     }
     // Used to avoid joining on node_comment_statistics twice
@@ -677,8 +742,9 @@ class faceted_search {
     // additional filtering).
     module_invoke_all('faceted_search_query_alter', $this, $query2);
     
-    // Perform search
+    // Perform the search.
     $this->_execute_search_query($query1, $query2);
+    $this->_ready = TRUE; 
   }
 
   /**
@@ -739,12 +805,12 @@ class faceted_search {
     // and to count nodes.
     $query = new faceted_search_query;
     $query->add_field(NULL, 'COUNT(DISTINCT(n.nid))', 'count');
-    if (!$this->_results_ready) {
+    if (!$this->_ready) {
       // No temporary table available, search within all nodes.
       $query->add_where('n.status = 1');
 
       // Apply node type filter.
-      if ($excluded_types = faceted_search_excluded_types()) {
+      if ($excluded_types = faceted_search_excluded_types($this->_env_id)) {
         $query->add_where("n.type NOT IN ('". implode("','", $excluded_types) ."')");
       }
       
@@ -777,7 +843,7 @@ class faceted_search {
     $facet->build_sort_query($query);
     
     // Apply node type filter.
-    if ($excluded_types = faceted_search_excluded_types()) {
+    if ($excluded_types = faceted_search_excluded_types($this->_env_id)) {
       $query->add_where("n.type NOT IN ('". implode("','", $excluded_types) ."')");
     }
     
@@ -790,138 +856,6 @@ class faceted_search {
     }
     return $facet->build_categories($results);
   }
-  
-  /**
-   * Add a facet to this search.
-   *
-   * If the specified facet has an active category, it will replace any existing
-   * facet with the same id that has no active category.
-   *
-   * If the specified facet has no active category, it will be added only if no
-   * facet exists with the same id.
-   *
-   * @param $facet
-   *   Facet to add.
-   *
-   * @param $module
-   *   Creator module of the facet.
-   */
-  function _add_facet($facet, $module) {
-    $facet->load_settings($module);
-    $this->_facets[] = $facet;
-  }
-  
-  /**
-   * Helper function to invoke 'faceted_search_parse' on other modules, passing
-   * on the keywords search text as reference (so they can modify them).
-   */
-  function _parse_facets() {
-    foreach (module_implements('faceted_search_list') as $module) {
-      // Retrieve all available facets from the module
-      $available_facets = _faceted_search_list($module);
-
-      // Ask the module to parse keywords and create corresponding facets
-      $used_facets = array();
-      if (module_hook($module, 'faceted_search_parse')) {
-        $function = $module .'_faceted_search_parse';
-        $used_facets = $function($this->_keywords);
-      }
-
-      foreach ($used_facets as $facet) {
-        // Keep only those available facets that are not used by the search
-        if (isset($available_facets[$facet->get_id()])) {
-          unset($available_facets[$facet->get_id()]);
-        }
-
-        // Add the used facet into this search
-        $this->_add_facet($facet, $module);
-      }
-
-      // Add the remaining available facets
-      foreach ($available_facets as $facet) {
-        // Add the used facet into this search
-        $this->_add_facet($facet, $module);
-      }
-    }
-  }
-  
-  /**
-   * Helper function for parsing keywords and classify them into 'positive' and
-   * 'negative' arrays.
-   *
-   * @return Array with subarrays 'positive' and 'negative'.
-   */
-  function _parse_keywords() {
-    // TODO: Most of this function was taken from search_parse_query(), which is
-    // called in faceted_search::execute(), which means this processing is
-    // done twice. Needs to be fixed. Splitting search_parse_query() into two
-    // distinct functions could help.
-    $keys = array('positive' => array(), 'negative' => array());
-
-    // Tokenize query string
-    $matches = array();
-    preg_match_all('/ (-?)("[^"]+"|[^" ]+)/i', ' '. $this->_keywords, $matches, PREG_SET_ORDER);
-
-    // Taken from search_parse_query() (search.module 1.207) - BEGIN
-    // Classify tokens
-    $or = FALSE;
-    foreach ($matches as $match) {
-      $phrase = FALSE;
-      // Strip off phrase quotes
-      if ($match[2]{0} == '"') {
-        $match[2] = substr($match[2], 1, -1);
-        $phrase = TRUE;
-      }
-      // Simplify keyword according to indexing rules and external preprocessors
-      $words = search_simplify($match[2]);
-      // Re-explode in case simplification added more words, except when matching a phrase
-      $words = $phrase ? array($words) : preg_split('/ /', $words, -1, PREG_SPLIT_NO_EMPTY);
-      // Negative matches
-      if ($match[1] == '-') {
-        $keys['negative'] = array_merge($keys['negative'], $words);
-      }
-      // OR operator: instead of a single keyword, we store an array of all
-      // OR'd keywords.
-      elseif ($match[2] == 'OR' && count($keys['positive'])) {
-        $last = array_pop($keys['positive']);
-        // Starting a new OR?
-        if (!is_array($last)) {
-          $last = array($last);
-        }
-        $keys['positive'][] = $last;
-        $or = TRUE;
-        continue;
-      }
-      // Plain keyword
-      else {
-        if ($or) {
-          // Add to last element (which is an array)
-          $keys['positive'][count($keys['positive']) - 1] = array_merge($keys['positive'][count($keys['positive']) - 1], $words);
-        }
-        else {
-          $keys['positive'] = array_merge($keys['positive'], $words);
-        }
-      }
-      $or = FALSE;
-    }
-    // Taken from search_parse_query() - END
-
-    // Create the facets
-    foreach ($keys['positive'] as $keyword) {
-      if (is_array($keyword)) {
-        $this->_add_facet(new faceted_search_keyword_or_facet($keyword), 'faceted_search');
-      }
-      elseif (strpos($keyword, ' ')) {
-        $this->_add_facet(new faceted_search_keyword_phrase_facet($keyword), 'faceted_search');
-      }
-      else {
-        $this->_add_facet(new faceted_search_keyword_and_facet($keyword), 'faceted_search');
-      }
-    }
-    foreach ($keys['negative'] as $keyword) {
-      $this->_add_facet(new faceted_search_keyword_not_facet($keyword), 'faceted_search');
-    }
-  }
 
   /**
    * Run the specified queries and store results in the temporary table.
@@ -929,15 +863,14 @@ class faceted_search {
   function _execute_search_query($query1, $query2) {
     // This is similar to search.module's do_search()
 
-    // Drop query1's temporary table if it exists -- this allows for multiple
-    // faceted searches per page request
-    db_query('DROP TEMPORARY TABLE IF EXISTS temp_faceted_search_nids'); 
+    // Drop query1's temporary table if it exists.
+    db_query('DROP TEMPORARY TABLE IF EXISTS temp_faceted_search_nids_'. $this->_env_id); 
     
     // Execute query1
-    db_query_temporary($query1->query(), $query1->args(), 'temp_faceted_search_nids');
+    db_query_temporary($query1->query(), $query1->args(), 'temp_faceted_search_nids_'. $this->_env_id);
 
     // Calculate maximum relevance and normalize it.
-    $normalize = db_result(db_query('SELECT MAX(relevance) FROM temp_faceted_search_nids'));
+    $normalize = db_result(db_query('SELECT MAX(relevance) FROM temp_faceted_search_nids_'. $this->_env_id));
     if ($normalize) {
       foreach ($query2->fields as $alias => $field) {
         $query2->fields[$alias] = str_replace('i.relevance', '('. (1.0 / $normalize) .' * i.relevance)', $field);
@@ -947,7 +880,6 @@ class faceted_search {
     // Execute query2
     db_query_temporary($query2->query(), $query2->args(), $this->_results_table);
     $this->_results_count = db_result(db_query('SELECT COUNT(*) FROM '. $this->_results_table));
-    $this->_results_ready = TRUE;
   }
 }
 
@@ -1235,44 +1167,3 @@ class faceted_search_query {
   }
 }
 
-/**
- * Invoke hook_faceted_search_list() on the specified module.
- *
- * @return
- *   Array of facets indexed by facet id.
- */
-function _faceted_search_list($module) {
-  $function = $module .'_faceted_search_list';
-  $facets = $function();
-
-  if (!isset($facets)) {
-    return array();
-  }
-  elseif (!is_array($facets)) {
-    return array($facets->get_id() => $facets);
-  }
-  else {
-    $key_facets = array();
-    foreach ($facets as $facet) {
-      $key_facets[$facet->get_id()] = $facet;
-    }
-    return $key_facets;
-  }
-}
-
-/**
- * Utility function to sort facets.
- */
-function _faceted_search_compare_facets($a, $b) {
-  if ($a->get_weight() == $b->get_weight()) {
-    if ($a->get_key() == 'keyword' && $b->get_key() == 'keyword' && $a->is_active() && $b->is_active()) {
-      // Special case for sorting keyword facets
-      // (Using intermediate variables to please PHP4)
-      $a_cat = $a->get_active_category();
-      $b_cat = $b->get_active_category();
-      return strcmp($a_cat->get_label(), $b_cat->get_label());
-    }
-    return strcmp($a->get_label(), $b->get_label());
-  }
-  return ($a->get_weight() < $b->get_weight()) ? -1 : 1;
-}
