@@ -38,6 +38,8 @@ Any of the following cases might prompt you to use Faceted Search:
 - You want to clearly show users what subject areas are the most comprehensive
   on your site.
 
+- You are trying to discover relationships or trends between contents.
+
 - Your site has too much content for it to be displayed through fixed
   navigational structures, but you still want it to be navigable.
 
