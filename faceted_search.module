@@ -380,7 +380,7 @@ function faceted_search_edit_form_submit($form_id, $form_values) {
   }
     
   // Exclude elements that should not be saved as environment variables.
-  $exclude = array('submit', 'reset', 'form_id', 'op', 'form_token', 'env_id', 'facets');
+  $exclude = array('save', 'save_and_edit', 'form_id', 'op', 'form_token', 'env_id', 'facets');
 
   // Save form values as environment variables (except those excluded).
   foreach ($form_values as $key => $value) {
