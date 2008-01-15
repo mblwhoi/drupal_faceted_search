@@ -2,6 +2,13 @@
 // $Id$
 
 /**
+ * Implementation of hook_uninstall().
+ */
+function faceted_search_ui_uninstall() {
+  db_query("DELETE FROM {blocks} WHERE module = 'faceted_search_ui'");
+}
+
+/**
  * Renamed blocks' delta.
  */
 function faceted_search_ui_update_1() {
