@@ -94,7 +94,7 @@ function faceted_search_update_2() {
   while ($result = db_fetch_object($results)) {
     $excluded_types = array_filter(faceted_search_variable_get($result->env_id, 'excluded_types', array()));
     if (count($excluded_types) > 0) {
-      $types = array_keys(node_get_types());
+      $types = array_keys(node_get_types('names'));
       foreach ($types as $key => $type) {
         if (isset($excluded_types[$type])) {
           unset($types[$key]);
