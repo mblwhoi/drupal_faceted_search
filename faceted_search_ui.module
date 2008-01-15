@@ -876,7 +876,7 @@ function faceted_search_ui_build_remover_path($env_id, $ui_state, $facets, $inde
  *   any is desired.
  *
  * @param $context
- *   The caller's context (either 'guided', 'current', or 'related-categories').
+ *   The caller's context (either 'guided', 'current', or 'related').
  *
  * @return
  *   Array of breadcrumb components.
@@ -900,7 +900,7 @@ function faceted_search_ui_build_breadcrumb($env_id, $ui_state, $facets, $index,
       $link = faceted_search_ui_build_path($env_id, $ui_state, '', $facets);
       $breadcrumb[] = l($category->get_label(), $link);
     }
-    if ($category && $context != 'related-categories') {
+    if ($category && $context != 'related') {
       // The last category needs not be a link to itself since it is already in
       // the current search.
       // Note: theme_faceted_search_keyword_or_label() uses <em> in the label.
@@ -1089,6 +1089,7 @@ function theme_faceted_search_ui_page($search, $content) {
   $classes = array(
     'faceted-search-page',
     'faceted-search-stage-'. $search->ui_state['stage'],
+    'faceted-search-env-'. faceted_search_variable_get($search->get_env_id(), 'name', 'faceted_search'),
   );
   return '<div class="'. implode(' ', $classes) .'">'. $content .'</div>'."\n";
 }
@@ -1101,7 +1102,7 @@ function theme_faceted_search_ui_page($search, $content) {
  * @param $facet
  *   The facet object.
  * @param $context
- *   The caller's context (either 'guided', 'current', 'related-categories', or
+ *   The caller's context (either 'guided', 'current', 'related', or
  *   'categories').
  * @param $content
  *   The facet's content (heading, categories, etc.)
@@ -1111,7 +1112,7 @@ function theme_faceted_search_ui_facet_wrapper($env_id, $facet, $context, $conte
     'faceted-search-facet', // Note: Tooltips rely on this class.
     'faceted-search-env-'. faceted_search_variable_get($env_id, 'name', $env_id),
     'faceted-search-facet--'. check_plain($facet->get_key() .'--'. $facet->get_id()), // Note: Tooltips rely on this class.
-    'faceted-search-facet-'. ($facet->is_active() && $context != 'related-categories' ? 'active' : 'inactive'),
+    'faceted-search-facet-'. ($facet->is_active() && $context != 'related' ? 'active' : 'inactive'),
     'faceted-search-'. $context,
   );
   return '<div class="'. implode(' ', $classes) .'">'. $content .'</div>'."\n";
@@ -1124,7 +1125,7 @@ function theme_faceted_search_ui_facet_wrapper($env_id, $facet, $context, $conte
  * @param $env_id
  *   Id of the search environment to use.
  * @param $context
- *   The caller's context (either 'guided', 'current', or 'related-categories').
+ *   The caller's context (either 'guided', 'current', or 'related').
  * @param $show_label
  *   Determines whether to display the facet's label. True by default.
  */
@@ -1333,8 +1334,8 @@ function theme_faceted_search_ui_related_list_ungrouped($env_id, $node, $groups)
   $output = '';
   foreach ($groups as $group) {
     foreach ($group as $facet) {
-      $rendered_facet = theme('faceted_search_ui_facet_heading', $env_id, _faceted_search_ui_defaults(), array($facet), 0, 'related-categories');
-      $output .= theme('faceted_search_ui_facet_wrapper', $env_id, $facet, 'related-categories', $rendered_facet);
+      $rendered_facet = theme('faceted_search_ui_facet_heading', $env_id, _faceted_search_ui_defaults(), array($facet), 0, 'related');
+      $output .= theme('faceted_search_ui_facet_wrapper', $env_id, $facet, 'related', $rendered_facet);
     }
   }
   return $output;
@@ -1357,16 +1358,15 @@ function theme_faceted_search_ui_related_list_grouped($env_id, $node, $groups) {
     foreach ($group as $facet) {
       if ($first) {
         $rendered_facets = array(); // Start a new group.
-        $label = theme('faceted_search_ui_facet_label', array($facet), 0, 'related-categories');
+        $label = theme('faceted_search_ui_facet_label', array($facet), 0, 'related');
       }
-      $rendered_facets[] = theme('faceted_search_ui_facet_heading', $env_id, _faceted_search_ui_defaults(), array($facet), 0, 'related-categories', FALSE);
+      $rendered_facets[] = theme('faceted_search_ui_facet_heading', $env_id, _faceted_search_ui_defaults(), array($facet), 0, 'related', FALSE);
       $first = FALSE;
     }
-    $output .= theme('faceted_search_ui_facet_wrapper', $env_id, $facet, 'related-categories', $label . theme('item_list', $rendered_facets));
+    $output .= theme('faceted_search_ui_facet_wrapper', $env_id, $facet, 'related', $label . theme('item_list', $rendered_facets));
   }
   return $output;
 }
-
 
 /**
  * Display a list of facets related to a node in a table.
@@ -1383,12 +1383,12 @@ function theme_faceted_search_ui_related_table($env_id, $node, $groups) {
   foreach ($groups as $group) {
     $first = TRUE;
     foreach ($group as $facet) {
-      $rendered_facet = theme('faceted_search_ui_facet_heading', $env_id, _faceted_search_ui_defaults(), array($facet), 0, 'related-categories', FALSE);
-      $rendered_facet = theme('faceted_search_ui_facet_wrapper', $env_id, $facet, 'related-categories', $rendered_facet);
+      $rendered_facet = theme('faceted_search_ui_facet_heading', $env_id, _faceted_search_ui_defaults(), array($facet), 0, 'related', FALSE);
+      $rendered_facet = theme('faceted_search_ui_facet_wrapper', $env_id, $facet, 'related', $rendered_facet);
       if ($first) {
         // Output a row with two cells: the label and the first facet of the group.
-        $label = theme('faceted_search_ui_facet_label', array($facet), 0, 'related-categories');
-        $label = theme('faceted_search_ui_facet_wrapper', $env_id, $facet, 'related-categories', $label);
+        $label = theme('faceted_search_ui_facet_label', array($facet), 0, 'related');
+        $label = theme('faceted_search_ui_facet_wrapper', $env_id, $facet, 'related', $label);
         $items[] = array( // Row.
           'data' => array(
             array( // 1st cell.
