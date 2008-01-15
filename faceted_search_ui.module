@@ -523,8 +523,8 @@ function faceted_search_ui_guided_block($search) {
  * repeating the label).
  */
 function faceted_search_ui_related_block($env_id, $node) {
-  $excluded_types = array_filter(faceted_search_variable_get($env_id, 'excluded_types', array()));
-  if (isset($excluded_types[$node->type])) {
+  $types = faceted_search_types($env_id);
+  if (!in_array($node->type, $types)) {
     return; // This node type is not used in the current environment.
   }
 

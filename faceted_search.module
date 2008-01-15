@@ -294,12 +294,12 @@ function faceted_search_edit_form($env_id = NULL) {
     '#default_value' => isset($env_id) ? faceted_search_variable_get($env_id, 'description', '') : '',
     '#description' => t('The description of the environment for site administrators.'),
   );
-  $form['info']['excluded_types'] = array( // TODO: Reverse the logic, and ensure that all types are included when none is checked.
-    '#title' => t('Content types to exclude'),
+  $form['info']['types'] = array(
+    '#title' => t('Content types'),
     '#type' => 'checkboxes',
     '#options' => node_get_types('names'),
-    '#description' => t('Check any content type that should not be used in this faceted search environment.'),
-    '#default_value' => faceted_search_excluded_types($env_id),
+    '#description' => t('Only the checked types will appear in this search environment. If none is checked, all types will be allowed.'),
+    '#default_value' => faceted_search_variable_get($env_id, 'types', array()),
   );
 
   // Facets section.
@@ -406,10 +406,17 @@ function faceted_search_edit_form_submit($form_id, $form_values) {
 }
 
 /**
- * Return the collection of node types excluded by a given environment.
+ * Return the collection of node types handled by a given environment.
  */
-function faceted_search_excluded_types($env_id) {
-  return array_filter(faceted_search_variable_get($env_id, 'excluded_types', array()));
+function faceted_search_types($env_id) {
+  $types = array_filter(faceted_search_variable_get($env_id, 'types', array()));
+  if (count($types) == 0) {
+    return array_keys(node_get_types());
+  }
+  else {
+    // Only return types that exist.
+    return array_intersect($types, array_keys(node_get_types()));
+  }
 }
 
 /**

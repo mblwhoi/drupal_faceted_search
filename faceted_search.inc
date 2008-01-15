@@ -679,8 +679,8 @@ class faceted_search {
     }
 
     // Apply node type filter
-    if ($excluded_types = faceted_search_excluded_types($this->_env_id)) {
-      $query2->add_where("n.type NOT IN ('". implode("','", $excluded_types) ."')");
+    if ($types = faceted_search_types($this->_env_id)) {
+      $query2->add_where("n.type IN ('". implode("','", $types) ."')");
     }
     // Used to avoid joining on node_comment_statistics twice
     $stats_added = FALSE;
@@ -810,8 +810,8 @@ class faceted_search {
       $query->add_where('n.status = 1');
 
       // Apply node type filter.
-      if ($excluded_types = faceted_search_excluded_types($this->_env_id)) {
-        $query->add_where("n.type NOT IN ('". implode("','", $excluded_types) ."')");
+      if ($types = faceted_search_types($this->_env_id)) {
+        $query->add_where("n.type IN ('". implode("','", $types) ."')");
       }
       
       // There is no results table at this point, so we can't rely on the
@@ -843,8 +843,8 @@ class faceted_search {
     $facet->build_sort_query($query);
     
     // Apply node type filter.
-    if ($excluded_types = faceted_search_excluded_types($this->_env_id)) {
-      $query->add_where("n.type NOT IN ('". implode("','", $excluded_types) ."')");
+    if ($types = faceted_search_types($this->_env_id)) {
+      $query->add_where("n.type IN ('". implode("','", $types) ."')");
     }
     
     // Run the query and return the categories.

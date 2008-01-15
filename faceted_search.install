@@ -85,3 +85,24 @@ function faceted_search_update_1() {
   return $ret;
 }
 
+/**
+ * Inverted the logic for selecting content types used in search environments.
+ */
+function faceted_search_update_2() {
+  $ret = array();
+  $results = db_query('SELECT DISTINCT env_id FROM {faceted_search_variables}');
+  while ($result = db_fetch_object($results)) {
+    $excluded_types = array_filter(faceted_search_variable_get($result->env_id, 'excluded_types', array()));
+    if (count($excluded_types) > 0) {
+      $types = array_keys(node_get_types());
+      foreach ($types as $key => $type) {
+        if (isset($excluded_types[$type])) {
+          unset($types[$key]);
+        }
+      }
+      faceted_search_variable_set($result->env_id, 'types', $types);
+      faceted_search_variable_del($result->env_id, 'excluded_types');
+    }
+  }
+  return $ret;
+}
