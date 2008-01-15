@@ -58,3 +58,18 @@ function taxonomy_facets_update_1() {
   variable_del('taxonomy_facets_status');
   return array();
 }
+
+/**
+ * Move settings to a faceted search environment.
+ */
+function taxonomy_facets_update_2() {
+  $ret = array();
+  variable_get('taxonomy_facets_vocabularies', array());
+  if (count($form_values['taxonomy_facets_vocabularies'])) {
+    foreach ($form_values['taxonomy_facets_vocabularies'] as $vid => $status) {
+      $ret[] = update_sql("UPDATE {faceted_search_facets} SET status = $status WHERE env_id = 1 AND facet_key = 'taxonomy' AND facet_id = '$vid'");
+    }
+  }
+  variable_del('taxonomy_facets_vocabularies');
+  return $ret;
+}

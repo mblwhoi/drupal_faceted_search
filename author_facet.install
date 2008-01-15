@@ -8,3 +8,18 @@ function author_facet_uninstall() {
   variable_del('author_facet_excluded_roles');
 }
 
+/**
+ * Move settings to a faceted search environment.
+ */
+function author_facet_update_1() {
+  $ret = array();
+  $ret[] = update_sql("CREATE TABLE IF NOT EXISTS {faceted_search_variables} (
+      env_id int(10) unsigned NOT NULL default '0',
+      name varchar(48) NOT NULL default '',
+      value longtext NOT NULL,
+      PRIMARY KEY (env_id, name)
+    ) /*!40100 DEFAULT CHARACTER SET UTF8 */ ");
+  faceted_search_variable_set(1, 'author_facet_excluded_roles', variable_get('author_facet_excluded_roles', array()));
+  variable_del('author_facet_excluded_roles');
+  return $ret;
+}

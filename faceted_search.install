@@ -41,3 +41,47 @@ function faceted_search_uninstall() {
   db_query('DROP TABLE {faceted_search_facets}');
   db_query('DROP TABLE {faceted_search_variables}');
 }
+
+/**
+ * Move settings to a faceted search environment.
+ */
+function faceted_search_update_1() {
+  $ret = array();
+
+  // Create new tables
+  $ret[] = update_sql("CREATE TABLE IF NOT EXISTS {faceted_search_facets} (
+      env_id int(10) unsigned NOT NULL default '0',
+      facet_key varchar(32) NOT NULL default '',
+      facet_id varchar(32) NOT NULL default '',
+      status int(11) NOT NULL default '0',
+      weight int(11) NOT NULL default '0',
+      sort varchar(32) NOT NULL default '',
+      max_categories int(11) NOT NULL default '0',
+      PRIMARY KEY (env_id, facet_key, facet_id),
+      KEY status (status)
+    ) /*!40100 DEFAULT CHARACTER SET UTF8 */ ");
+  $ret[] = update_sql("CREATE TABLE IF NOT EXISTS {faceted_search_variables} (
+      env_id int(10) unsigned NOT NULL default '0',
+      name varchar(48) NOT NULL default '',
+      value longtext NOT NULL,
+      PRIMARY KEY (env_id, name)
+    ) /*!40100 DEFAULT CHARACTER SET UTF8 */ ");
+
+  // Move settings
+  $env_id = db_next_id('{faceted_search}_env_id'); // Adding new environment.
+  $display_settings = variable_get('faceted_search_display', array()); // Old settings.
+  foreach ($display_settings as $key => $settings) {
+    $matches = array();
+    if (preg_match('/^([a-z_]+)_facets?_(.+)$/', $key, $matches) != 0) {
+      $ret[] = update_sql("INSERT INTO {faceted_search_facets} (env_id, facet_key, facet_id, status, weight, sort, max_categories) VALUES ($env_id, '${matches[1]}', '${matches[2]}', 1, ${settings['weight']}, '${settings['sort']}', ${settings['max']})");
+    }
+  }
+  faceted_search_variable_set($env_id, 'name', 'faceted_search');
+  faceted_search_variable_set($env_id, 'title', t('Search'));
+  faceted_search_variable_set($env_id, 'excluded_types', variable_get('faceted_search_excluded_types', array()));
+  variable_del('faceted_search_display');
+  variable_del('faceted_search_excluded_types');
+  
+  return $ret;
+}
+
