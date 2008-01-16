@@ -25,12 +25,12 @@ function content_type_facet_form_alter($form_id, &$form) {
     
     $types = node_get_types('names');
     if (count($types)) {
-      $form['content_type_facet']['content_type_facet_types'] = array( // TODO: Ensure that all types are displayed when none is checked.
+      $form['content_type_facet']['content_type_facet_types'] = array(
         '#type' => 'checkboxes',
         '#title' => t('Content types to display in the Content type facet'),
-        '#description' => t('Check the content types that shall be displayed in the Content type facet. Note that this setting is not a filter for search results; other content types can still be searchable through other facets or from text searches.'),
+        '#description' => t('Only the checked types will appear in the Content type facet. If none is checked, all types allowed by the search environment may appear in the facet. Note that this setting is not a filter for search results; all content types allowed by the search environment will still be searchable through other facets or from text searches.'),
         '#options' => $types,
-        '#default_value' => isset($env_id) ? content_type_facet_get_types($env_id) : array(),
+        '#default_value' => (isset($env_id) ? array_filter(faceted_search_variable_get($env_id, 'content_type_facet_types', array())) : array()),
       );
     }
     else {
@@ -87,13 +87,19 @@ function content_type_facet_faceted_search_collect(&$facets, $domain, $env_id, $
 }
 
 /**
- * Return an array of all node types that have been enabled for use in faceted
- * searches.
+ * Return an array of all node types that are allowed to be shown in the content
+ * type facet.
  */
 function content_type_facet_get_types($env_id) {
-  // Intersecting with node_get_types() ensures that only types that still exist
-  // are returned.
-  return array_filter(array_intersect(faceted_search_variable_get($env_id, 'content_type_facet_types', array()), array_keys(node_get_types())));
+  $types = array_filter(faceted_search_variable_get($env_id, 'content_type_facet_types', array()));
+  if (count($types) == 0) {
+    // Return all allowed types.
+    return faceted_search_types($env_id);
+  }
+  else {
+    // Only return allowed types.
+    return array_intersect($types, faceted_search_types($env_id));
+  }
 }
 
 /**
