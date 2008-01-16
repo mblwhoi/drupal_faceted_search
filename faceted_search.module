@@ -299,7 +299,7 @@ function faceted_search_edit_form($env_id = NULL) {
     '#type' => 'checkboxes',
     '#options' => node_get_types('names'),
     '#description' => t('Only the checked types will appear in this search environment. If none is checked, all types will be allowed.'),
-    '#default_value' => faceted_search_variable_get($env_id, 'types', array()),
+    '#default_value' => array_filter(faceted_search_variable_get($env_id, 'types', array())),
   );
 
   // Facets section.
@@ -409,15 +409,23 @@ function faceted_search_edit_form_submit($form_id, $form_values) {
  * Return the collection of node types handled by a given environment.
  */
 function faceted_search_types($env_id) {
-  $types = array_filter(faceted_search_variable_get($env_id, 'types', array()));
-  if (count($types) == 0) {
-    // Return all types that exist.
-    return array_keys(node_get_types('names'));
+  static $types = NULL;
+  if (!isset($types)) {
+    $all_types = array();
+    foreach (array_keys(node_get_types('names')) as $type) {
+      $all_types[$type] = $type;
+    }
+    $types = array_filter(faceted_search_variable_get($env_id, 'types', array()));
+    if (count($types) == 0) {
+      // Return all types that exist.
+      $types = $all_types;
+    }
+    else {
+      // Only return types that exist.
+      $types = array_intersect($types, $all_types);
+    }
   }
-  else {
-    // Only return types that exist.
-    return array_intersect($types, array_keys(node_get_types('names')));
-  }
+  return $types;
 }
 
 /**
