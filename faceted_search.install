@@ -73,6 +73,11 @@ function faceted_search_update_1() {
   foreach ($display_settings as $key => $settings) {
     $matches = array();
     if (preg_match('/^([a-z_]+)_facets?_(.+)$/', $key, $matches) != 0) {
+      if ($matches[1] == 'biblio') {
+        // Note: This is specific to Biblio Facets. Have to do this here since
+        // we don't control the order of execution each module's update.
+        $matches[1] = 'biblio_field';
+      }
       $ret[] = update_sql("INSERT INTO {faceted_search_facets} (env_id, facet_key, facet_id, status, weight, sort, max_categories) VALUES ($env_id, '${matches[1]}', '${matches[2]}', 1, ${settings['weight']}, '${settings['sort']}', ${settings['max']})");
     }
   }
