@@ -666,7 +666,7 @@ function theme_faceted_search_facets_settings($form) {
     unset($form[$key]['sort']['#title']);
     $rows[] = array(
       drupal_render($form[$key]['status']),
-      check_plain($form[$key]['#title']),
+      check_plain($form[$key]['#title']) . ($form[$key]['help']['#value'] ? ' ('. check_plain($form[$key]['help']['#value']) .')' : ''),
       drupal_render($form[$key]['type']),
       drupal_render($form[$key]['weight']),
       drupal_render($form[$key]['sort']),
@@ -707,7 +707,7 @@ function _faceted_search_facet_settings_form(&$form, $facets) {
   foreach ($facets as $facet) {
     $key = $facet->get_key() .'_'. $facet->get_id();
     $form[$key] = array(
-      '#title' => check_plain($facet->get_label()),
+      '#title' => $facet->get_label(),
       '#weight' => $facet->get_weight(),
     );
     $form[$key]['facet_key'] = array(
@@ -717,6 +717,10 @@ function _faceted_search_facet_settings_form(&$form, $facets) {
     $form[$key]['facet_id'] = array(
       '#type' => 'value',
       '#value' => $facet->get_id(),
+    );
+    $form[$key]['help'] = array(
+      '#type' => 'value',
+      '#value' => $facet->get_help(),
     );
     $form[$key]['status'] = array(
       '#title' => t('Enabled'),

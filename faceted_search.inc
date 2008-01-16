@@ -138,6 +138,13 @@ class faceted_search_facet {
   }
 
   /**
+   * Return a help text for site administrators.
+   */
+  function get_help() {
+    return '';
+  }
+  
+  /**
    * Return the status of this facet.
    *
    * @return
