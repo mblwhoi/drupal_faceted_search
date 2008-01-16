@@ -23,14 +23,17 @@ function content_type_facet_form_alter($form_id, &$form) {
       '#weight' => 10,
     );
     
-    $types = node_get_types('names');
+    $types = array();
+    foreach (array_keys(node_get_types('names')) as $type) {
+      $types[$type] = $type;
+    }
     if (count($types)) {
       $form['content_type_facet']['content_type_facet_types'] = array(
         '#type' => 'checkboxes',
         '#title' => t('Content types to display in the Content type facet'),
         '#description' => t('Only the checked types will appear in the Content type facet. If none is checked, all types allowed by the search environment may appear in the facet. Note that this setting is not a filter for search results; all content types allowed by the search environment will still be searchable through other facets or from text searches.'),
-        '#options' => $types,
-        '#default_value' => (isset($env_id) ? array_filter(faceted_search_variable_get($env_id, 'content_type_facet_types', array())) : array()),
+        '#options' => node_get_types('names'),
+        '#default_value' => (isset($env_id) ? array_intersect($types, array_filter(faceted_search_variable_get($env_id, 'content_type_facet_types', array()))) : array()),
       );
     }
     else {

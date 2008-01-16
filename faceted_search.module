@@ -294,12 +294,16 @@ function faceted_search_edit_form($env_id = NULL) {
     '#default_value' => isset($env_id) ? faceted_search_variable_get($env_id, 'description', '') : '',
     '#description' => t('The description of the environment for site administrators.'),
   );
+  $types = array();
+  foreach (array_keys(node_get_types('names')) as $type) {
+    $types[$type] = $type;
+  }
   $form['info']['types'] = array(
     '#title' => t('Content types'),
     '#type' => 'checkboxes',
     '#options' => node_get_types('names'),
     '#description' => t('Only the checked types will appear in this search environment. If none is checked, all types will be allowed.'),
-    '#default_value' => array_filter(faceted_search_variable_get($env_id, 'types', array())),
+    '#default_value' => array_intersect($types, array_filter(faceted_search_variable_get($env_id, 'types', array()))),
   );
 
   // Facets section.
