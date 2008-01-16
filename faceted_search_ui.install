@@ -54,7 +54,11 @@ function faceted_search_ui_update_4() {
   $ret = array();
   $ret[] = update_sql("UPDATE {blocks} SET delta = CONCAT('1_', delta) WHERE module = 'faceted_search_ui'");
   faceted_search_variable_set(1, 'base_path', 'faceted_search');
-  faceted_search_variable_set(1, 'start_page', variable_get('faceted_search_ui_start_page', 'faceted_search'));
+  $start_page = variable_get('faceted_search_ui_start_page', 'faceted_search');
+  if ($start_page == 'faceted_search/select') {
+    $start_page = 'faceted_search';
+  }
+  faceted_search_variable_set(1, 'start_page', $start_page);
   $results_style = variable_get('faceted_search_ui_style', 'faceted_search_ui:extracts');
   if ($results_style != 'faceted_search_ui:extracts' && $results_style != 'faceted_search_ui:teasers') {
     $results_style = 'faceted_search_ui:extracts'; // Was probably using a view... Have to reset. 
