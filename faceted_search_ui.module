@@ -299,6 +299,12 @@ function faceted_search_ui_faceted_search_query_alter($search, &$query) {
 function faceted_search_ui_stage_results($env_id, $text = '') {
   global $faceted_search;
 
+  // If the menu system has splitted the search text because of slashes, glue it back.
+  if (func_num_args() > 2) {
+    $args = func_get_args();
+    $text .= '/'. implode('/', array_slice($args, 2));
+  }
+
   // Initialize the current search.
   $faceted_search[$env_id] = new faceted_search($env_id, $text);
   $faceted_search[$env_id]->ui_state = _faceted_search_ui_defaults();
@@ -337,6 +343,12 @@ function faceted_search_ui_faceted_search_ui_style_info() {
 function faceted_search_ui_stage_select($env_id, $text = '') {
   global $faceted_search;
 
+  // If the menu system has splitted the search text because of slashes, glue it back.
+  if (func_num_args() > 2) {
+    $args = func_get_args();
+    $text .= '/'. implode('/', array_slice($args, 2));
+  }
+
   // Initialize the current search.
   $faceted_search[$env_id] = new faceted_search($env_id, $text);
   $faceted_search[$env_id]->ui_state = _faceted_search_ui_defaults();
@@ -367,6 +379,12 @@ function faceted_search_ui_stage_facet($env_id, $facet_key_id = '', $facet_sort 
     return;
   }
   
+  // If the menu system has splitted the search text because of slashes, glue it back.
+  if (func_num_args() > 4) {
+    $args = func_get_args();
+    $text .= '/'. implode('/', array_slice($args, 4));
+  }
+
   // Initialize the current search.
   $faceted_search[$env_id] = new faceted_search($env_id, $text);
   $faceted_search[$env_id]->ui_state = _faceted_search_ui_defaults();
@@ -403,6 +421,12 @@ function faceted_search_ui_stage_categories($env_id, $facet_key_id = '', $facet_
 
   if (!$facet_key_id || !$facet_sort) {
     exit();
+  }
+  
+  // If the menu system has splitted the search text because of slashes, glue it back.
+  if (func_num_args() > 4) {
+    $args = func_get_args();
+    $text .= '/'. implode('/', array_slice($args, 4));
   }
   
   // Initialize the current search.
