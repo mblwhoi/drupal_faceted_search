@@ -870,9 +870,6 @@ class faceted_search {
   function _execute_search_query($query1, $query2) {
     // This is similar to search.module's do_search()
 
-    // Drop query1's temporary table if it exists.
-    db_query('DROP TEMPORARY TABLE IF EXISTS temp_faceted_search_nids_'. $this->_env_id); 
-    
     // Execute query1
     db_query_temporary($query1->query(), $query1->args(), 'temp_faceted_search_nids_'. $this->_env_id);
 
