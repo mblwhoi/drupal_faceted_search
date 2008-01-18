@@ -23,13 +23,30 @@ function faceted_search_install() {
       db_query("CREATE TABLE {faceted_search_variables} (
         env_id int(10) unsigned NOT NULL default '0',
         name varchar(48) NOT NULL default '',
-        value longtext NOT NULL,
+        value longtext NOT NULL default '',
         PRIMARY KEY (env_id, name)
       ) /*!40100 DEFAULT CHARACTER SET UTF8 */ ");
       break;
 
     case 'pgsql':
-      // TODO
+      db_query("CREATE TABLE {faceted_search_facets} (
+        env_id int_unsigned NOT NULL default '0',
+        facet_key varchar(32) NOT NULL default '',
+        facet_id varchar(32) NOT NULL default '',
+        status smallint NOT NULL default '0',
+        weight smallint NOT NULL default '0',
+        sort varchar(32) NOT NULL default '',
+        max_categories int NOT NULL default '0',
+        PRIMARY KEY (env_id, facet_key, facet_id)
+      )");
+      db_query("CREATE INDEX {faceted_search_facets}_status_idx ON {faceted_search_facets} (status)");
+
+      db_query("CREATE TABLE {faceted_search_variables} (
+        env_id int_unsigned NOT NULL default '0',
+        name varchar(48) NOT NULL default '',
+        value text NOT NULL default '',
+        PRIMARY KEY (env_id, name)
+      )");
       break;
   }
 }
