@@ -36,8 +36,7 @@ function taxonomy_facets_install() {
  */
 function taxonomy_facets_uninstall() {
   db_query("DROP TABLE {taxonomy_facets_term_node}");
-  db_query("DELETE FROM {variable} WHERE name LIKE 'taxonomy_facets_%'");
-  cache_clear_all('variables', 'cache');
+  db_query("DELETE FROM {faceted_search_facets} WHERE facet_key = 'taxonomy'");
 }
 
 /**

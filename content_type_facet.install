@@ -5,8 +5,8 @@
  * Implementation of hook_uninstall().
  */
 function content_type_facet_uninstall() {
-  db_query("DELETE FROM {variable} WHERE name LIKE 'content_type_facet_%'");
-  cache_clear_all('variables', 'cache');
+  db_query("DELETE FROM {faceted_search_variables} WHERE name = 'content_type_facet_types'");
+  db_query("DELETE FROM {faceted_search_facets} WHERE facet_key = 'content_type'");
 }
 
 /**

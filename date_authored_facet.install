@@ -8,4 +8,5 @@ function date_authored_facet_uninstall() {
   variable_del('date_authored_facet_format_y');
   variable_del('date_authored_facet_format_ym');
   variable_del('date_authored_facet_format_ymd');
+  db_query("DELETE FROM {faceted_search_facets} WHERE facet_key = 'date_authored'");
 }

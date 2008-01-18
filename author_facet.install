@@ -5,7 +5,8 @@
  * Implementation of hook_uninstall().
  */
 function author_facet_uninstall() {
-  variable_del('author_facet_excluded_roles');
+  db_query("DELETE FROM {faceted_search_variables} WHERE name = 'author_facet_excluded_roles'");
+  db_query("DELETE FROM {faceted_search_facets} WHERE facet_key = 'author'");
 }
 
 /**
