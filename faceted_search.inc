@@ -955,6 +955,9 @@ class faceted_search_query {
    * @param $prefixing
    *   TRUE when the table should be prefixed via db_prefix_tables(). This
    *   should usually be FALSE when joining a temporary table.
+   *
+   * @return
+   *   The alias assigned to the table in this query.
    */
   function add_table($table, $field = NULL, $left_table_alias = NULL, $left_field = NULL, $alias = NULL, $join = 'INNER', $prefixing = TRUE) {
     $alias = $alias ? $alias : $table;
@@ -983,6 +986,9 @@ class faceted_search_query {
    * @param $alias
    *   Alias to use to identify the field. If omitted, the alias will be
    *   $table_alias .'_'. $field. Must be specified if the field is a formula.
+   *
+   * @return
+   *   The alias assigned to the field in this query.
    */
   function add_field($table_alias, $field, $alias = NULL) {
     $alias = $alias ? $alias : $table_alias .'_'. $field;
