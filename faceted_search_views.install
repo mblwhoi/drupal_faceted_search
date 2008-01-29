@@ -1,0 +1,13 @@
+<?php
+// $Id$
+
+/**
+ * Clear Views' cache to make sure it sees the new handler.
+ */
+function faceted_search_views_update_1() {
+  $ret = array();
+  if (function_exists('views_invalidate_cache')) {
+    views_invalidate_cache();
+  }
+  return $ret;
+}
