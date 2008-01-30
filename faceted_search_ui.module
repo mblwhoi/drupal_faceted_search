@@ -1000,6 +1000,8 @@ function faceted_search_ui_build_categories($search, $index, $from = NULL, $max_
     $items[] = theme('faceted_search_ui_category', $category, $path);
   }
 
+  $facets[$index] = $facet; // Restore the altered facet at $index.
+  
   // Add the 'more...' link.
   if ($search->ui_state['stage'] != 'facet' && isset($max_count) && count($categories) > $max_count) {
     if ($links) {
