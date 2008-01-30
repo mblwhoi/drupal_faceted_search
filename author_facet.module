@@ -128,7 +128,7 @@ class author_facet extends faceted_search_facet {
   /**
    * Constructor. Optionally assigns the active user of the facet.
    */
-  function author_facet($excluded_roles = array(), $uid = NULL, $name = '') {
+  function author_facet($excluded_roles = array(), $uid = 0, $name = '') {
     $active_path = array();
     if ($uid && $name) {
       $active_path[] = new author_facet_category($uid, $name);
@@ -194,7 +194,6 @@ class author_facet extends faceted_search_facet {
     $query->add_table('users', 'uid', 'n', 'uid');
     $query->add_field('users', 'uid');
     $query->add_field('users', 'name');
-    $query->add_where('users.status = 1');
     $query->add_groupby('users_uid');
     if (count($this->_excluded_roles)) {
       $query->add_where('NOT EXISTS (SELECT users_roles.rid FROM {users_roles} users_roles WHERE users.uid = users_roles.uid AND users_roles.rid IN ('. implode(', ', $this->_excluded_roles) .'))');
@@ -225,7 +224,7 @@ class author_facet extends faceted_search_facet {
  * A node-type based facet category.
  */
 class author_facet_category extends faceted_search_category {
-  var $_uid = NULL;
+  var $_uid = 0;
   var $_name = '';
   
   function author_facet_category($uid, $name, $count = NULL) {
