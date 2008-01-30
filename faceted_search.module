@@ -642,9 +642,9 @@ function faceted_search_build_text($facets) {
 function faceted_search_prepare_facets(&$facets, $settings) {
   if (count($facets)) {
     // Assign settings to each facet.
-    foreach ($facets as $facet) {
+    foreach ($facets as $index => $facet) {
       if (isset($settings[$facet->get_key()][$facet->get_id()])) {
-        $facet->set($settings[$facet->get_key()][$facet->get_id()]);
+        $facets[$index]->set($settings[$facet->get_key()][$facet->get_id()]);
       }
     }
 
