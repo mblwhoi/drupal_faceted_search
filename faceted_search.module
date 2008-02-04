@@ -312,7 +312,7 @@ function faceted_search_edit_form($env_id = NULL) {
     '#title' => t('Facets'),
     '#collapsible' => TRUE,
     '#collapsed' => FALSE,
-    '#description' => t('<p>Enable the facets you wish to expose to users.</p><p>In listings, the heavier facets will sink and the lighter facets will be positioned nearer the top.</p><p>The Sort criteria applies to categories listings only, and the Categories limit applies to category listings in the Guided search only. For performance reasons, it is advisable to select some limit (users will still be able to get the full listing of categories by following a <em>more</em> link).</p>'),
+    '#description' => t('<p>Check the facets you wish to expose to users.</p><p>In listings, the heavier facets will sink and the lighter facets will be positioned nearer the top.</p><p>The Sort criteria applies to categories listings only, and the Categories limit applies to category listings in the Guided search only. For performance reasons, it is advisable to select some limit (users will still be able to get the full listing of categories by following a <em>more</em> link).</p>'),
   );
   $form['facets']['facets'] = array(
     '#theme' => 'faceted_search_facets_settings',
@@ -657,14 +657,15 @@ function theme_faceted_search_facets_settings($form) {
   uasort($form, '_element_sort');
 
   $output = '';
-  $header = array(t('Enabled'), t('Facet'), t('Type'), t('Weight'), t('Sort criteria'), t('Categories limit'));
-  $rows = array();
+  $header = array('', t('Facet'), t('Type'), t('Weight'), t('Sort criteria'), t('Categories limit'));
+  $rows_enabled = array(array('', '<em>'. t('Enabled facets') .'</em>', '', '', '', ''));
+  $rows_disabled = array(array('', '<em>'. t('Disabled facets') .'</em>', '', '', '', ''));
   foreach (element_children($form) as $key) {
     unset($form[$key]['status']['#title']);
     unset($form[$key]['weight']['#title']);
     unset($form[$key]['max_categories']['#title']);
     unset($form[$key]['sort']['#title']);
-    $rows[] = array(
+    $row = array(
       drupal_render($form[$key]['status']),
       check_plain($form[$key]['#title']) . ($form[$key]['help']['#value'] ? ' ('. check_plain($form[$key]['help']['#value']) .')' : ''),
       drupal_render($form[$key]['type']),
@@ -672,8 +673,15 @@ function theme_faceted_search_facets_settings($form) {
       drupal_render($form[$key]['sort']),
       drupal_render($form[$key]['max_categories']),
     );
+    if ($form[$key]['status']['#value']) {
+      $rows_enabled[] = $row;
+    }
+    else {
+      $rows_disabled[] = $row;
+    }
   }
-  
+
+  $rows = array_merge($rows_enabled, $rows_disabled);
   $output .= theme('table', $header, $rows);
   $output .= drupal_render($form);
   return $output;
