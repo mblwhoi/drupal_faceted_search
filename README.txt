@@ -50,7 +50,7 @@ Any of the following cases might prompt you to use Faceted Search:
 
 - Users often get empty result sets when searching your site.
 
-- You know that "advanced" search forms suck.
+- You think that "advanced" search forms are not fun to use.
 
 
 The package
@@ -254,7 +254,10 @@ Credits
 See also
 ********
 
-- Biblio Facets (http://drupal.org/project/biblio_facets): Integrates Faceted
-  Search with Biblio (http://drupal.org/project/biblio) to navigate Biblio's
-  types and fields as facets.
+- Biblio Facets (http://drupal.org/project/biblio_facets)
+  Allows users to navigate Biblio (http://drupal.org/project/biblio) types and
+  fields as facets.
 
+- CCK Facets (http://drupal.org/project/cck_facets)
+  Allows users to navigate Content Construction Kit (CCK)
+  (http://drupal.org/project/cck) fields as facets.
