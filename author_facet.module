@@ -196,7 +196,7 @@ class author_facet extends faceted_search_facet {
     $query->add_field('users', 'name');
     $query->add_groupby('users_uid');
     if (count($this->_excluded_roles)) {
-      $query->add_where('NOT EXISTS (SELECT users_roles.rid FROM {users_roles} users_roles WHERE users.uid = users_roles.uid AND users_roles.rid IN ('. implode(', ', $this->_excluded_roles) .'))');
+      $query->add_subquery('NOT EXISTS (SELECT users_roles.rid FROM {users_roles} users_roles WHERE users.uid = users_roles.uid AND users_roles.rid IN ('. implode(', ', $this->_excluded_roles) .'))');
     }
     return TRUE;
   }
