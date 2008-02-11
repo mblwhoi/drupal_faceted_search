@@ -118,7 +118,7 @@ class faceted_search_views_style {
       $queries = views_build_view('queries', $view, array($search->get_env_id()));
       // Make sure the view's query selects node.id rather than a count. This
       // assumes that the view is counting node.id.
-      $views_query = str_replace('count(node.nid)', 'node.nid', $queries['countquery']); 
+      $views_query = preg_replace('!count\(((DISTINCT\()?node.nid\)?)\)!', '$1', $queries['countquery']); 
       $views_query = db_rewrite_sql($views_query, 'node');
       $query->add_subquery('n.nid IN ('. $views_query .')');
     }  
