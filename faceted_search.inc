@@ -683,6 +683,7 @@ class faceted_search {
     if ($query_parts[0] || $query_parts[2]) {
       // Has some positive or negative keywords
       $query2->add_table('search_dataset', 'sid', 'n', 'nid', 'd');
+      $query2->add_where("d.type = 'node'");
     }
 
     // Apply node type filter
