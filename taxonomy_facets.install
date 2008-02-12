@@ -72,3 +72,12 @@ function taxonomy_facets_update_2() {
   variable_del('taxonomy_facets_vocabularies');
   return $ret;
 }
+
+/**
+ * Remove useless index entries from non-hierarchical vocabularies.
+ */
+function taxonomy_facets_update_3() {
+  $ret = array();
+  $ret[] = update_sql('DELETE tn FROM {taxonomy_facets_term_node} tn, {term_data} t, {vocabulary} v WHERE tn.tid = t.tid AND t.vid = v.vid AND v.hierarchy = 0');
+  return $ret;
+}

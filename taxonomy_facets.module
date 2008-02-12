@@ -130,8 +130,14 @@ function taxonomy_facets_faceted_search_collect(&$facets, $domain, $env_id, $fil
                 break; // Term is not a child of the previous term in path
               }
             }
-            // TODO: Fix potential problem if parents of the first tid have been omitted from $tids
-            $path[] = new taxonomy_facet_category($term->tid, $term->name); // Add category to current path
+            // Add category to current path.
+            if ($vocabularies[$term->vid]->hierarchy) {
+              // TODO: Fix potential problem if parents of the first tid have been omitted from $tids
+              $path[] = new taxonomy_facet_hierarchical_category($term->tid, $term->name); 
+            }
+            else {
+              $path[] = new taxonomy_facet_category($term->tid, $term->name);
+            }
             $previous_tid = $tid;
           }
           // If found some categories in the current path of tids, build a facet
@@ -154,7 +160,13 @@ function taxonomy_facets_faceted_search_collect(&$facets, $domain, $env_id, $fil
           $path = array();
           // Retrieve ancestor terms.
           while ($term) {
-            array_unshift($path, new taxonomy_facet_category($term->tid, $term->name));
+            if ($vocabularies[$vid]->hierarchy) {
+              $category = new taxonomy_facet_hierarchical_category($term->tid, $term->name);
+            }
+            else {
+              $category = new taxonomy_facet_category($term->tid, $term->name);
+            }
+            array_unshift($path, $category);
             $parents = taxonomy_get_parents($term->tid);
             $term = reset($parents); // Keep only the first parent
           }
@@ -258,8 +270,10 @@ function taxonomy_facets_index_rebuild($goto_admin = TRUE) {
   $vocabularies = taxonomy_facets_get_vocabularies();
   if (count($vocabularies)) {
     foreach ($vocabularies as $vid => $vocabulary) {
-      _taxonomy_facets_index_update_vocabulary($vid);
-      drupal_set_message(t('The Taxonomy Facets index has been updated for the %vocabulary vocabulary.', array('%vocabulary' => $vocabulary->name)));
+      if ($vocabulary->hierarchy) {
+        _taxonomy_facets_index_update_vocabulary($vid);
+        drupal_set_message(t('The Taxonomy Facets index has been updated for the %vocabulary vocabulary.', array('%vocabulary' => $vocabulary->name)));
+      }
     }
   }
   else {
@@ -363,13 +377,18 @@ class taxonomy_facet extends faceted_search_facet {
    *   FALSE if this facet can't have root categories.
    */
   function build_root_categories_query(&$query) {
-    $query->add_table('taxonomy_facets_term_node', 'nid');
-    $query->add_table('term_data', 'tid', 'taxonomy_facets_term_node', 'tid');
-    $query->add_table('term_hierarchy', 'tid', 'taxonomy_facets_term_node', 'tid');
+    if ($this->_vocabulary->hierarchy) {
+      $query->add_table('taxonomy_facets_term_node', 'nid', 'n', 'nid', 'term_node');
+      $query->add_table('term_hierarchy', 'tid', 'term_node', 'tid');
+      $query->add_where('term_hierarchy.parent = 0');
+    }
+    else {
+      $query->add_table('term_node', 'nid');
+    }
+    $query->add_table('term_data', 'tid', 'term_node', 'tid');
     $query->add_field('term_data', 'tid');
     $query->add_field('term_data', 'name');
     $query->add_where('term_data.vid = %d', $this->_vocabulary->vid);
-    $query->add_where('term_hierarchy.parent = 0');
     $query->add_groupby('term_data_tid'); // Needed for counting matching nodes.
     return TRUE;
   }
@@ -387,14 +406,19 @@ class taxonomy_facet extends faceted_search_facet {
   function build_categories($results) {
     $categories = array();
     while ($result = db_fetch_object($results)) {
-      $categories[] = new taxonomy_facet_category($result->term_data_tid, $result->term_data_name, $result->count);
+      if ($this->_vocabulary->hierarchy) {
+        $categories[] = new taxonomy_facet_hierarchical_category($result->term_data_tid, $result->term_data_name, $result->count);
+      }
+      else {
+        $categories[] = new taxonomy_facet_category($result->term_data_tid, $result->term_data_name, $result->count);
+      }
     }
     return $categories;
   }
 }
 
 /**
- * A category for taxonomy-based facets. 
+ * A category for non-hierarchical taxonomy-based facets.
  *
  * @see taxonomy_facet
  */
@@ -419,6 +443,35 @@ class taxonomy_facet_category extends faceted_search_category {
   }
 
   /**
+   * Updates a query for selecting nodes matching this category.
+   *
+   * @param $query
+   *   The query object to update.
+   */
+  function build_results_query(&$query) {
+    // Since multiple terms might be used and cause multiple joins of
+    // taxonomy_facets_term_node, we add the tid into the table alias to ensure
+    // a unique alias.
+    $query->add_table('term_node', 'nid', 'n', 'nid', "term_node_{$this->_tid}");
+    $query->add_where("term_node_{$this->_tid}.tid = %d", $this->_tid);
+  }
+}
+
+/**
+ * A category for hierarchical taxonomy-based facets. 
+ *
+ * @see taxonomy_facet
+ */
+class taxonomy_facet_hierarchical_category extends taxonomy_facet_category {
+
+  /**
+   * Constructor.
+   */
+  function taxonomy_facet_hierarchical_category($tid, $name, $count = NULL) {
+    parent::taxonomy_facet_category($tid, $name, $count);
+  }
+
+  /**
    * Updates a query for retrieving the subcategories of this category and their
    * associated nodes within the current search results. 
    *
@@ -431,9 +484,9 @@ class taxonomy_facet_category extends faceted_search_category {
    *   FALSE if this facet can't have subcategories.
    */
   function build_subcategories_query(&$query) {
-    $query->add_table('taxonomy_facets_term_node', 'nid');
-    $query->add_table('term_data', 'tid', 'taxonomy_facets_term_node', 'tid');
-    $query->add_table('term_hierarchy', 'tid', 'taxonomy_facets_term_node', 'tid');
+    $query->add_table('taxonomy_facets_term_node', 'nid', 'n', 'nid', 'term_node');
+    $query->add_table('term_data', 'tid', 'term_node', 'tid');
+    $query->add_table('term_hierarchy', 'tid', 'term_node', 'tid');
     $query->add_field('term_data', 'tid');
     $query->add_field('term_data', 'name');
     $query->add_where('term_hierarchy.parent = %d', $this->_tid);
@@ -451,8 +504,8 @@ class taxonomy_facet_category extends faceted_search_category {
     // Since multiple terms might be used and cause multiple joins of
     // taxonomy_facets_term_node, we add the tid into the table alias to ensure
     // a unique alias.
-    $query->add_table('taxonomy_facets_term_node', 'nid', 'n', 'nid', "taxonomy_facets_term_node_{$this->_tid}");
-    $query->add_where("taxonomy_facets_term_node_{$this->_tid}.tid = %d", $this->_tid);
+    $query->add_table('taxonomy_facets_term_node', 'nid', 'n', 'nid', "term_node_{$this->_tid}");
+    $query->add_where("term_node_{$this->_tid}.tid = %d", $this->_tid);
   }
 }
 
