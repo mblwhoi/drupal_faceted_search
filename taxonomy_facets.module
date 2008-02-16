@@ -8,6 +8,22 @@
 
 require_once('./'. drupal_get_path('module', 'faceted_search') .'/faceted_search.inc');
 
+// TODO: Provide indexing status page à la search.module
+
+/**
+ * Implementation of hook_cron().
+ */
+function taxonomy_facets_cron() {
+  $limit = (int)variable_get('search_cron_limit', 100);
+  $results = db_query_range('SELECT nid FROM {taxonomy_facets_node} WHERE changed != 0 ORDER BY changed ASC', 0, $limit);
+  while ($n = db_fetch_object($results)) {
+    _taxonomy_facets_update($n->nid);
+
+    // Mark the node's term associations as up-to-date.
+    db_query('UPDATE {taxonomy_facets_node} SET changed = 0 WHERE nid = %d', $n->nid);
+  }
+}
+
 /**
  * Implementation of hook_menu().
  */
@@ -23,7 +39,7 @@ function taxonomy_facets_menu($may_cache) {
     );
     $items[] = array(
       'path' => 'admin/settings/faceted_search/taxonomy_facets/rebuild',
-      'callback' => 'taxonomy_facets_index_rebuild',
+      'callback' => 'taxonomy_facets_rebuild',
       'access' => user_access('administer site configuration'),
       'type' => MENU_CALLBACK,
     );
@@ -35,27 +51,28 @@ function taxonomy_facets_menu($may_cache) {
 /**
  * Implementation of hook_nodeapi().
  *
- * Update the taxonomy facets index with a node's terms.
+ * Mark the node's term associations as needing update.
+ *
+ * Note: Term associations are stored in the taxonomy_facets_term_node table
+ * even for unpublished nodes. This avoids any problem if the node's published
+ * status is altered outside of hook_nodeapi()'s reach.
  */
 function taxonomy_facets_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
   switch ($op) {
     case 'delete':
-      _taxonomy_facets_index_clear_node($node->nid);
+      // Delete the node's term associations.
+      db_query("DELETE FROM {taxonomy_facets_node} WHERE nid = %d", $node->nid);
+      db_query("DELETE FROM {taxonomy_facets_term_node} WHERE nid = %d", $node->nid);
       break;
 
     case 'insert':
-      if ($node->status) {
-        _taxonomy_facets_index_update_node($node->nid, $node->taxonomy);
-      }
+      // Insert a record for storing the node's term associations status.
+      db_query('INSERT INTO {taxonomy_facets_node} (nid, changed) VALUES (%d, %d)', $node->nid, time());
       break;
       
     case 'update':
-      if ($node->status) {
-        _taxonomy_facets_index_update_node($node->nid, $node->taxonomy);
-      }
-      else {
-        _taxonomy_facets_index_clear_node($node->nid);
-      }
+      // Mark the node's term associations as needing an update (if not already marked as such).
+      db_query('UPDATE {taxonomy_facets_node} SET changed = %d WHERE changed = 0 AND nid = %d', time(), $node->nid);
       break;
   }
 }
@@ -63,29 +80,42 @@ function taxonomy_facets_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
 /**
  * Implementation of hook_taxonomy().
  *
- * Update the taxonomy facets index when the taxonomy changes.
+ * The taxonomy_facets_term_node table is used to store a (nid,tid) pair for
+ * each term that's associated to a node *and*, unlike the core term_node table,
+ * all ancestors of those terms. This ensures that browsing for any term will
+ * also return nodes associated with descendant terms. This table is Taxonomy
+ * Facets' "index". Of course, this is needed only for hierarchical
+ * vocabularies; when querying terms in "flat" vocabularies, Taxonomy Facets
+ * uses the core term_node table.
  *
- * This needs to be handled to ensure that hierarchy changes are taken into
- * account. A difficulty here is that the former hierarchy is not available at
- * this point, so we can't identify the former ancestors and children of the
- * term so that the node associations with all terms involved can be updated.
+ * Taxonomy changes in hierarchical vocabularies thus require an update of the
+ * taxonomy_facets_term_node table. Whether a vocabulary or a term changes, we
+ * rebuild associations for all terms of the affected vocabulary. This is needed
+ * because an existing vocabulary can become hierarchical (requiring adding the
+ * associations) or become flat (requiring removal of the associations). Also,
+ * an existing term may move under a new parent, potentially affecting many
+ * other terms in the vocabulary (requiring rebuilding the associations).
+ *
+ * Admittedly, this is a bit crude as this behavior often rebuilds the term
+ * associations of nodes that do not really need an update. However, the
+ * associations are not directly created in this hook; here we only mark nodes
+ * as needing an update, and the cron hook takes care of the real work.
  */
-// TODO: A brute force solution (commented out below) would update the whole
-// vocabulary, but performance-wise that's an unacceptable solution. We might
-// need to prepend our own submit function to the term editing form, and then
-// check the term hierarchy before it's replaced.
-/*
 function taxonomy_facets_taxonomy($op, $type, $array = NULL) {
-  if ($type == 'term') {
-    switch ($op) {
-      case 'delete':
-      case 'update':
-        _taxonomy_facets_index_update_vocabulary($array['vid']);
-        break;
+  if ($op == 'delete' || $op == 'update') {
+    if ($type == 'term') {
+      $vocabulary = taxonomy_get_vocabulary($array['vid']);
+      if ($vocabulary->hierarchy) {
+        // A term from a hierarchical vocabulary has changed.
+        _taxonomy_facets_touch($array['vid']);
+      }
+    }
+    else {
+      // A vocabulary has changed.
+      _taxonomy_facets_touch($array['vid']);
     }
   }
 }
-*/
 
 /**
  * Implementation of hook_faceted_search_collect().
@@ -193,6 +223,7 @@ function taxonomy_facets_index_page() {
       '#type' => 'markup',
       '#value' => t('If you are getting inconsistent results when navigating taxonomy facets, try to <a href="@rebuild">rebuild the Taxonomy Facets index</a>. However, inconsistencies might denote a bug; please report any bug to Faceted Search\'s <a href="http://drupal.org/project/issues/faceted_search">issue queue</a>.', array('@rebuild' => url('admin/settings/faceted_search/taxonomy_facets/rebuild'))),
     );
+    // TODO: Redo as POST request.
     return drupal_render($form);
   }
   else {
@@ -213,89 +244,59 @@ function taxonomy_facets_form_alter($form_id, &$form) {
 /**
  * Submit callback for the environment edit form.
  *
- * Check what vocabularies have been enabled/disabled, and update the index
- * accordingly.
+ * Check what vocabularies have been enabled/disabled in order to mark
+ * associated nodes as needing an update.
  */
 function taxonomy_facets_edit_form_submit($form_id, $form_values) {
   $env_id = $form_values['env_id'];
-  
-  // Find the previous status of vocabularies for the current environment.
+
+  // Find what vocabularies were enabled before this form submission.
   $old_status = array();
-  $results = db_query("SELECT facet_id AS vid, status FROM {faceted_search_facets} WHERE facet_key = 'taxonomy' AND env_id = %d", $env_id);
-  while ($db_settings = db_fetch_object($results)) {
-    $old_status[$db_settings->vid] = $db_settings->status;
+  $results = db_query("SELECT env_id, facet_id AS vid FROM {faceted_search_facets} WHERE facet_key = 'taxonomy' AND status = 1");
+  while ($r = db_fetch_object($results)) {
+    $old_status[$r->vid][$r->env_id] = TRUE;
   }
 
-  // Find which vocabularies have changed status in the current environment.
-  $new_status = array();
+  // Determine what vocabularies require associated nodes to be marked for an update.
+  $enabled = FALSE;
   $vocabularies = taxonomy_get_vocabularies();
   foreach (array_keys($vocabularies) as $vid) {
+    if (!$vocabularies[$vid]->hierarchy) {
+      // Updating term node associations is only relevant with hierarchical
+      // vocabularies.
+      continue;
+    }
+    // Check requested status for the current environment.
     if (isset($form_values['facets']['taxonomy_'. $vid]['status'])) {
-      $form_status = $form_values['facets']['taxonomy_'. $vid]['status'];
-      if (!isset($old_status[$vid]) || $old_status[$vid] != $form_status) {
-        if ($form_status) {
-          $new_status[$vid] = TRUE;
-        }
-        else {
-          $new_status[$vid] = FALSE;
+      $new_status = $form_values['facets']['taxonomy_'. $vid]['status'];
+      if (($new_status && !isset($old_status[$vid])) ||
+        (!$new_status && isset($old_status[$vid]) && count($old_status[$vid]) == 1 && isset($old_status[$vid][$env_id]))) {
+        // Vocabulary is now enabled and no environment was already using it
+        // - OR -
+        // Vocabulary is now disabled and this was the last environment needing it.
+        _taxonomy_facets_touch($vid);
+        if ($new_status) {
+          $enabled = TRUE;
         }
       }
-    }
-    else {
-      $new_status[$vid] = FALSE;
     }
   }
-
-  // Update the index.
-  foreach ($new_status as $vid => $status) {
-    // If no other environment is using the vocabulary.
-    if (db_result(db_query("SELECT COUNT(*) FROM {faceted_search_facets} WHERE env_id != %d AND facet_key = 'taxonomy' AND facet_id = %d AND status = 1", $env_id, $vid)) == 0) {
-      if ($status) {
-        // This is the first environment to use the vocabulary; update the index.
-        _taxonomy_facets_index_update_vocabulary($vid);
-      }
-      elseif ($env_id) { // If this is not a new environment.
-        // This was the last environment to use the vocabulary; clear the
-        // vocabulary from the index.
-        _taxonomy_facets_index_clear_vocabulary($vid);
-      }
-    }
+      
+  if ($enabled) {
+    drupal_set_message(t('You must now run <a href="@cron">cron.php</a> for newly enabled taxonomy facets to become fully effective.', array('@cron' => base_path() .'cron.php'))); // TODO: Add link to indexing status page.
   }
 }
 
 /**
- * Menu callback for rebuilding the taxonomy_facets_term_node table.
+ * Menu callback for marking all term node associations as needing an update.
  */
-function taxonomy_facets_index_rebuild($goto_admin = TRUE) {
-  $vocabularies = taxonomy_facets_get_vocabularies();
-  if (count($vocabularies)) {
-    foreach ($vocabularies as $vid => $vocabulary) {
-      if ($vocabulary->hierarchy) {
-        _taxonomy_facets_index_update_vocabulary($vid);
-        drupal_set_message(t('The Taxonomy Facets index has been updated for the %vocabulary vocabulary.', array('%vocabulary' => $vocabulary->name)));
-      }
-    }
-  }
-  else {
-    drupal_set_message(t('No taxonomy facets have been enabled in any faceted search environment. No update needed.'));
-  }
+function taxonomy_facets_rebuild($goto_admin = TRUE) {
+  // Mark nodes with the current time, unless they're already marked.
+  db_query('UPDATE {taxonomy_facets_node} SET changed = %d WHERE changed = 0', time());
+  drupal_set_message(t('Index will be rebuilt the next time <a href="@cron">cron.php</a> is run.', array('@cron' => base_path() .'cron.php')));
   if ($goto_admin) {
     drupal_goto('admin/settings/faceted_search/taxonomy_facets');
   }
-}
-
-/**
- * Return an array of all vocabulary objects that have been enabled for use in
- * faceted searches.
- */
-function taxonomy_facets_get_vocabularies() {
-  $vocabularies = array();
-  $all_vocabularies = taxonomy_get_vocabularies();
-  $results = db_query("SELECT facet_id AS vid FROM {faceted_search_facets} WHERE facet_key = 'taxonomy' AND status = 1");
-  while ($result = db_fetch_object($results)) {
-    $vocabularies[$result->vid] = $all_vocabularies[$result->vid];
-  }
-  return $vocabularies;
 }
 
 /**
@@ -520,150 +521,42 @@ function _taxonomy_facets_get_category_tid($category) {
 }
 
 /**
- * Update terms from the specified vocabulary to the taxonomy_facets_term_node
- * table, based on the existing term_node table.
- *
- * This table is usually updated through hook_nodeapi(), but we need to populate
- * the table when a vocabulary is enabled for faceted searches.
+ * Update the term associations of a node in the taxonomy_facets_term_node
+ * table.
  */
-// TODO: This should be done through cron
-function _taxonomy_facets_index_update_vocabulary($vid) {
-  _taxonomy_facets_index_clear_vocabulary($vid);
-
-  // For all nodes using terms from the vocabulary.
-  $result = db_query('SELECT tn.tid, tn.nid FROM {term_node} tn INNER JOIN {term_data} t ON t.tid = tn.tid WHERE t.vid = %d', $vid);
-  while ($tn = db_fetch_object($result)) {
-    $ancestors = taxonomy_get_parents_all($tn->tid);
-    foreach ($ancestors as $term) {
-      $count = db_result(db_query('SELECT COUNT(*) FROM {taxonomy_facets_term_node} WHERE tid = %d AND nid = %d', $term->tid, $tn->nid));
-      // If not already there (could be there already since many terms can share common ancestors).
-      if ($count == 0) {
-        db_query('INSERT INTO {taxonomy_facets_term_node} SET tid = %d, nid = %d', $term->tid, $tn->nid);
-      }
-    }
-  }    
-}
-
-/**
- * Clear the taxonomy_facets_term_node table from terms of the specified vocabulary.
- */
-function _taxonomy_facets_index_clear_vocabulary($vid) {
-  db_query('DELETE tn FROM {taxonomy_facets_term_node} tn, {term_data} t WHERE tn.tid = t.tid AND t.vid = %d', $vid);
-}
-
-/**
- * Update the saved term associations for the specified node.
- */
-function _taxonomy_facets_index_update_node($nid, $terms) {
-  _taxonomy_facets_index_clear_node($nid);
-  
-  if (count($terms) == 0) {
-    return;
-  }
-  // Get allowed vocabularies.
-  $vocabularies = taxonomy_facets_get_vocabularies();
-  if (count($vocabularies) == 0) {
-    return;
-  }
-
+function _taxonomy_facets_update($nid) {
+  // Retrieve the node's current term associations from the core term_node
+  // table, but only for terms that belong to non-hierarchical vocabularies
+  // whose corresponding facets are enabled in at least one search environment.
+  // Terms that do not meet those conditions do not belong in the
+  // taxonomy_facets_term_node table.
   $tids = array();
-  
-  // Collect the free tags to save.
-  if (isset($terms['tags'])) {
-    // Note: This is based on taxonomy_node_save().
-    $input = $terms['tags'];
-    unset($terms['tags']);
-    foreach ($input as $vid => $vid_value) {
-      if (!isset($vocabularies[$vid])) {
-        continue;
-      }
-      
-      // This regexp allows the following types of user input:
-      // this, "somecmpany, llc", "and ""this"" w,o.rks", foo bar
-      $regexp = '%(?:^|,\ *)("(?>[^"]*)(?>""[^"]* )*"|(?: [^",]*))%x';
-      preg_match_all($regexp, $vid_value, $matches);
-      $input_terms = array_unique($matches[1]);
-
-      $inserted = array();
-      foreach ($input_terms as $input_term) {
-        // If a user has escaped a term (to demonstrate that it is a group, or
-        // includes a comma or quote character), we remove the escape formatting
-        // so to save the term into the database as the user intends.
-        $input_term = str_replace('""', '"', preg_replace('/^"(.*)"$/', '\1', $input_term));
-        $input_term = trim($input_term);
-        if ($input_term == '') {
-          continue;
-        }
-
-        // Return the term's tid. Note: This assumes that taxonomy_node_save()
-        // has been called previously!
-        $possibilities = taxonomy_get_term_by_name($input_term);
-        $input_term_tid = NULL; // tid match, if any.
-        foreach ($possibilities as $possibility) {
-          if ($possibility->vid == $vid) {
-            // Note: Should break here, but taxonomy_node_save() doesn't. Can't
-            // save $input_term_tid in $tids here, since that would append all
-            // the possibilities instead of the last one.
-            $input_term_tid = $possibility->tid;
-          }
-        }
-        if ($input_term_tid) {
-          $tids[] = $input_term_tid;
-        }
-      }
-    }
-  }
-  
-  // Collect the taxonomy terms to save.
-  foreach ($terms as $key => $value) {
-    if (is_array($value)) {
-      // We are looking at an array of tids indexed by vid.
-      if (isset($vocabularies[$key])) {
-        $tids = array_merge($tids, $value);
-      }
-    }
-    elseif (is_object($value)) {
-      // We are looking at a term. Note: Not sure how this can happen, but it
-      // has been reported, and taxonomy_node_save() handles this case.
-      if (isset($vocabularies[$value->vid])) {
-        $tids[] = $value->tid;
-      }
-    }
-    elseif ($value) {
-      // We are looking at a tid. Note: Not sure how this can happen, but
-      // taxonomy_node_save() handles this case.
-      if (isset($vocabularies[$key])) {
-        $tids[] = $value;
-      }
-    }
-  }
-  if ($tids) {
-    _taxonomy_facets_index_save_node($nid, $tids);
-  }
-}
-
-/**
- * Save the specified terms (and their ancestors) in the
- * taxonomy_facets_term_node table.
- */
-function _taxonomy_facets_index_save_node($nid, $tids) {
-  foreach ($tids as $tid) {
-    $ancestors = taxonomy_get_parents_all($tid);
+  $results = db_query("SELECT tn.tid, t.vid FROM {term_node} tn INNER JOIN {term_data} t ON t.tid = tn.tid INNER JOIN {faceted_search_facets} f ON f.facet_id = t.vid INNER JOIN {vocabulary} v ON t.vid = v.vid WHERE tn.nid = %d AND f.facet_key = 'taxonomy' AND f.status = 1 AND v.hierarchy > 0", $nid);
+  while ($r = db_fetch_object($results)) {
+    // Create associations between the node and all of the term's ancestors.
+    $ancestors = taxonomy_get_parents_all($r->tid);
     foreach ($ancestors as $term) {
-      // If term has not been inserted yet, insert it (multiple terms may share
-      // common ancestors)
-      if (!isset($inserted[$term->tid])) {
-        $inserted[$term->tid] = TRUE;
-        db_query("INSERT INTO {taxonomy_facets_term_node} (nid, tid) VALUES (%d, %d)", $nid, $term->tid);
-      }
+      // Using the tid as key to avoid duplicates (multiple terms may share
+      // common ancestors).
+      $tids[$term->tid] = $term->tid;
     }
+  }
+  
+  // Delete the node's old term associations from taxonomy_facets_term_node.
+  db_query('DELETE FROM {taxonomy_facets_term_node} WHERE nid = %d', $nid);
+
+  // Insert the node's updated term associations into taxonomy_facets_term_node.
+  foreach ($tids as $tid) {
+    db_query("INSERT INTO {taxonomy_facets_term_node} (nid, tid) VALUES (%d, %d)", $nid, $tid);
   }
 }
 
 /**
- * Clear the term associations for the specified node.
+ * Mark all nodes associated with terms from the specified vocabulary as needing
+ * an update.
  */
-function _taxonomy_facets_index_clear_node($nid) {
-  db_query("DELETE FROM {taxonomy_facets_term_node} WHERE nid = %d", $nid);
+function _taxonomy_facets_touch($vid) {
+  // Mark nodes with the current time, unless they're already marked.
+  db_query('UPDATE {taxonomy_facets_node} SET changed = %d WHERE changed = 0 AND nid IN (SELECT tn.nid FROM {term_node} tn INNER JOIN {term_data} t ON t.tid = tn.tid WHERE t.vid = %d)', time(), $vid);
 }
 

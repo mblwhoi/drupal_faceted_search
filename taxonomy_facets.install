@@ -8,16 +8,27 @@ function taxonomy_facets_install() {
   switch ($GLOBALS['db_type']) {
     case 'mysql':
     case 'mysqli':
-      // Unlike the term_node table, taxonomy_facets_term_node is used to store a
-      // (nid,tid) pair for each term that's associated to a node, *and* all
-      // ancestors of those terms. This ensures that browsing for any term will
-      // also return nodes associated with descendant terms.
+      // The taxonomy_facets_term_node table is used to store a (nid,tid) pair
+      // for each term that's associated to a node *and*, unlike the core
+      // term_node table, all ancestors of those terms. This ensures that
+      // browsing for any term will also return nodes associated with descendant
+      // terms. This table is Taxonomy Facets' "index".
       db_query("CREATE TABLE {taxonomy_facets_term_node} (
         nid int unsigned NOT NULL default '0',
         tid int unsigned NOT NULL default '0',
         KEY nid (nid),
         KEY tid (tid),
         PRIMARY KEY (tid,nid)
+      ) /*!40100 DEFAULT CHARACTER SET UTF8 */ ");
+
+      // This table is used to mark nodes needing an update (i.e. for refreshing
+      // the node's associations in the taxonomy_facets_term_node table). The
+      // 'changed' column stores the timestamp of the node's change. A zero
+      // timestamp means that no refresh of the node's term associations is needed.
+      db_query("CREATE TABLE {taxonomy_facets_node} (
+        nid int unsigned NOT NULL default '0',
+        changed int NOT NULL default '0',
+        PRIMARY KEY (nid)
       ) /*!40100 DEFAULT CHARACTER SET UTF8 */ ");
       break;
       
@@ -27,6 +38,11 @@ function taxonomy_facets_install() {
         tid int_unsigned NOT NULL default '0',
         PRIMARY KEY (tid,nid)
       )");
+      db_query("CREATE TABLE {taxonomy_facets_node} (
+        nid int_unsigned NOT NULL default '0',
+        changed int NOT NULL default '0',
+        PRIMARY KEY (nid)
+      )");
       break;
   }
 }
@@ -35,6 +51,7 @@ function taxonomy_facets_install() {
  * Implementation of hook_uninstall().
  */
 function taxonomy_facets_uninstall() {
+  db_query("DROP TABLE {taxonomy_facets_node}");
   db_query("DROP TABLE {taxonomy_facets_term_node}");
   db_query("DELETE FROM {faceted_search_facets} WHERE facet_key = 'taxonomy'");
 }
@@ -43,7 +60,11 @@ function taxonomy_facets_uninstall() {
  * Implementation of hook_enable().
  */
 function taxonomy_facets_enable() {
-  taxonomy_facets_index_rebuild(FALSE);
+  // Insert records into the taxonomy_facets_node table for nodes that are missing.
+  db_query_temporary('SELECT n.nid FROM {node} n LEFT JOIN {taxonomy_facets_node} s ON n.nid = s.nid WHERE s.changed IS NULL', 'taxonomy_facets_missing_nids');
+  db_query('INSERT INTO {taxonomy_facets_node} (nid, changed) SELECT n.nid, '. time() .' FROM taxonomy_facets_missing_nids n');
+  // Make sure all term node associations get built.
+  db_query('UPDATE {taxonomy_facets_node} SET changed = '. time() .' WHERE changed = 0');
 }
 
 /**
@@ -74,10 +95,38 @@ function taxonomy_facets_update_2() {
 }
 
 /**
- * Remove useless index entries from non-hierarchical vocabularies.
+ * Remove useless node term associations from non-hierarchical vocabularies.
  */
 function taxonomy_facets_update_3() {
   $ret = array();
   $ret[] = update_sql('DELETE tn FROM {taxonomy_facets_term_node} tn, {term_data} t, {vocabulary} v WHERE tn.tid = t.tid AND t.vid = v.vid AND v.hierarchy = 0');
+  return $ret;
+}
+
+/**
+ * Add the node status table.
+ */
+function taxonomy_facets_update_4() {
+  $ret = array();
+  switch ($GLOBALS['db_type']) {
+    case 'mysql':
+    case 'mysqli':
+      $ret[] = update_sql("CREATE TABLE {taxonomy_facets_node} (
+        nid int unsigned NOT NULL default '0',
+        changed int NOT NULL default '0',
+        PRIMARY KEY (nid)
+      ) /*!40100 DEFAULT CHARACTER SET UTF8 */ ");
+      break;
+      
+    case 'pgsql':
+      $ret[] = update_sql("CREATE TABLE {taxonomy_facets_node} (
+        nid int_unsigned NOT NULL default '0',
+        changed int NOT NULL default '0',
+        PRIMARY KEY (nid)
+      )");
+      break;
+  }
+  // Insert records into the taxonomy_facets_node table for all nodes.
+  $ret[] = update_sql('INSERT INTO {taxonomy_facets_node} (nid, changed) SELECT n.nid, '. time() .' FROM node n');
   return $ret;
 }
