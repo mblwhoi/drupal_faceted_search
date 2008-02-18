@@ -663,13 +663,14 @@ function faceted_search_ui_set_title($search) {
     foreach ($search->get_facets() as $facet) {
       if ($facet->is_active()) {
         $category = $facet->get_active_category();
-        $labels[] = check_plain(strip_tags($category->get_label()));
+        // Note: get_label() is responsible for filtering its returned string.
+        $labels[] = $category->get_label(FALSE);
       }
     }
   }
   $title = faceted_search_variable_get($search->get_env_id(), 'title', t('Search'));
   if ($labels) {
-    drupal_set_title(t('@title: @terms', array('@title' => $title, '@terms' => implode(', ', $labels))));
+    drupal_set_title(t('@title: !terms', array('@title' => $title, '!terms' => implode(', ', $labels))));
   }
   else {
     drupal_set_title(check_plain($title));
@@ -933,13 +934,14 @@ function faceted_search_ui_build_breadcrumb($env_id, $ui_state, $facets, $index,
         $ui_state['stage'] = 'results';
       }
       $link = faceted_search_ui_build_path($env_id, $ui_state, '', $facets);
-      $breadcrumb[] = l($category->get_label(), $link);
+      // Note: get_label() is responsible for filtering its returned string.
+      $breadcrumb[] = l($category->get_label(TRUE), $link, array(), NULL, NULL, FALSE, TRUE);
     }
     if ($category && $context != 'related') {
       // The last category needs not be a link to itself since it is already in
       // the current search.
-      // Note: theme_faceted_search_keyword_or_label() uses <em> in the label.
-      $breadcrumb[count($breadcrumb) - 1] = filter_xss($category->get_label(), array('em', 'strong')); 
+      // Note: get_label() is responsible for filtering its returned string.
+      $breadcrumb[count($breadcrumb) - 1] = $category->get_label(TRUE); 
     }
   }
 
@@ -1228,13 +1230,29 @@ function theme_faceted_search_ui_categories($facet, $categories, $stage) {
 }
 
 function theme_faceted_search_ui_facet_label($facets, $index, $label) {
-  // Note: theme_faceted_search_keyword_or_label() uses <em> in the label.
-  return '<h3>'. filter_xss($facets[$index]->get_label(), array('em', 'strong')) .'</h3>';
+  return '<h3>'. $facets[$index]->get_label() .'</h3>';
 }
 
+/**
+ * Display a category.
+ *
+ * @param $category
+ *   The category object.
+ * @param $path
+ *   When empty, the category's label and node count is displayed, otherwise the
+ *   category's label is displayed as a search for this category.
+ */
 function theme_faceted_search_ui_category($category, $path) {
+  // Note: get_label() is responsible for filtering its returned string.
+  if ($path) {
+    $label = l($category->get_label(TRUE), $path, array(), NULL, NULL, NULL, TRUE);
+  }
+  else {
+    $label = $category->get_label(TRUE);
+  }
+  
   // Note: Tooltips rely on class 'faceted-search-category'.
-  return '<span class="faceted-search-category">'. ($path ? l($category->get_label(), $path) : check_plain($category->get_label())) .' ('. $category->get_count() .')</span>';
+  return '<span class="faceted-search-category">'. $label .'<span class="faceted-search-count">&nbsp;('. $category->get_count() .')</span></span>';
 }
 
 function theme_faceted_search_ui_more($path) {

@@ -339,8 +339,29 @@ class faceted_search_keyword_category extends faceted_search_category {
     $this->_text = $text;
   }
 
-  function get_label() {
-    return $this->_label;
+  /**
+   * Return the label of this category.
+   *
+   * @param $html
+   *   TRUE when HTML is allowed in the label, FALSE otherwise. Checking this
+   *   flag allows implementors to provide a rich-text label if desired, and an
+   *   alternate plain text version for cases where HTML cannot be used. The
+   *   implementor is responsible to ensure adequate security filtering.
+   */
+  function get_label($html = FALSE) {
+    // Note: No need for calling check_plain() here, because the label has
+    // already been checked by either of
+    // theme_faceted_search_keyword_and_label(),
+    // theme_faceted_search_keyword_or_label(),
+    // theme_faceted_search_keyword_not_label, or
+    // theme_faceted_search_keyword_phrase_label().
+    if ($html) {
+      return $this->_label;
+    }
+    else {
+      // Some categories (e.g. OR keyword categories) may contain HTML tags.
+      return strip_tags($this->_label);
+    }
   }
 
   function get_text() {

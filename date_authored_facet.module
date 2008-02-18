@@ -321,7 +321,16 @@ class date_authored_facet_category extends faceted_search_category {
     $this->_day = $day;
   }
 
-  function get_label() {
+  /**
+   * Return the label of this category.
+   *
+   * @param $html
+   *   TRUE when HTML is allowed in the label, FALSE otherwise. Checking this
+   *   flag allows implementors to provide a rich-text label if desired, and an
+   *   alternate plain text version for cases where HTML cannot be used. The
+   *   implementor is responsible to ensure adequate security filtering.
+   */
+  function get_label($html = FALSE) {
     if (isset($this->_day)) {
       // Format date with YYYY-MM-DD.
       $timestamp = gmmktime(0, 0, 0, $this->_month, $this->_day, $this->_year);

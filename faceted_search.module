@@ -688,19 +688,22 @@ function theme_faceted_search_facets_settings($form) {
 }
 
 function theme_faceted_search_keyword_and_label($keyword) {
-  return $keyword;
+  return check_plain($keyword);
 }
 
 function theme_faceted_search_keyword_or_label($keywords) {
+  foreach ($keywords as $index => $keyword) {
+    $keywords[$index] = check_plain($keyword);
+  }
   return implode(' <em>OR</em> ', $keywords);
 }
 
 function theme_faceted_search_keyword_not_label($keyword) {
-  return '-'. $keyword;
+  return '-'. check_plain($keyword);
 }
   
 function theme_faceted_search_keyword_phrase_label($phrase) {
-  return $phrase;
+  return check_plain($phrase);
 }  
 
 /**

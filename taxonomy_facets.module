@@ -330,7 +330,7 @@ class taxonomy_facet extends faceted_search_facet {
    * Returns the label of this facet.
    */
   function get_label() {
-    return $this->_vocabulary->name;
+    return check_plain($this->_vocabulary->name);
   }
 
   /**
@@ -438,9 +438,15 @@ class taxonomy_facet_category extends faceted_search_category {
 
   /**
    * Return the label of this category.
+   *
+   * @param $html
+   *   TRUE when HTML is allowed in the label, FALSE otherwise. Checking this
+   *   flag allows implementors to provide a rich-text label if desired, and an
+   *   alternate plain text version for cases where HTML cannot be used. The
+   *   implementor is responsible to ensure adequate security filtering.
    */
-  function get_label() {
-    return $this->_name;
+  function get_label($html = FALSE) {
+    return check_plain($this->_name);
   }
 
   /**
