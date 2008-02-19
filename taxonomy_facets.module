@@ -327,7 +327,8 @@ class taxonomy_facet extends faceted_search_facet {
   }
 
   /**
-   * Returns the label of this facet.
+   * Return the label of this facet. The implementor is responsible to ensure
+   * adequate security filtering.
    */
   function get_label() {
     return check_plain($this->_vocabulary->name);

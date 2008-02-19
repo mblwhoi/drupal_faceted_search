@@ -667,7 +667,7 @@ function theme_faceted_search_facets_settings($form) {
     unset($form[$key]['sort']['#title']);
     $row = array(
       drupal_render($form[$key]['status']),
-      check_plain($form[$key]['#title']) . ($form[$key]['help']['#value'] ? ' ('. check_plain($form[$key]['help']['#value']) .')' : ''),
+      $form[$key]['#title'] . ($form[$key]['help']['#value'] ? ' ('. check_plain($form[$key]['help']['#value']) .')' : ''),
       drupal_render($form[$key]['type']),
       drupal_render($form[$key]['weight']),
       drupal_render($form[$key]['sort']),
