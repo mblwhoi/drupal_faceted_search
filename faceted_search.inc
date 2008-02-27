@@ -1022,6 +1022,22 @@ class faceted_search_query {
   }
 
   /**
+   * Retrieve a field.
+   *
+   * @param $alias
+   *   Alias assigned to the field in this query.
+   *
+   * @return
+   *   Information about the field from this query, or NULL if no field uses the
+   *   specified alias.
+   */
+  function get_field($alias) {
+    if (isset($this->fields[$alias])) {
+      return $this->fields[$alias];
+    }
+  }
+  
+  /**
    * Adds a WHERE condition.
    *
    * @param $clause
