@@ -76,6 +76,8 @@ Faceted Search is in fact a bundle of modules.
 - Taxonomy Facets: Allows users to search content through taxonomy. Any
   vocabulary can become a facet that can be used to refine the current search.
 
+- Date Facets Format: Provides formatting options for date-based facets.
+
 Hopefully, many more facets will be developed. The API is meant to make it easy
 to implement new facets.
 
@@ -93,7 +95,7 @@ with PHP 4 at the moment.
 Caution
 *******
 
-Faceted searches are database-intensive. If your server can barely keep up with
+Faceted Search is database-intensive. If your server can barely keep up with
 your traffic, this package will make things worst. Make sure to benchmark
 performance before deploying this system on a busy site.
 
@@ -177,9 +179,21 @@ Installation
    the Keyword search and Guided search blocks is generally most intuitive for
    users.
 
-   When using multiple faceted search environments, you'll have to configure
-   block visibility to avoid showing multiple Keyword search and Guided search
-   blocks at the same time.
+   When using multiple faceted search environments, you'll want to configure the
+   block visibility to avoid showing multiple Keyword search or Guided search
+   blocks at the same time. The most common setting is to have those blocks
+   visible only on your search environment's base path.
+
+   To do so, in Administer > Site building > Blocks, click Configure next to the
+   Keyword search or Guided search block whose visibility is to be adjusted.
+   Select "Show on every page except the listed pages", then enter the following
+   paths in the Pages field:
+
+   base_path
+   base_path/*
+
+   ... where "base_path" should be replaced with your search environment's
+   actual base path.
 
 6. Go to the Administer > User management > Access control page, and grant the
    "use faceted search" permission to the roles you intend to give access to
@@ -255,9 +269,8 @@ See also
 ********
 
 - Biblio Facets (http://drupal.org/project/biblio_facets)
-  Allows users to navigate Biblio (http://drupal.org/project/biblio) types and
-  fields as facets.
+  Exposes Biblio (http://drupal.org/project/biblio) types and fields as facets.
 
 - CCK Facets (http://drupal.org/project/cck_facets)
-  Allows users to navigate Content Construction Kit (CCK)
-  (http://drupal.org/project/cck) fields as facets.
+  Exposes Content Construction Kit (CCK) (http://drupal.org/project/cck) fields
+  as facets.
