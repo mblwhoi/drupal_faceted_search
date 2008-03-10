@@ -50,28 +50,28 @@ function faceted_search_views_views_arguments() {
  * Search environment's current results.
  */
 function faceted_search_views_results_argument_handler($op, &$query, $a1, $a2 = NULL) {
-  global $faceted_search;
+  global $_faceted_search;
   
-  if ($op == 'filter' && isset($faceted_search[$a2])) {
-    if ($faceted_search[$a2]->ready()) {
+  if ($op == 'filter' && isset($_faceted_search[$a2])) {
+    if ($_faceted_search[$a2]->ready()) {
       // Thanks to the above condition, this handler has no effect when there is
       // no current search results. This avoids a race condition between Views
       // and Faceted Search; Faceted Search may use this query in a subquery to
       // build its results, and Views may call this handler afterwards to filter
       // by Faceted Search's results.
       
-      if ($faceted_search[$a2]->get_results_count() > 0) {
+      if ($_faceted_search[$a2]->get_results_count() > 0) {
         // Join results table.
         $join = array(
           'type' => 'inner',
           'left' => array('table' => 'node', 'field' => 'nid'),
           'right' => array('field' => 'nid'),
         );
-        $query->add_table($faceted_search[$a2]->get_results_table(), FALSE, 1, $join);
+        $query->add_table($_faceted_search[$a2]->get_results_table(), FALSE, 1, $join);
 
         // Apply sort option.
         if ($a1['options'] != 'none') {
-          $query->add_orderby($faceted_search[$a2]->get_results_table(), 'score', $a1['options']);
+          $query->add_orderby($_faceted_search[$a2]->get_results_table(), 'score', $a1['options']);
         }
       }
       else {

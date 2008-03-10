@@ -12,7 +12,7 @@ require_once('./'. drupal_get_path('module', 'faceted_search') .'/faceted_search
  * Global. The current search environments. When set, this is an array keyed by
  * environment id.
  */
-$faceted_search = NULL;
+$_faceted_search = NULL;
 
 /**
  * Implementation of hook_perm().
@@ -93,36 +93,36 @@ function faceted_search_ui_block($op = 'list', $delta = 0, $edit = array()) {
     return $blocks;
   }
   elseif ($op == 'view' && user_access('use faceted search')) {
-    global $faceted_search;
+    global $_faceted_search;
     
     // Determine the environment id and requested block.
     list($env_id, $delta) = explode('_', $delta, 2);
 
-    if (!isset($faceted_search[$env_id]) && $delta != 'related') {
+    if (!isset($_faceted_search[$env_id]) && $delta != 'related') {
       // Initialize the current search. This case only happens when the block
       // does not appear directly on a Faceted Search page.
-      $faceted_search[$env_id] = new faceted_search($env_id);
-      $faceted_search[$env_id]->ui_state = _faceted_search_ui_defaults();
+      $_faceted_search[$env_id] = new faceted_search($env_id);
+      $_faceted_search[$env_id]->ui_state = _faceted_search_ui_defaults();
     }
     
     faceted_search_ui_add_css();
     switch ($delta) {
       case 'current':
         $block['subject'] = t('Current search'); 
-        $block['content'] = faceted_search_ui_current_block($faceted_search[$env_id]);
+        $block['content'] = faceted_search_ui_current_block($_faceted_search[$env_id]);
         break;
 
       case 'keyword':
-        if ($faceted_search[$env_id]->ui_state['stage'] == 'results') {
+        if ($_faceted_search[$env_id]->ui_state['stage'] == 'results') {
           $block['subject'] = t('Keyword search'); 
-          $block['content'] = faceted_search_ui_keyword_block($faceted_search[$env_id]);
+          $block['content'] = faceted_search_ui_keyword_block($_faceted_search[$env_id]);
         }
         break;
 
       case 'guided':
-        if ($faceted_search[$env_id]->ui_state['stage'] == 'results') {
+        if ($_faceted_search[$env_id]->ui_state['stage'] == 'results') {
           $block['subject'] = t('Guided search');
-          $block['content'] = faceted_search_ui_guided_block($faceted_search[$env_id]);
+          $block['content'] = faceted_search_ui_guided_block($_faceted_search[$env_id]);
         }
         break;
 
@@ -134,7 +134,7 @@ function faceted_search_ui_block($op = 'list', $delta = 0, $edit = array()) {
         break;
 
       case 'sort':
-        $block['content'] = faceted_search_ui_sort_block($faceted_search[$env_id]);
+        $block['content'] = faceted_search_ui_sort_block($_faceted_search[$env_id]);
         break;
     }
     return $block;
@@ -302,7 +302,7 @@ function faceted_search_ui_faceted_search_query_alter($search, &$query) {
  *   The search text.
  */
 function faceted_search_ui_stage_results($env_id, $text = '') {
-  global $faceted_search;
+  global $_faceted_search;
 
   // If the menu system has splitted the search text because of slashes, glue it back.
   if (func_num_args() > 2) {
@@ -311,28 +311,28 @@ function faceted_search_ui_stage_results($env_id, $text = '') {
   }
 
   // Initialize the current search.
-  $faceted_search[$env_id] = new faceted_search($env_id, $text);
-  $faceted_search[$env_id]->ui_state = _faceted_search_ui_defaults();
-  $faceted_search[$env_id]->ui_state['stage'] = 'results';
+  $_faceted_search[$env_id] = new faceted_search($env_id, $text);
+  $_faceted_search[$env_id]->ui_state = _faceted_search_ui_defaults();
+  $_faceted_search[$env_id]->ui_state['stage'] = 'results';
   
   if ($text) {
     // Log the search text.
-    $path = faceted_search_ui_build_path($env_id, $faceted_search[$env_id]->ui_state, $text);
+    $path = faceted_search_ui_build_path($env_id, $_faceted_search[$env_id]->ui_state, $text);
     watchdog('faceted_search', t('%text.', array('%text' => $text)), WATCHDOG_NOTICE, l(t('results'), $path));
   }
 
   faceted_search_ui_add_css();
     
   // Collect the search results.
-  $faceted_search[$env_id]->execute();
-  $style = faceted_search_ui_get_style($faceted_search[$env_id]);
+  $_faceted_search[$env_id]->execute();
+  $style = faceted_search_ui_get_style($_faceted_search[$env_id]);
   if (method_exists($style, 'format_results')) {
-    $results = $style->format_results($faceted_search[$env_id]);
+    $results = $style->format_results($_faceted_search[$env_id]);
   }
   
-  faceted_search_ui_set_title($faceted_search[$env_id]);
+  faceted_search_ui_set_title($_faceted_search[$env_id]);
   $content = theme('faceted_search_ui_stage_results', $results, $style);
-  return theme('faceted_search_ui_page', $faceted_search[$env_id], $content);
+  return theme('faceted_search_ui_page', $_faceted_search[$env_id], $content);
 }
 
 /**
@@ -349,7 +349,7 @@ function faceted_search_ui_faceted_search_ui_style_info() {
  * Menu callback to display the search page.
  */
 function faceted_search_ui_stage_select($env_id, $text = '') {
-  global $faceted_search;
+  global $_faceted_search;
 
   // If the menu system has splitted the search text because of slashes, glue it back.
   if (func_num_args() > 2) {
@@ -358,21 +358,21 @@ function faceted_search_ui_stage_select($env_id, $text = '') {
   }
 
   // Initialize the current search.
-  $faceted_search[$env_id] = new faceted_search($env_id, $text);
-  $faceted_search[$env_id]->ui_state = _faceted_search_ui_defaults();
-  $faceted_search[$env_id]->ui_state['stage'] = 'select';
+  $_faceted_search[$env_id] = new faceted_search($env_id, $text);
+  $_faceted_search[$env_id]->ui_state = _faceted_search_ui_defaults();
+  $_faceted_search[$env_id]->ui_state['stage'] = 'select';
   
   faceted_search_ui_add_css();
     
   // Build the search results, which are required to count nodes per category
-  $faceted_search[$env_id]->execute();
+  $_faceted_search[$env_id]->execute();
 
-  faceted_search_ui_set_title($faceted_search[$env_id]);
+  faceted_search_ui_set_title($_faceted_search[$env_id]);
 
-  $keyword_block_content = faceted_search_ui_keyword_block($faceted_search[$env_id]);
-  $guided_block_content = faceted_search_ui_guided_block($faceted_search[$env_id]);
-  if ($output = theme('faceted_search_ui_stage_select', $faceted_search[$env_id], $keyword_block_content, $guided_block_content)) {
-    return theme('faceted_search_ui_page', $faceted_search[$env_id], $output);
+  $keyword_block_content = faceted_search_ui_keyword_block($_faceted_search[$env_id]);
+  $guided_block_content = faceted_search_ui_guided_block($_faceted_search[$env_id]);
+  if ($output = theme('faceted_search_ui_stage_select', $_faceted_search[$env_id], $keyword_block_content, $guided_block_content)) {
+    return theme('faceted_search_ui_page', $_faceted_search[$env_id], $output);
   }
 }
 
@@ -380,7 +380,7 @@ function faceted_search_ui_stage_select($env_id, $text = '') {
  * Menu callback to display a facet's categories.
  */
 function faceted_search_ui_stage_facet($env_id, $facet_key_id = '', $facet_sort = '', $text = '') {
-  global $faceted_search;
+  global $_faceted_search;
 
   if (!$facet_key_id || !$facet_sort) {
     drupal_not_found();
@@ -394,30 +394,30 @@ function faceted_search_ui_stage_facet($env_id, $facet_key_id = '', $facet_sort 
   }
 
   // Initialize the current search.
-  $faceted_search[$env_id] = new faceted_search($env_id, $text);
-  $faceted_search[$env_id]->ui_state = _faceted_search_ui_defaults();
-  $faceted_search[$env_id]->ui_state['stage'] = 'facet';
+  $_faceted_search[$env_id] = new faceted_search($env_id, $text);
+  $_faceted_search[$env_id]->ui_state = _faceted_search_ui_defaults();
+  $_faceted_search[$env_id]->ui_state['stage'] = 'facet';
   list($facet_key, $facet_id) = explode(':', $facet_key_id, 2);
-  $faceted_search[$env_id]->ui_state['facet-key'] = $facet_key;
-  $faceted_search[$env_id]->ui_state['facet-id'] = $facet_id;
-  $faceted_search[$env_id]->ui_state['facet-sort'] = $facet_sort;
+  $_faceted_search[$env_id]->ui_state['facet-key'] = $facet_key;
+  $_faceted_search[$env_id]->ui_state['facet-id'] = $facet_id;
+  $_faceted_search[$env_id]->ui_state['facet-sort'] = $facet_sort;
   
   faceted_search_ui_add_css();
   faceted_search_ui_add_tooltips($env_id);
   
   // Build the search results, which are required to count nodes per category
-  $faceted_search[$env_id]->execute();
+  $_faceted_search[$env_id]->execute();
 
   // Find what facet to show
-  list($index, $facet) = $faceted_search[$env_id]->get_facet_by_id($facet_key, $facet_id);
+  list($index, $facet) = $_faceted_search[$env_id]->get_facet_by_id($facet_key, $facet_id);
   if (!isset($index) || !isset($facet)) {
     drupal_not_found();
     return;
   }
 
-  faceted_search_ui_set_title($faceted_search[$env_id]);
-  $categories = faceted_search_ui_build_categories($faceted_search[$env_id], $index); // TODO: paging
-  return theme('faceted_search_ui_stage_facet', $faceted_search[$env_id], $index, $facet, $categories);
+  faceted_search_ui_set_title($_faceted_search[$env_id]);
+  $categories = faceted_search_ui_build_categories($_faceted_search[$env_id], $index); // TODO: paging
+  return theme('faceted_search_ui_stage_facet', $_faceted_search[$env_id], $index, $facet, $categories);
 }
 
 /**
@@ -425,7 +425,7 @@ function faceted_search_ui_stage_facet($env_id, $facet_key_id = '', $facet_sort 
  * facet (using AJAX).
  */
 function faceted_search_ui_stage_categories($env_id, $facet_key_id = '', $facet_sort = '', $text = '') {
-  global $faceted_search;
+  global $_faceted_search;
 
   if (!$facet_key_id || !$facet_sort) {
     exit();
@@ -438,23 +438,23 @@ function faceted_search_ui_stage_categories($env_id, $facet_key_id = '', $facet_
   }
   
   // Initialize the current search.
-  $faceted_search[$env_id] = new faceted_search($env_id, $text);
-  $faceted_search[$env_id]->ui_state = _faceted_search_ui_defaults();
-  $faceted_search[$env_id]->ui_state['stage'] = 'categories';
+  $_faceted_search[$env_id] = new faceted_search($env_id, $text);
+  $_faceted_search[$env_id]->ui_state = _faceted_search_ui_defaults();
+  $_faceted_search[$env_id]->ui_state['stage'] = 'categories';
   list($facet_key, $facet_id) = explode(':', $facet_key_id, 2);
-  $faceted_search[$env_id]->ui_state['facet-key'] = $facet_key;
-  $faceted_search[$env_id]->ui_state['facet-id'] = $facet_id;
-  $faceted_search[$env_id]->ui_state['facet-sort'] = $facet_sort;
+  $_faceted_search[$env_id]->ui_state['facet-key'] = $facet_key;
+  $_faceted_search[$env_id]->ui_state['facet-id'] = $facet_id;
+  $_faceted_search[$env_id]->ui_state['facet-sort'] = $facet_sort;
 
   // We are returning JavaScript, so tell the browser.
   drupal_set_header('Content-Type: text/javascript; charset=utf-8');
   
   // Build the search results, which are required to count nodes per category
-  $faceted_search[$env_id]->execute();
+  $_faceted_search[$env_id]->execute();
 
   // Find what facet to show
   $found = FALSE;
-  $facets = $faceted_search[$env_id]->get_facets();
+  $facets = $_faceted_search[$env_id]->get_facets();
   foreach ($facets as $index => $facet) {
     if ($facet->get_key() == $facet_key && $facet->get_id() == $facet_id) {
       $found = TRUE;
@@ -473,7 +473,7 @@ function faceted_search_ui_stage_categories($env_id, $facet_key_id = '', $facet_
   }
 
   // Prepare the HTML chunk
-  $categories = faceted_search_ui_build_categories($faceted_search[$env_id], $index, 0, $max_count, FALSE);
+  $categories = faceted_search_ui_build_categories($_faceted_search[$env_id], $index, 0, $max_count, FALSE);
   if (count($categories)) {
     $content = '<p>'. t('Subcategories:') .'</p>';
     $content .= theme('faceted_search_ui_categories', $facet, $categories, 'categories');
@@ -486,7 +486,7 @@ function faceted_search_ui_stage_categories($env_id, $facet_key_id = '', $facet_
   // Output JSON data, with id to help client to cache the content.
   print drupal_to_js(
     array(
-      'id' => $faceted_search[$env_id]->get_text(),
+      'id' => $_faceted_search[$env_id]->get_text(),
       'content' => $content,
     )
   );

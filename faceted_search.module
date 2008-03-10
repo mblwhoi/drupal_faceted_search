@@ -11,7 +11,7 @@ require_once('./'. drupal_get_path('module', 'faceted_search') .'/faceted_search
 /**
  * Global.
  */
-$faceted_search_variables = array(); 
+$_faceted_search_variables = array(); 
 
 /**
  * Implementation of hook_help().
@@ -439,13 +439,13 @@ function faceted_search_types($env_id) {
  * with faceted_search_variable_set().
  */
 function _faceted_search_variables_init() {
-  global $faceted_search_variables;
+  global $_faceted_search_variables;
 
-  $faceted_search_variables = array();
+  $_faceted_search_variables = array();
   
   $result = db_query('SELECT * FROM {faceted_search_variables}');
   while ($variable = db_fetch_object($result)) {
-    $faceted_search_variables[$variable->env_id][$variable->name] = unserialize($variable->value);
+    $_faceted_search_variables[$variable->env_id][$variable->name] = unserialize($variable->value);
   }
 }
 
@@ -462,13 +462,13 @@ function _faceted_search_variables_init() {
  *   The value of the variable.
  */
 function faceted_search_variable_get($env_id, $name, $default) {
-  global $faceted_search_variables;
+  global $_faceted_search_variables;
   
-  if (!isset($faceted_search_variables)) {
+  if (!isset($_faceted_search_variables)) {
     _faceted_search_variables_init();
   }
   
-  return isset($faceted_search_variables[$env_id][$name]) ? $faceted_search_variables[$env_id][$name] : $default;
+  return isset($_faceted_search_variables[$env_id][$name]) ? $_faceted_search_variables[$env_id][$name] : $default;
 }
 
 /**
@@ -483,9 +483,9 @@ function faceted_search_variable_get($env_id, $name, $default) {
  *   of serialization as necessary.
  */
 function faceted_search_variable_set($env_id, $name, $value) {
-  global $faceted_search_variables;
+  global $_faceted_search_variables;
 
-  if (!isset($faceted_search_variables)) {
+  if (!isset($_faceted_search_variables)) {
     _faceted_search_variables_init();
   }
   
@@ -494,7 +494,7 @@ function faceted_search_variable_set($env_id, $name, $value) {
   db_query("INSERT INTO {faceted_search_variables} (env_id, name, value) VALUES (%d, '%s', '%s')", $env_id, $name, serialize($value));
   db_unlock_tables();
 
-  $faceted_search_variables[$env_id][$name] = $value;
+  $_faceted_search_variables[$env_id][$name] = $value;
 }
 
 /**
@@ -506,28 +506,28 @@ function faceted_search_variable_set($env_id, $name, $value) {
  *   The name of the variable to undefine.
  */
 function faceted_search_variable_del($env_id, $name) {
-  global $faceted_search_variables;
+  global $_faceted_search_variables;
 
-  if (!isset($faceted_search_variables)) {
+  if (!isset($_faceted_search_variables)) {
     _faceted_search_variables_init();
   }
   
   db_query("DELETE FROM {faceted_search_variables} WHERE env_id = %d AND name = '%s'", $env_id, $name);
-  unset($faceted_search_variables[$env_id][$name]);
+  unset($_faceted_search_variables[$env_id][$name]);
 }
 
 /**
  * Unset all persistent variables from a given environment.
  */
 function faceted_search_variable_del_all($env_id) {
-  global $faceted_search_variables;
+  global $_faceted_search_variables;
 
-  if (!isset($faceted_search_variables)) {
+  if (!isset($_faceted_search_variables)) {
     _faceted_search_variables_init();
   }
   
   db_query('DELETE FROM {faceted_search_variables} WHERE env_id = %d', $env_id);
-  unset($faceted_search_variables[$env_id]);
+  unset($_faceted_search_variables[$env_id]);
 }
 
 /**
