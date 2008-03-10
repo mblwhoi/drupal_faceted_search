@@ -84,9 +84,11 @@ function faceted_search_views_results_argument_handler($op, &$query, $a1, $a2 = 
 /**
  * Provides a view-based display style for search results.
  */
-class faceted_search_views_style {
+class faceted_search_views_style extends faceted_search_ui_style {
   // Name of the view to use with this style.
-  var $_name; 
+  var $_name;
+  // View to use with this style (lazy loaded).
+  var $_view;
   
   /**
    * Constructor.
@@ -99,10 +101,27 @@ class faceted_search_views_style {
   }
 
   /**
+   * Return the view to use with this style.
+   */
+  function get_view() {
+    if (!isset($this->_view)) {
+      $this->_view = views_get_view($this->_name); 
+    }
+    return $this->_view;
+  }
+  
+  /**
    * Return the name of this style.
    */
   function get_label() {
-    return t('Views: @view', array('@view' => $this->_name));
+    return t('Views: @view', array('@view' => $this->get_view()->name));
+  }
+
+  /**
+   * Return the number of nodes per page.
+   */
+  function get_limit() {
+    return $this->get_view()->nodes_per_page;
   }
 
   /**
@@ -113,25 +132,20 @@ class faceted_search_views_style {
    * view's only purpose here is to filter the search results.
    */
   function query_alter(&$query, $search) {
-    $view = views_get_view($this->_name);
-    if ($view) {
-      $queries = views_build_view('queries', $view, array($search->get_env_id()));
-      // Make sure the view's query selects node.id rather than a count. This
-      // assumes that the view is counting node.id.
-      $views_query = preg_replace('!count\(((DISTINCT\()?node.nid\)?)\)!', '$1', $queries['countquery']); 
-      $views_query = db_rewrite_sql($views_query, 'node');
-      $query->add_subquery('n.nid IN ('. $views_query .')');
-    }  
+    $view = $this->get_view();
+    $queries = views_build_view('queries', $view, array($search->get_env_id()));
+    // Make sure the view's query selects node.id rather than a count. This
+    // assumes that the view is counting node.id.
+    $views_query = preg_replace('!count\(((DISTINCT\()?node.nid\)?)\)!', '$1', $queries['countquery']); 
+    $views_query = db_rewrite_sql($views_query, 'node');
+    $query->add_subquery('n.nid IN ('. $views_query .')');
   }
 
   /**
    * Format the search results according to this style's desire.
    */
   function format_results($search) {
-    if ($view = views_get_view($this->_name)) {
-      $limit = variable_get('default_nodes_main', 10);
-      return views_build_view('embed', $view, array($search->get_env_id()), TRUE, $limit);
-    }
+    return views_build_view('embed', $this->get_view(), array($search->get_env_id()), TRUE, $this->get_limit());
   }
 }
 

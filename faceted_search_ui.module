@@ -287,10 +287,9 @@ function faceted_search_ui_form_alter($form_id, &$form) {
  * fields.
  */
 function faceted_search_ui_faceted_search_query_alter($search, &$query) {
-  $styles = faceted_search_ui_style_list();
   $style = faceted_search_ui_get_style($search);
-  if (method_exists($styles[$style], 'query_alter')) {
-    $styles[$style]->query_alter($query, $search);
+  if (method_exists($style, 'query_alter')) {
+    $style->query_alter($query, $search);
   }
 }
 
@@ -326,10 +325,13 @@ function faceted_search_ui_stage_results($env_id, $text = '') {
     
   // Collect the search results.
   $faceted_search[$env_id]->execute();
-  $results = faceted_search_ui_format_results($faceted_search[$env_id]);
-    
+  $style = faceted_search_ui_get_style($faceted_search[$env_id]);
+  if (method_exists($style, 'format_results')) {
+    $results = $style->format_results($faceted_search[$env_id]);
+  }
+  
   faceted_search_ui_set_title($faceted_search[$env_id]);
-  $content = theme('faceted_search_ui_stage_results', $results);
+  $content = theme('faceted_search_ui_stage_results', $results, $style);
   return theme('faceted_search_ui_page', $faceted_search[$env_id], $content);
 }
 
@@ -620,17 +622,17 @@ function faceted_search_ui_style_list() {
 }
 
 /**
- * Indicate how to present search results.
- *
- * @return Id of the style to use.
+ * Return the style object to use for the specified search.
  */
 function faceted_search_ui_get_style($search) {
+  $styles = faceted_search_ui_style_list();
   if (faceted_search_variable_get($search->get_env_id(), 'results_style_selective_extracts', TRUE) && $search->get_keywords()) {
-    return 'faceted_search_ui:extracts';
+    $style = 'faceted_search_ui:extracts';
   }
   else {
-    return faceted_search_variable_get($search->get_env_id(), 'results_style', 'faceted_search_ui:teasers');
+    $style = faceted_search_variable_get($search->get_env_id(), 'results_style', 'faceted_search_ui:teasers');
   }
+  return $styles[$style];
 }
 
 /**
@@ -677,18 +679,6 @@ function faceted_search_ui_set_title($search) {
   }
 }
 
-/**
- * Format the results of the specified search according to the current display
- * style.
- */
-function faceted_search_ui_format_results($search) {
-  $styles = faceted_search_ui_style_list();
-  $style = faceted_search_ui_get_style($search);
-  if (method_exists($styles[$style], 'format_results')) {
-    return $styles[$style]->format_results($search);
-  }
-}
-  
 /**
  * Render the search form.
  */
@@ -1039,9 +1029,21 @@ function faceted_search_ui_add_tooltips($env_id) {
 }
 
 /**
+ * Base class for display styles.
+ */
+class faceted_search_ui_style {
+  /**
+   * Return the number of nodes per page.
+   */
+  function get_limit() {
+    return variable_get('default_nodes_main', 10);
+  }
+}
+
+/**
  * Provides the 'extracts' display style for search results.
  */
-class faceted_search_ui_extract_style {
+class faceted_search_ui_extract_style extends faceted_search_ui_style {
 
   /**
    * Return the name of this style.
@@ -1057,7 +1059,7 @@ class faceted_search_ui_extract_style {
   function format_results($search) {
     drupal_add_css(drupal_get_path('module', 'search') .'/search.css');
     
-    $found_items = $search->load_results(variable_get('default_nodes_main', 10));
+    $found_items = $search->load_results($this->get_limit());
       
     // Taken from node_search() (node.module 1.764) - BEGIN
     $results = array();
@@ -1093,7 +1095,7 @@ class faceted_search_ui_extract_style {
 /**
  * Provides the 'teasers' display style for search results.
  */
-class faceted_search_ui_teaser_style {
+class faceted_search_ui_teaser_style extends faceted_search_ui_style {
 
   /**
    * Return the name of this style.
@@ -1106,7 +1108,7 @@ class faceted_search_ui_teaser_style {
    * Format the search results to display node teasers.
    */
   function format_results($search) {
-    $limit = variable_get('default_nodes_main', 10);
+    $limit = $this->get_limit();
     $found_items = $search->load_results($limit);
     
     foreach ($found_items as $item) {
@@ -1281,10 +1283,10 @@ function theme_faceted_search_ui_sort_options($options) {
   return '<p>'. t('Sort by: !options', array('!options' => implode(' | ', $options))) .'</p>';
 }
 
-function theme_faceted_search_ui_stage_results($results) {
+function theme_faceted_search_ui_stage_results($results, $style) {
   global $pager_total, $pager_total_items, $pager_page_array;
   if ($pager_total_items[0] > 0) {
-    $limit = variable_get('default_nodes_main', 10);
+    $limit = $style->get_limit();
     $from = $pager_page_array[0] * $limit + 1;
     $to = min(($pager_page_array[0] + 1) * $limit, $pager_total_items[0]);
     $total = $pager_total_items[0];
