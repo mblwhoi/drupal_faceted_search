@@ -321,6 +321,7 @@ function faceted_search_ui_stage_results($env_id, $text = '') {
     watchdog('faceted_search', t('%text.', array('%text' => $text)), WATCHDOG_NOTICE, l(t('results'), $path));
   }
 
+  faceted_search_ui_add_robots_directive($_faceted_search[$env_id]);
   faceted_search_ui_add_css();
     
   // Collect the search results.
@@ -362,6 +363,7 @@ function faceted_search_ui_stage_select($env_id, $text = '') {
   $_faceted_search[$env_id]->ui_state = _faceted_search_ui_defaults();
   $_faceted_search[$env_id]->ui_state['stage'] = 'select';
   
+  faceted_search_ui_add_robots_directive($_faceted_search[$env_id]);
   faceted_search_ui_add_css();
     
   // Build the search results, which are required to count nodes per category
@@ -402,6 +404,7 @@ function faceted_search_ui_stage_facet($env_id, $facet_key_id = '', $facet_sort 
   $_faceted_search[$env_id]->ui_state['facet-id'] = $facet_id;
   $_faceted_search[$env_id]->ui_state['facet-sort'] = $facet_sort;
   
+  faceted_search_ui_add_robots_directive($_faceted_search[$env_id]);
   faceted_search_ui_add_css();
   faceted_search_ui_add_tooltips($env_id);
   
@@ -1015,6 +1018,27 @@ function faceted_search_ui_build_categories($search, $index, $from = NULL, $max_
 function faceted_search_ui_add_css() {
   drupal_add_css(drupal_get_path('module', 'faceted_search') .'/faceted_search_ui.css');
 }
+
+/**
+ * Add a noindex,nofollow meta tag if more than one facet is active. We want
+ * robots to visit and index results for the root categories, but don't want
+ * them to visit or index every possible combinations of categories.
+ */
+function faceted_search_ui_add_robots_directive($search) {
+  $active = FALSE;
+  foreach ($search->get_facets() as $facet) {
+    if ($facet->is_active() && $facet->get_key() != 'keyword') {
+      if ($active) {
+        // There is already an active facet, add the meta tag.
+        drupal_set_html_head('<meta name="robots" content="noindex, nofollow" />');
+        break;
+      }
+      else {
+        $active = TRUE;
+      }
+    }
+  }
+}  
 
 /**
  * Add scripts for tooltips.
