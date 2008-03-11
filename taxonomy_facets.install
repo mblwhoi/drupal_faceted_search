@@ -127,6 +127,6 @@ function taxonomy_facets_update_4() {
       break;
   }
   // Insert records into the taxonomy_facets_node table for all nodes.
-  $ret[] = update_sql('INSERT INTO {taxonomy_facets_node} (nid, changed) SELECT n.nid, '. time() .' FROM node n');
+  $ret[] = update_sql('INSERT INTO {taxonomy_facets_node} (nid, changed) SELECT n.nid, '. time() .' FROM {node} n');
   return $ret;
 }
