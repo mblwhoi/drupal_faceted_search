@@ -1021,8 +1021,11 @@ function faceted_search_ui_add_css() {
 
 /**
  * Add a noindex,nofollow meta tag if more than one facet is active. We want
- * robots to visit and index results for the root categories, but don't want
+ * robots to visit and index results for any single category, but don't want
  * them to visit or index every possible combinations of categories.
+ *
+ * This still lets them discover full hierarchies of categories, but only with a
+ * single active category at a time.
  */
 function faceted_search_ui_add_robots_directive($search) {
   $active = FALSE;
