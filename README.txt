@@ -111,6 +111,13 @@ Requirements
 Recommended modules
 *******************
 
+- Biblio Facets (http://drupal.org/project/biblio_facets)
+  Exposes Biblio (http://drupal.org/project/biblio) types and fields as facets.
+
+- CCK Facets (http://drupal.org/project/cck_facets)
+  Exposes Content Construction Kit (CCK) (http://drupal.org/project/cck) fields
+  as facets.
+
 - Views (http://drupal.org/project/views): In combination with the Faceted
   Search Views module, the Views module can give you tremendous flexibility for
   displaying Faceted Search's results, and even for performing additional
@@ -132,8 +139,11 @@ Recommended modules
 Known incompatibilities
 ***********************
 
-- PostgreSQL: The Date Authored Facet module uses some MySQL-specific functions.
-  Feel free to share patches to support PostgreSQL (or any other database). :-)
+- PostgreSQL: PostgreSQL has not actually been tested at this point. Also, the
+  Date Authored Facet module uses some MySQL-specific functions.  Feel free to
+  share patches to support PostgreSQL (or any other database). :-)
+  See http://drupal.org/node/230471 for updates, and remember that you can help
+  make PostgreSQL support happen!
 
 
 Installation
@@ -263,14 +273,3 @@ Credits
 
 - The superb Flamenco search interface (http://flamenco.berkeley.edu) has
   provided much inspiration for this project.
-
-
-See also
-********
-
-- Biblio Facets (http://drupal.org/project/biblio_facets)
-  Exposes Biblio (http://drupal.org/project/biblio) types and fields as facets.
-
-- CCK Facets (http://drupal.org/project/cck_facets)
-  Exposes Content Construction Kit (CCK) (http://drupal.org/project/cck) fields
-  as facets.
