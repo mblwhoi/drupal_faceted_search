@@ -135,8 +135,8 @@ function taxonomy_facets_faceted_search_collect(&$facets, $domain, $env_id, $fil
     case 'text':
       // Scan the given search text for a 'taxonomy:{path,path,path,...}' token,
       // and create facets from it.
-      $vocabularies = taxonomy_get_vocabularies();
       if ($found_text = search_query_extract($arg, 'taxonomy')) {
+        $vocabularies = taxonomy_get_vocabularies();
         // Extract separate facets
         $paths = explode(',', $found_text);
         foreach ($paths as $path_index => $tids) {
@@ -533,9 +533,9 @@ function _taxonomy_facets_get_category_tid($category) {
  */
 function _taxonomy_facets_update($nid) {
   // Retrieve the node's current term associations from the core term_node
-  // table, but only for terms that belong to non-hierarchical vocabularies
-  // whose corresponding facets are enabled in at least one search environment.
-  // Terms that do not meet those conditions do not belong in the
+  // table, but only for terms that belong to hierarchical vocabularies whose
+  // corresponding facets are enabled in at least one search environment. Terms
+  // that do not meet those conditions do not belong in the
   // taxonomy_facets_term_node table.
   $tids = array();
   $results = db_query("SELECT tn.tid, t.vid FROM {term_node} tn INNER JOIN {term_data} t ON t.tid = tn.tid INNER JOIN {faceted_search_facets} f ON f.facet_id = t.vid INNER JOIN {vocabulary} v ON t.vid = v.vid WHERE tn.nid = %d AND f.facet_key = 'taxonomy' AND f.status = 1 AND v.hierarchy > 0", $nid);
