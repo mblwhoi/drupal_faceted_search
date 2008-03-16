@@ -104,60 +104,8 @@ function faceted_search_collect_keyword_facets(&$facets, $domain, $env_id, $text
       break;
 
     case 'text':
-      // TODO: Most of this function was taken from search_parse_query(), which is
-      // called in faceted_search::execute(), which means this processing is
-      // done twice. Needs to be fixed. Splitting search_parse_query() into two
-      // distinct functions could help.
-      $keys = array('positive' => array(), 'negative' => array());
-
-      // Tokenize query string
-      $matches = array();
-      preg_match_all('/ (-?)("[^"]+"|[^" ]+)/i', ' '. $text, $matches, PREG_SET_ORDER);
-
-      // Taken from search_parse_query() (search.module 1.207) - BEGIN
-      // Classify tokens
-      $or = FALSE;
-      foreach ($matches as $match) {
-        $phrase = FALSE;
-        // Strip off phrase quotes
-        if ($match[2]{0} == '"') {
-          $match[2] = substr($match[2], 1, -1);
-          $phrase = TRUE;
-        }
-        // Simplify keyword according to indexing rules and external preprocessors
-        $words = search_simplify($match[2]);
-        // Re-explode in case simplification added more words, except when matching a phrase
-        $words = $phrase ? array($words) : preg_split('/ /', $words, -1, PREG_SPLIT_NO_EMPTY);
-        // Negative matches
-        if ($match[1] == '-') {
-          $keys['negative'] = array_merge($keys['negative'], $words);
-        }
-        // OR operator: instead of a single keyword, we store an array of all
-        // OR'd keywords.
-        elseif ($match[2] == 'OR' && count($keys['positive'])) {
-          $last = array_pop($keys['positive']);
-          // Starting a new OR?
-          if (!is_array($last)) {
-            $last = array($last);
-          }
-          $keys['positive'][] = $last;
-          $or = TRUE;
-          continue;
-        }
-        // Plain keyword
-        else {
-          if ($or) {
-            // Add to last element (which is an array)
-            $keys['positive'][count($keys['positive']) - 1] = array_merge($keys['positive'][count($keys['positive']) - 1], $words);
-          }
-          else {
-            $keys['positive'] = array_merge($keys['positive'], $words);
-          }
-        }
-        $or = FALSE;
-      }
-      // Taken from search_parse_query() - END
-
+      $keys = faceted_search_parse_keywords($text);
+      
       // Create the facets
       foreach ($keys['positive'] as $keyword) {
         if (is_array($keyword)) {
@@ -634,6 +582,90 @@ function faceted_search_build_text($facets) {
     }
   }
   return trim($text);
+}
+
+// TODO: Document this!
+function faceted_search_quoted_query_extract($keys, $option) {
+  // Based on search_query_extract, but matching a quoted value. Double-quotes
+  // are allowed into the value when escaped with the backslash character.
+  if (preg_match('/(^| )'. $option .':"((\\\.|[^"])*?)"( |$)/i', $keys, $matches)) {
+    return $matches[2];
+  }
+}
+
+// TODO: Document this!
+function faceted_search_quoted_query_insert($keys, $option, $value = '') {
+  // Based on search_query_extract, but matching a quoted value. Double-quotes
+  // are allowed into the value when escaped with the backslash character.
+  if (search_query_extract($keys, $option)) {
+    $keys = trim(preg_replace('/(^| )'. $option .':"((\\\.|[^"])*?)"( |$)/i', ' ', $keys));
+  }
+  if ($value != '') {
+    $keys .= ' '. $option .':'. $value;
+  }
+  return $keys;
+}
+
+/**
+ * Parse text for keyword search.
+ *
+ * @return Array with positive and negative keywords.
+ */
+function faceted_search_parse_keywords($text) {
+  // TODO: Most of this function was taken from search_parse_query(), which is
+  // called in faceted_search::execute(), which means this processing is done
+  // twice. Needs to be fixed. Splitting search_parse_query() into two distinct
+  // functions could help.
+  $keys = array('positive' => array(), 'negative' => array());
+
+  // Tokenize query string
+  $matches = array();
+  preg_match_all('/ (-?)("[^"]+"|[^" ]+)/i', ' '. $text, $matches, PREG_SET_ORDER);
+
+  // Taken from search_parse_query() (search.module 1.207) - BEGIN
+  // Classify tokens
+  $or = FALSE;
+  foreach ($matches as $match) {
+    $phrase = FALSE;
+    // Strip off phrase quotes
+    if ($match[2]{0} == '"') {
+      $match[2] = substr($match[2], 1, -1);
+      $phrase = TRUE;
+    }
+    // Simplify keyword according to indexing rules and external preprocessors
+    $words = search_simplify($match[2]);
+    // Re-explode in case simplification added more words, except when matching a phrase
+    $words = $phrase ? array($words) : preg_split('/ /', $words, -1, PREG_SPLIT_NO_EMPTY);
+    // Negative matches
+    if ($match[1] == '-') {
+      $keys['negative'] = array_merge($keys['negative'], $words);
+    }
+    // OR operator: instead of a single keyword, we store an array of all
+    // OR'd keywords.
+    elseif ($match[2] == 'OR' && count($keys['positive'])) {
+      $last = array_pop($keys['positive']);
+      // Starting a new OR?
+      if (!is_array($last)) {
+        $last = array($last);
+      }
+      $keys['positive'][] = $last;
+      $or = TRUE;
+      continue;
+    }
+    // Plain keyword
+    else {
+      if ($or) {
+        // Add to last element (which is an array)
+        $keys['positive'][count($keys['positive']) - 1] = array_merge($keys['positive'][count($keys['positive']) - 1], $words);
+      }
+      else {
+        $keys['positive'] = array_merge($keys['positive'], $words);
+      }
+    }
+    $or = FALSE;
+  }
+  // Taken from search_parse_query() - END
+  return $keys;
 }
 
 /**
