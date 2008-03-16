@@ -377,8 +377,8 @@ class faceted_search_keyword_category extends faceted_search_category {
  */
 class faceted_search_keyword_facet extends faceted_search_facet {
   
-  function faceted_search_keyword_facet($active_category = NULL, $settings = array()) {
-    parent::faceted_search_facet('keyword', $active_category ? array($active_category) : array(), $settings);
+  function faceted_search_keyword_facet($active_category = NULL) {
+    parent::faceted_search_facet('keyword', $active_category ? array($active_category) : array());
     parent::set_status(TRUE); // Keyword facets are always enabled.
   }
 
@@ -405,11 +405,11 @@ class faceted_search_keyword_facet extends faceted_search_facet {
  */
 class faceted_search_keyword_and_facet extends faceted_search_keyword_facet {
 
-  function faceted_search_keyword_and_facet($keyword = '', $settings = array()) {
+  function faceted_search_keyword_and_facet($keyword = '') {
     if ($keyword) {
       $active_category = new faceted_search_keyword_category(theme('faceted_search_keyword_and_label', $keyword), $keyword);
     }
-    parent::faceted_search_keyword_facet($active_category, $settings);
+    parent::faceted_search_keyword_facet($active_category);
     parent::set_weight(-999); // Assign default weight.
   }
 
@@ -427,11 +427,11 @@ class faceted_search_keyword_and_facet extends faceted_search_keyword_facet {
  */
 class faceted_search_keyword_phrase_facet extends faceted_search_keyword_facet {
 
-  function faceted_search_keyword_phrase_facet($phrase = '', $settings = array()) {
+  function faceted_search_keyword_phrase_facet($phrase = '') {
     if ($phrase) {
       $active_category = new faceted_search_keyword_category(theme('faceted_search_keyword_phrase_label', $phrase), '"'. $phrase .'"');
     }
-    parent::faceted_search_keyword_facet($active_category, $settings);
+    parent::faceted_search_keyword_facet($active_category);
     parent::set_weight(-998); // Assign default weight.
   }
 
@@ -449,11 +449,11 @@ class faceted_search_keyword_phrase_facet extends faceted_search_keyword_facet {
  */
 class faceted_search_keyword_or_facet extends faceted_search_keyword_facet {
   
-  function faceted_search_keyword_or_facet($keywords = array(), $settings = array()) {
+  function faceted_search_keyword_or_facet($keywords = array()) {
     if (count($keywords) > 0) {
       $active_category = new faceted_search_keyword_category(theme('faceted_search_keyword_or_label', $keywords), implode(' OR ', $keywords));
     }
-    parent::faceted_search_keyword_facet($active_category, $settings);
+    parent::faceted_search_keyword_facet($active_category);
     parent::set_weight(-997); // Assign default weight.
   }
 
@@ -471,11 +471,11 @@ class faceted_search_keyword_or_facet extends faceted_search_keyword_facet {
  */
 class faceted_search_keyword_not_facet extends faceted_search_keyword_facet {
 
-  function faceted_search_keyword_not_facet($keyword = '', $settings = array()) {
+  function faceted_search_keyword_not_facet($keyword = '') {
     if ($keyword) {
       $active_category = new faceted_search_keyword_category(theme('faceted_search_keyword_not_label', $keyword), '-'. $keyword);
     }
-    parent::faceted_search_keyword_facet($active_category, $settings);
+    parent::faceted_search_keyword_facet($active_category);
     parent::set_weight(-996); // Assign default weight.
   }
 
