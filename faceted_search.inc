@@ -996,6 +996,19 @@ class faceted_search_query {
   }
 
   /**
+   * Indicate whether a table alias is present in this query.
+   *
+   * @param $alias
+   *   Alias expected to have been assigned to a table in this query.
+   *
+   * @return
+   *   TRUE if the alias is present in the query, FALSE otherwise.
+   */
+  function has_table($alias) {
+    return isset($this->tables[$alias]);
+  }
+  
+  /**
    * Adds a field.
    *
    * @param $table_alias
@@ -1022,19 +1035,16 @@ class faceted_search_query {
   }
 
   /**
-   * Retrieve a field.
+   * Indicate whether a field alias is present in this query.
    *
    * @param $alias
-   *   Alias assigned to the field in this query.
+   *   Alias expected to have been assigned to a field in this query.
    *
    * @return
-   *   Information about the field from this query, or NULL if no field uses the
-   *   specified alias.
+   *   TRUE if the alias is present in the query, FALSE otherwise.
    */
-  function get_field($alias) {
-    if (isset($this->fields[$alias])) {
-      return $this->fields[$alias];
-    }
+  function has_field($alias) {
+    return isset($this->fields[$alias]);
   }
   
   /**
