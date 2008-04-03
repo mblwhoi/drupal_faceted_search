@@ -114,14 +114,16 @@ class faceted_search_views_style extends faceted_search_ui_style {
    * Return the name of this style.
    */
   function get_label() {
-    return t('Views: @view', array('@view' => $this->get_view()->name));
+    $view = $this->get_view();
+    return t('Views: @view', array('@view' => $view->name));
   }
 
   /**
    * Return the number of nodes per page.
    */
   function get_limit() {
-    return $this->get_view()->nodes_per_page;
+    $view = $this->get_view();
+    return $view->nodes_per_page;
   }
 
   /**
@@ -145,7 +147,8 @@ class faceted_search_views_style extends faceted_search_ui_style {
    * Format the search results according to this style's desire.
    */
   function format_results($search) {
-    return views_build_view('embed', $this->get_view(), array($search->get_env_id()), TRUE, $this->get_limit());
+    $view = $this->get_view();
+    return views_build_view('embed', $view, array($search->get_env_id()), TRUE, $this->get_limit());
   }
 }
 
