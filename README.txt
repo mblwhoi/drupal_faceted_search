@@ -121,7 +121,8 @@ Recommended modules
 - Views (http://drupal.org/project/views): In combination with the Faceted
   Search Views module, the Views module can give you tremendous flexibility for
   displaying Faceted Search's results, and even for performing additional
-  filtering of the search results.
+  filtering of the search results. See the "Views integration" topic below for
+  more details.
 
 - jQuery Update (http://drupal.org/project/jquery_update): If you wish to use
   Faceted Search UI's tooltips feature (for showing subcategories when hovering
@@ -130,10 +131,10 @@ Recommended modules
   instructions. If you don't use the tooltips feature, Faceted Search UI won't
   use jQuery at all, so in that case you would not need jQuery Update.
 
-- Taxonomy hide (http://drupal.org/project/taxonomy_hide): If you use the
-  Faceted Search UI's Related Categories block, you might want to remove
-  Drupal's default terms listing when viewing a node. You could do that from
-  your site's theme, but another way could be to use the Taxonomy hide module.
+- Taxonomy hide (http://drupal.org/project/taxonomy_hide): If you use Faceted
+  Search UI's Related Categories block, you might want to remove Drupal's
+  default terms listing when viewing a node. You could do that from your site's
+  theme, but another way could be to use the Taxonomy hide module.
 
 
 Known incompatibilities
