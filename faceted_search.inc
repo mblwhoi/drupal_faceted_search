@@ -179,7 +179,7 @@ class faceted_search_facet {
   }
   
   /**
-   * Returns the available sort options for this facet. Each option is a key =>
+   * Return the available sort options for this facet. Each option is a key =>
    * label pair.
    *
    * Each key must have a corresponding handler method in the form
@@ -190,7 +190,7 @@ class faceted_search_facet {
   }
 
   /**
-   * Returns the current sort criteria for this facet.
+   * Return the current sort criteria for this facet.
    */
   function get_sort() {
     return $this->_sort;
@@ -330,7 +330,8 @@ class faceted_search_facet {
  * "subcategories", and queries for searching keywords are a special case
  * handled directly by faceted_search::execute().
  */
-class faceted_search_keyword_category extends faceted_search_category {
+/////// TODO!!!! most of this should probably be moved to the keyword_facet class. The keyword_category class would just be a thin shell accessing methods in the facet. That would let the facets store the text any way they want. On pourrait éviter certains traitements redondants; par exemple, pour les 'or', on passe à la facette le résultat de implode(' OR '), puis lors de la consturction du query on fait explode(' OR '). À surveille toutefois, si le get_text() est fréquemment appelé, on veut pas faire les implode à chaque fois.
+class faceted_search_keyword_category extends faceted_search_category { 
   var $_label = '';
   var $_text = '';
   
@@ -376,14 +377,16 @@ class faceted_search_keyword_category extends faceted_search_category {
  * helps display them in the current search block.
  */
 class faceted_search_keyword_facet extends faceted_search_facet {
+  var $_type = ''; // Type of search index entry this facet is interested in.
   
-  function faceted_search_keyword_facet($active_category = NULL) {
+  function faceted_search_keyword_facet($active_category = NULL, $type = 'node') {
     parent::faceted_search_facet('keyword', $active_category ? array($active_category) : array());
     parent::set_status(TRUE); // Keyword facets are always enabled.
+    $this->_type = $type;
   }
 
   /**
-   * Returns the available sort options for this facet.
+   * Return the available sort options for this facet.
    */
   function get_sort_options() {
     return array(); // Sort options are not relevant to this kind of facet.
@@ -398,6 +401,21 @@ class faceted_search_keyword_facet extends faceted_search_facet {
     }
     return '';
   }
+
+  /**
+   * Check whether a given word is allowed for searching.
+   *
+   * @return
+   *   The allowed word, or NULL if it is not allowed.
+   */
+  function check_word($word) {
+    if (is_numeric($word)) {
+      return (int)ltrim($word, '-0'); /////// TODO!!! sans doute problème lors de l'extraction; le '-' est tout de suite interprété comme un NOT, sans check si le mot est numérique!
+    }
+    elseif (drupal_strlen($word) >= variable_get('minimum_word_size', 3)) { /// TODO!!! dans le cas d'un NOT, si $word passé ici contient le '-', il faudrait l'enlever pour cette vérification.
+      return $word;
+    }
+  }
 }
 
 /**
@@ -405,11 +423,11 @@ class faceted_search_keyword_facet extends faceted_search_facet {
  */
 class faceted_search_keyword_and_facet extends faceted_search_keyword_facet {
 
-  function faceted_search_keyword_and_facet($keyword = '') {
+  function faceted_search_keyword_and_facet($keyword = '', $type = 'node') {
     if ($keyword) {
       $active_category = new faceted_search_keyword_category(theme('faceted_search_keyword_and_label', $keyword), $keyword);
     }
-    parent::faceted_search_keyword_facet($active_category);
+    parent::faceted_search_keyword_facet($active_category, $type);
     parent::set_weight(-999); // Assign default weight.
   }
 
@@ -420,6 +438,40 @@ class faceted_search_keyword_and_facet extends faceted_search_keyword_facet {
   function get_label() {
     return t('Keyword (AND)');
   }
+
+  /**
+   * Inject keyword search components into the query.
+   *
+   * @param $query
+   *   Query to update for searching with this facet's active category.
+   * @param $types
+   *   Array of search index types. This method should insert the type it cares
+   *   about.
+   * @param $words
+   *   Array keyed by search index type, each element being an array of positive
+   *   words to lookup for that index type. This method should insert any words
+   *   it cares about.
+   * @param $matches
+   *   Minimum number of words that should match in query results.
+   */
+  function build_keyword_query(&$query, &$types, &$words, &$matches) {
+    if ($this->is_active()) {
+      $word = $this->get_active_category()->get_text();
+      if ($word = $this->check_word($word)) {
+        if (!isset($words[$word])) {
+          $types[$this->_type] = $this->_type;
+          $words[$this->_type][$word] = $word;
+          $matches++;
+
+          // The dataset will have to be looked up as well if the query becomes
+          // more complex because of other keyword search operators.
+          $query->set_current_part("{$this->_type}_search_dataset");
+          $query->add_where("{$this->_type}_search_dataset.data LIKE '%% %s %%'", $word);
+          $query->set_current_part(); // Back to default part.
+        }
+      }
+    }
+  }
 }
 
 /**
@@ -427,11 +479,11 @@ class faceted_search_keyword_and_facet extends faceted_search_keyword_facet {
  */
 class faceted_search_keyword_phrase_facet extends faceted_search_keyword_facet {
 
-  function faceted_search_keyword_phrase_facet($phrase = '') {
+  function faceted_search_keyword_phrase_facet($phrase = '', $type = 'node') {
     if ($phrase) {
       $active_category = new faceted_search_keyword_category(theme('faceted_search_keyword_phrase_label', $phrase), '"'. $phrase .'"');
     }
-    parent::faceted_search_keyword_facet($active_category);
+    parent::faceted_search_keyword_facet($active_category, $type);
     parent::set_weight(-998); // Assign default weight.
   }
 
@@ -442,18 +494,64 @@ class faceted_search_keyword_phrase_facet extends faceted_search_keyword_facet {
   function get_label() {
     return t('Keyword (Phrase)');
   }
+
+  /**
+   * Inject keyword search components into the query.
+   *
+   * @param $query
+   *   Query to update for searching with this facet's active category.
+   * @param $types
+   *   Array of search index types. This method should insert the type it cares
+   *   about.
+   * @param $words
+   *   Array keyed by search index type, each element being an array of positive
+   *   words to lookup for that index type. This method should insert any words
+   *   it cares about.
+   * @param $matches
+   *   Minimum number of words that should match in query results.
+   */
+  function build_keyword_query(&$query, &$types, &$words, &$matches) {
+    if ($this->is_active()) {
+      $phrase = trim($this->get_active_category()->get_text(), '"');
+      $split = explode(' ', $phrase);
+      foreach ($split as $word) {
+        if ($word = $this->check_word($word)) {
+          if (!isset($words[$word])) {
+            $words[$this->_type][$word] = $word;
+          }
+        }
+      }
+      if (count($split) > 0) {
+        $matches++; // A phrase counts as one match.
+        $types[$this->_type] = $this->_type;
+
+        if (count($split) > 1) {
+          // Real phrase. We'll have to verify it against the dataset.
+          $query->enable_part("{$this->_type}_search_dataset");
+        }
+        
+        // Add phrase match conditions.
+        $query->set_current_part("{$this->_type}_search_dataset");
+        $query->add_where("{$this->_type}_search_dataset.data LIKE '%% %s %%'", $phrase);
+        //// TODO!!!!! test phrase with multiple spaces between words (both matching and non-matching -- or should it matter?).
+        $query->set_current_part(); // Back to default part.
+      }
+    }
+  }
 }
+
+// TODO: Handle negative phrases.
 
 /**
  * A keyword OR facet.
  */
 class faceted_search_keyword_or_facet extends faceted_search_keyword_facet {
   
-  function faceted_search_keyword_or_facet($keywords = array()) {
+  function faceted_search_keyword_or_facet($keywords = array(), $type = 'node') {
     if (count($keywords) > 0) {
       $active_category = new faceted_search_keyword_category(theme('faceted_search_keyword_or_label', $keywords), implode(' OR ', $keywords));
     }
-    parent::faceted_search_keyword_facet($active_category);
+    parent::faceted_search_keyword_facet($active_category, $type);
     parent::set_weight(-997); // Assign default weight.
   }
 
@@ -464,6 +562,52 @@ class faceted_search_keyword_or_facet extends faceted_search_keyword_facet {
   function get_label() {
     return t('Keyword (OR)');
   }
+
+  /**
+   * Inject keyword search components into the query.
+   *
+   * @param $query
+   *   Query to update for searching with this facet's active category.
+   * @param $types
+   *   Array of search index types. This method should insert the type it cares
+   *   about.
+   * @param $words
+   *   Array keyed by search index type, each element being an array of positive
+   *   words to lookup for that index type. This method should insert any words
+   *   it cares about.
+   * @param $matches
+   *   Minimum number of words that should match in query results.
+   */
+  function build_keyword_query(&$query, &$types, &$words, &$matches) {
+    if ($this->is_active()) {
+      $split = explode(' OR ', $this->get_active_category()->get_text());
+      $where = '';
+      $where_args = array();
+      foreach ($split as $word) {
+        if ($word = $this->check_word($word)) {
+          if (!isset($words[$word])) {
+            $words[$this->_type][$word] = $word;
+            if (!empty($where)) {
+              $where .= ' OR ';
+            }
+            $where .= "{$this->_type}_search_dataset.data LIKE '%% %s %%'";
+            $where_args[] = $word;
+          }
+        }
+      }
+      if (!empty($where)) {
+        $matches++;
+        $types[$this->_type] = $this->_type;
+
+        // Matches will have to be checked against the dataset.
+        $query->enable_part("{$this->_type}_search_dataset");
+        $query->set_current_part("{$this->_type}_search_dataset");
+        array_unshift($where_args, $where);
+        call_user_func_array(array(&$query, 'add_where'), $where_args);
+        $query->set_current_part(); // Back to default part.
+      }
+    }
+  }
 }
 
 /**
@@ -471,11 +615,11 @@ class faceted_search_keyword_or_facet extends faceted_search_keyword_facet {
  */
 class faceted_search_keyword_not_facet extends faceted_search_keyword_facet {
 
-  function faceted_search_keyword_not_facet($keyword = '') {
+  function faceted_search_keyword_not_facet($keyword = '', $type = 'node') {
     if ($keyword) {
       $active_category = new faceted_search_keyword_category(theme('faceted_search_keyword_not_label', $keyword), '-'. $keyword);
     }
-    parent::faceted_search_keyword_facet($active_category);
+    parent::faceted_search_keyword_facet($active_category, $type);
     parent::set_weight(-996); // Assign default weight.
   }
 
@@ -485,6 +629,36 @@ class faceted_search_keyword_not_facet extends faceted_search_keyword_facet {
 
   function get_label() {
     return t('Keyword (NOT)');
+  }
+
+  /**
+   * Inject keyword search components into the query.
+   *
+   * @param $query
+   *   Query to update for searching with this facet's active category.
+   * @param $types
+   *   Array of search index types. This method should insert the type it cares
+   *   about.
+   * @param $words
+   *   Array keyed by search index type, each element being an array of positive
+   *   words to lookup for that index type. This method should insert any words
+   *   it cares about.
+   * @param $matches
+   *   Minimum number of words that should match in query results.
+   */
+  function build_keyword_query(&$query, &$types, &$words, &$matches) {
+    if ($this->is_active()) {
+      $word = ltrim($this->get_active_category()->get_text(), '-');
+      if ($word = $this->check_word($word)) {
+        $types[$this->_type] = $this->_type;
+        
+        // Negative words are checked against the dataset.
+        $query->enable_part("{$this->_type}_search_dataset");
+        $query->set_current_part("{$this->_type}_search_dataset");
+        $query->add_where("{$this->_type}_search_dataset.data NOT LIKE '%% %s %%'", $word);
+        $query->set_current_part(); // Back to default part.
+      }
+    }
   }
 }
 
@@ -514,11 +688,6 @@ class faceted_search {
    * queried for various purposes, such as building the search interface.
    */
   var $_results_table = '';
-
-  /**
-   * Total value of ranking weights. May be used only after a call to execute().
-   */
-  var $_results_total = 0;
 
   /**
    * Number of results in the results table. May be used only after a call to
@@ -652,127 +821,131 @@ class faceted_search {
   /**
    * Perform the search and store the results in a temporary table.
    *
-   * Two queries are performed. The first query selects a set of possible
-   * matches based on the search index and the given keywords. This is the
-   * classic "OR" search.
+   * Results are retrieved in two logical "passes". However, the two passes are
+   * joined together into a single query.  And in the case of most simple
+   * queries the second pass is not even used.
    *
-   * The second query further refines this set by verifying advanced conditions
-   * (such as filters, facets, AND, negative or phrase matches), and orders the
-   * results by score.
+   * The first pass selects a set of all possible matches (individual words
+   * looked up in the search_index table), which has the benefit of also
+   * providing the exact result set for simple "AND" or "OR" searches.
+   *
+   * The second portion of the query further refines this set by verifying
+   * advanced text conditions, such negative or phrase matches (search text
+   * checked against the search_dataset table).
    */
   function execute() {
     if (!$this->_keywords && !$this->_facets) {
       return; // Nothing to search
     }
-    
-    // Build first query
-    $query1 = new faceted_search_query;
-    $query1->add_where("n.status = 1");
-    
-    $query_parts = search_parse_query($this->_keywords);
-    if ($query_parts[2] && $query_parts[3]) {
-      $args = array_values($query_parts[3]);
-      array_unshift($args, $query_parts[2]); // Pass the $clause arg to add_where().
-      call_user_func_array(array(&$query1, 'add_where'), $args); // Pass all args to add_where().
-    }
-    
-    if ($query_parts[0] || $query_parts[2]) {
-      // Has some positive or negative keywords
-      $query1->add_table('search_index', 'sid', 'n', 'nid', 'i');
-      $query1->add_table('search_total', 'word', 'i', 'word', 't');
-      $query1->add_where("i.type = 'node'");
-      $query1->add_field(NULL, 'SUM(i.score * t.count)', 'relevance');
-      $query1->add_field(NULL, 'COUNT(*)', 'matches');
-    }
-    else {
-      // Has no keywords
-      $query1->add_field(NULL, '1', 'relevance');
-      $query1->add_field(NULL, 'COUNT(*)', 'matches');
-    }
-    $query1->add_groupby('nid');
-    $query1->add_having('COUNT(*) >= %d', (int)$query_parts[4]);
-    
-    // Build second query
-    $query2 = new faceted_search_query;
-    
-    // Based on node_search() - BEGIN
-    // Build ranking expression (we try to map each parameter to a
-    // uniform distribution in the range 0..1).
-    
-    // Always join the table resulting from $query1.
-    $query2->add_table('temp_faceted_search_nids_'. $this->_env_id, 'nid', 'n', 'nid', 'i', 'INNER', FALSE);
-    if ($query_parts[0] || $query_parts[2]) {
-      // Has some positive or negative keywords
-      $query2->add_table('search_dataset', 'sid', 'n', 'nid', 'd');
-      $query2->add_where("d.type = 'node'");
-    }
+
+    $query = new faceted_search_query;
+    $query->add_where('n.status = 1');
+    $query->add_groupby('n.nid');
 
     // Apply node type filter
     if ($types = faceted_search_types($this->_env_id)) {
-      $query2->add_where("n.type IN ('". implode("','", $types) ."')");
+      $query->add_where("n.type IN ('". implode("','", $types) ."')");
     }
-    // Used to avoid joining on node_comment_statistics twice
-    $stats_added = FALSE;
-    $ranking = array();
-    $this->_results_total = 0;
-    if ($weight = (int)variable_get('node_rank_relevance', 5)) {
-      // Average relevance values hover around 0.15
-      $ranking[] = sprintf('%d * i.relevance', $weight);
-      $this->_results_total += $weight;
-    }
-    if ($weight = (int)variable_get('node_rank_recent', 5)) {
-      // Exponential decay with half-life of 6 months, starting at last indexed node
-      $ranking[] = sprintf('%d * POW(2, (GREATEST(n.created, n.changed, IFNULL(c.last_comment_timestamp, 0)) - %d) * 6.43e-8)', $weight, (int)variable_get('node_cron_last', 0)); // TODO: see http://drupal.org/node/106659
-      $query2->add_table('node_comment_statistics', 'nid', 'n', 'nid', 'c', 'LEFT');
-      $stats_added = TRUE;
-      $this->_results_total += $weight;
-    }
-    if (module_exists('comment') && $weight = (int)variable_get('node_rank_comments', 5)) {
-      // Inverse law that maps the highest reply count on the site to 1 and 0 to 0.
-      $scale = variable_get('node_cron_comments_scale', 0.0);
-      $ranking[] = sprintf('%d * (2.0 - 2.0 / (1.0 + IFNULL(c.comment_count, 0) * %f))', $weight, $scale);
-      if (!$stats_added) {
-        $query2->add_table('node_comment_statistics', 'nid', 'n', 'nid', 'c', 'LEFT');
+    
+    // Inject keyword search conditions if applicable.
+    $types = array(); // Search index entry types to include use the query.
+    $words = array(); // Positive words to include in the query.
+    $matches = 0;
+    $word_score_expr = '';
+    foreach ($this->_facets as $facet) {
+      if (method_exists($facet, 'build_keyword_query')) { /// TODO!!! séparer keyword facets des autres et éviter cette condition?
+        $facet->build_keyword_query($query, $types, $words, $matches);
       }
-      $this->_results_total += $weight;
+      elseif ($category = $facet->get_active_category()) {
+        $category->build_results_query($query);
+      }
     }
-    if (module_exists('statistics') && variable_get('statistics_count_content_views', 0) && $weight = (int)variable_get('node_rank_views', 5)) {
-      // Inverse law that maps the highest view count on the site to 1 and 0 to 0.
-      $scale = variable_get('node_cron_views_scale', 0.0);
-      $ranking[] = sprintf('%d * (2.0 - 2.0 / (1.0 + IFNULL(nc.totalcount, 0) * %f))', $weight, $scale);
-      $query2->add_table('node_counter', 'nid', 'n', 'nid', 'nc', 'LEFT');
-      $this->_results_total += $weight;
+
+    if (empty($types)) {
+      // No keyword search needed.
+//      $query->add_field(NULL, '1', 'relevance');
     }
-    if (count($ranking)) {
-      $query2->add_field(NULL, '(('. implode(') + (', $ranking) .')) / '. $this->_results_total, 'score');
+    elseif (empty($words)) {
+      // Negative words were specified, but no positive words. Negative words
+      // are looked up in search_dataset, but since there are no positive words
+      // it is joined directly with the node table, and search_index is not
+      // needed.
+      foreach ($types as $type) {
+        $query->set_current_part("{$type}_search_dataset");
+        $query->add_table('search_dataset', 'sid', 'n', 'nid', "{$type}_search_dataset");
+        $query->add_where("{$type}_search_dataset.type = '%s'", $type);
+        $query->set_current_part(); // Back to default part.
+      }
     }
     else {
-      $query2->add_field(NULL, 'i.relevance / '. $this->_results_total, 'score');
-    }
-    // Based on node_search() - END
-    if ($query_parts[0] && $query_parts[1]) {
-      $args = array_values($query_parts[1]);
-      array_unshift($args, $query_parts[0]); // Pass the $clause arg to add_where().
-      call_user_func_array(array(&$query2, 'add_where'), $args); // Pass all args to add_where().
-    }
-    $query2->add_orderby('score', 'DESC');
+      // Some positive words were specified (and maybe some negatives as well).
+      $words_where = array();
+      $words_args = array();
+      $words_scores = array();
+      foreach ($types as $type) {
+        // Join the search dataset for the current index type, in case we're
+        // dealing with a complex query.
+        $query->set_current_part("{$type}_search_dataset");
+        $query->add_table('search_dataset', array('sid', 'type'), "{$type}_search_index", array('sid', 'type'), "{$type}_search_dataset");
+        $query->set_current_part(); // Back to default part.
 
-    // Apply facets into query, except for keywords (which are already included
-    // in the query)
-    foreach ($this->_facets as $facet) {
-      if ($facet->get_key() != 'keyword') {
-        if ($category = $facet->get_active_category()) {
-          $category->build_results_query($query2);
+        if (!empty($words[$type])) {
+          // TODO: The handling of individual words could be cleaner if the
+          // query builder supported nesting within WHERE clauses.
+          
+          // Join the search index for the current index type.
+          $query->add_table('search_index', 'sid', 'n', 'nid', "{$type}_search_index");
+
+          $words_where[] = '(('. substr(str_repeat("{$type}_search_index.word = '%s' OR ", count($words[$type])), 0, -4) .") AND {$type}_search_index.type = '%s')";
+          $words_args = array_merge($words_args, $words[$type]);
+          $words_args[] = $type;
+      
+          $query->add_table('search_total', 'word', "{$type}_search_index", 'word', "{$type}_search_total");
+
+          $words_scores[] = "{$type}_search_index.score * {$type}_search_total.count";
         }
       }
+
+      if (!empty($words_where)) {
+        array_unshift($words_args, implode(' OR ', $words_where));
+        call_user_func_array(array(&$query, 'add_where'), $words_args);
+      }
+
+      $query->add_having('COUNT(*) >= %d', $matches);
+
+      if (!empty($words_scores)) {
+        // Add word score expression to the query.
+        $score = 'SUM('. implode(' + ', $words_scores) .')';
+        $query->set_current_part('normalize');
+        $query->add_field(NULL, $score, 'score'); 
+        $query->set_current_part();
+
+        // Perform the word score normalization query.
+        $query->enable_part('normalize');
+        $normalize = db_result(db_query_range($query->query(), $query->args(), 0, 1));
+        $query->disable_part('normalize');
+
+        if (!$normalize) {
+          return; // TODO!!!! what happens if the search is not ready after execute() ??? ... worrying about an infinite loop...
+        }
+
+        $word_score_expr = '('. (1.0 / $normalize) .' * '. $score .')';
+      }
     }
+
+    // Add scoring expression to the query.
+    $this->_add_scoring($query, $word_score_expr);
+
+    // Add field needed for results.
+    $query->add_field('n', 'nid', 'nid'); 
 
     // Give other modules an opportunity at altering the final query (e.g. for
     // additional filtering).
-    module_invoke_all('faceted_search_query_alter', $this, $query2);
-    
-    // Perform the search.
-    $this->_execute_search_query($query1, $query2);
+    module_invoke_all('faceted_search_query_alter', $this, $query);
+
+    // Perform the search results query.
+    db_query_temporary($query->query(), $query->args(), $this->_results_table);
+    $this->_results_count = db_result(db_query('SELECT COUNT(*) FROM '. $this->_results_table));
     $this->_ready = TRUE; 
   }
 
@@ -887,37 +1060,65 @@ class faceted_search {
   }
 
   /**
-   * Run the specified queries and store results in the temporary table.
+   * Add scoring expression to the search query.
    */
-  function _execute_search_query($query1, $query2) {
-    // This is similar to search.module's do_search()
+  function _add_scoring(&$query, $word_score_expr = '') {
+    // Based on node_search() -- START
 
-    // Execute query1
-    db_query_temporary($query1->query(), $query1->args(), 'temp_faceted_search_nids_'. $this->_env_id);
-
-    // Calculate maximum relevance and normalize it.
-    $normalize = db_result(db_query('SELECT MAX(relevance) FROM temp_faceted_search_nids_'. $this->_env_id));
-    if ($normalize) {
-      foreach ($query2->fields as $alias => $field) {
-        $query2->fields[$alias] = str_replace('i.relevance', '('. (1.0 / $normalize) .' * i.relevance)', $field);
+    $score_field = array();
+    $score_arguments = array();
+    if (!empty($word_score_expr) && $weight = (int)variable_get('node_rank_relevance', 5)) {
+      $score_field[] = "%d * $word_score_expr";
+      $score_arguments[] = $weight;
+    }
+    if ($weight = (int)variable_get('node_rank_recent', 5)) {
+      // Exponential decay with half-life of 6 months, starting at last indexed node
+      $score_field[] = '%d * POW(2, (GREATEST(MAX(n.created), MAX(n.changed), MAX(c.last_comment_timestamp)) - %d) * 6.43e-8)';
+      $score_arguments[] = $weight;
+      $score_arguments[] = (int)variable_get('node_cron_last', 0);
+      $query->add_table('node_comment_statistics', 'nid', 'n', 'nid', 'c', 'LEFT');
+    }
+    if (module_exists('comment') && $weight = (int)variable_get('node_rank_comments', 5)) {
+      // Inverse law that maps the highest reply count on the site to 1 and 0 to 0.
+      $scale = variable_get('node_cron_comments_scale', 0.0);
+      $score_field[] = '%d * (2.0 - 2.0 / (1.0 + MAX(c.comment_count) * %f))';
+      $score_arguments[] = $weight;
+      $score_arguments[] = $scale;
+      if (!$query->has_table('c')) {
+        $query->add_table('node_comment_statistics', 'nid', 'n', 'nid', 'c', 'LEFT');
       }
     }
-    
-    // Execute query2
-    db_query_temporary($query2->query(), $query2->args(), $this->_results_table);
-    $this->_results_count = db_result(db_query('SELECT COUNT(*) FROM '. $this->_results_table));
+    // Based on node_search() -- END
+
+    // Add the formulas and their arguments into the query.
+    if (count($score_field)) {
+      // Prepend the first three arguments for add_field().
+      $score_arguments = array_merge(array(NULL, implode(' + ', $score_field), 'score'), $score_arguments);
+      // Call $query->add_field() with all arguments.
+      call_user_func_array(array(&$query, 'add_field'), $score_arguments);
+    }      
+
+    $query->add_orderby('score', 'DESC');
   }
 }
 
+////// TODO!!!! évaluer pertinence système de query parts vs. objets query distincts
+
 /**
- * This class allows to build queries piece by piece.
+ * This class allows to build SQL queries piece by piece.
+ *
+ * Query elements are assigned to parts. These parts may selectively enabled or
+ * disabled to control the final assembled the SQL statements. This is useful
+ * when some context is still unknown at the time the elements are gathered -
+ * those elements can still be injected to the query object and later filtered
+ * in or out depending on context.
  */
 class faceted_search_query {
   var $primary_table_alias = '';
-  var $primary_field_alias = '';
   var $table_queue = array(); // Ordered array of tables aliases to join.
   var $tables = array(); // Tables to join, keyed by their alias.
   var $fields = array(); // Fields, keyed by their alias.
+  var $field_args = array();
   var $groupby = array();
   var $having = array();
   var $having_args = array();
@@ -926,14 +1127,19 @@ class faceted_search_query {
   var $where_args = array();
   var $subqueries = array();
   var $subqueries_args = array();
+  // Part to which query elements will be added to.
+  var $current_part = 'default';
+  // Parts enabled for use in the final assembled the query.
+  var $parts = array('default' => 'default'); 
 
   /**
    * Constructor. Specifies the primary table and field for this query.
+   *
+   * The primary table and field are always assigned to the default part.
    */
-  function faceted_search_query($primary_table = 'node', $primary_field = 'nid', $primary_table_alias = 'n', $primary_field_alias = 'nid', $prefixing = TRUE) {
+  function faceted_search_query($primary_table = 'node', $primary_table_alias = 'n', $prefixing = TRUE) {
     $this->primary_table_alias = $primary_table_alias;
-    $this->primary_field_alias = $primary_field_alias;
-    $this->tables[$primary_table_alias] = array(
+    $this->tables['default'][$primary_table_alias] = array(
       'table' => $primary_table,
       'field' => NULL,
       'left_table_alias' => NULL,
@@ -941,54 +1147,102 @@ class faceted_search_query {
       'join' => NULL,
       'prefixing' => $prefixing,
     );
-    $this->fields[$primary_field_alias] = array(
-      'field' => $primary_field,
-      'table_alias' => $primary_table_alias,
-    );
   }
 
   /**
-   * Adds a table to join.
+   * Set the current part. This determines the part to which any query element
+   * will be added to, until this method is called to select another part as
+   * the current part.
+   *
+   * The current part cannot be "unset", but it can be reset back to the
+   * default part.
+   *
+   * @param $part
+   *   Name of the part. Defaults to 'default'.
+   */
+  function set_current_part($part = 'default') {
+    $this->current_part = $part;
+  }
+
+  /**
+   * Return the current part.
+   */
+  function get_current_part() {
+    return $this->current_part;
+  }
+
+  /**
+   * Mark a part as enabled for use in query assembling. The query() and args()
+   * methods will only return query elements that belong to parts that have
+   * been enabled.
+   *
+   * The default part is always enabled.
+   *
+   * @see query
+   * @see args
+   * @see disable_part
+   */
+  function enable_part($part) {
+    $this->parts[$part] = $part;
+  }
+
+  /**
+   * Disallow a part for use in query assembling.
+   *
+   * The default part cannot be disabled.
+   *
+   * @see enable_part
+   */
+  function disable_part($part) {
+    if ($part != 'default') {
+      unset($this->parts[$part]);
+    }
+  }
+  
+  /**
+   * Indicate whether the specified part is enabled for use in query assembling.
+   */
+  function is_part_enabled($part) {
+    return isset($this->parts[$part]);
+  }
+  
+  /**
+   * Add a table to join.
    *
    * @param $table
    *   Name of the table to join.
-   *
    * @param $field
-   *   Field to use in the ON condition of the join clause.
-   *
+   *   Field to use in the ON condition of the join clause. This can be an array
+   *   if the condition involves multiple fields (multiple fields will be glued
+   *   together with the AND operator).
    * @param $left_table_alias
    *   Alias of the table to use on the left part of the join. That table must
    *   be the query's primary table or another table added through
-   *   add_table(). This must be an alias as returned by add_table(). If
-   *   omitted, the primary table is used.
-   *
+   *   add_table(). This must be an alias as returned by add_table().
    * @param $left_field
    *   Field from the left table to use in the ON condition of the join
-   *   clause. If omitted, the primary field is used.
-   *
+   *   clause. If $field is array, then $left_field must be an array of the same
+   *   length.
    * @param $alias
    *   Alias to use for the table being added. If unspecified, the alias will be
    *   the same as the table's name. A unique alias must be given if the table
    *   is to be joined multiple times.
-   *
    * @param $join
    *   Type of join clause to use. Default is 'INNER'.
-   *
    * @param $prefixing
    *   TRUE when the table should be prefixed via db_prefix_tables(). This
    *   should usually be FALSE when joining a temporary table.
-   *
    * @return
    *   The alias assigned to the table in this query.
    */
-  function add_table($table, $field = NULL, $left_table_alias = NULL, $left_field = NULL, $alias = NULL, $join = 'INNER', $prefixing = TRUE) {
+  function add_table($table, $field, $left_table_alias, $left_field, $alias = NULL, $join = 'INNER', $prefixing = TRUE) {
     $alias = $alias ? $alias : $table;
-    $this->table_queue[] = $alias;
-    $this->tables[$alias] = array(
+    $this->table_queue[$this->current_part][] = $alias;
+    $this->tables[$this->current_part][$alias] = array(
       'table' => $table,
-      'field' => $field ? $field : $this->fields[$this->primary_field_alias]['field'],
-      'left_table_alias' => $left_table_alias ? $left_table_alias : $this->primary_table_alias,
-      'left_field' => $left_field ? $left_field : $this->fields[$this->primary_field_alias]['field'],
+      'field' => $field,
+      'left_table_alias' => $left_table_alias,
+      'left_field' => $left_field,
       'join' => $join,
       'prefixing' => $prefixing,
     );
@@ -1000,37 +1254,58 @@ class faceted_search_query {
    *
    * @param $alias
    *   Alias expected to have been assigned to a table in this query.
-   *
+   * @param $part
+   *   Optional. Part in which to look for the table. When not specified, the
+   *   current part is used.
    * @return
    *   TRUE if the alias is present in the query, FALSE otherwise.
    */
-  function has_table($alias) {
-    return isset($this->tables[$alias]);
+  function has_table($alias, $part = NULL) {
+    $part = isset($part) ? $part : $this->current_part;
+    return isset($this->tables[$part][$alias]);
   }
-  
+
   /**
-   * Adds a field.
+   * Add a field.
    *
    * @param $table_alias
    *   Alias of the table containing the field, either the primary table or an
    *   alias returned by add_table(). Use NULL for a formula.
-   *
    * @param $field
    *   The name of the field, or the formula defining the field.
-   *
    * @param $alias
    *   Alias to use to identify the field. If omitted, the alias will be
    *   $table_alias .'_'. $field. Must be specified if the field is a formula.
-   *
+   * @param ...
+   *   A variable number of arguments which are substituted into the query using
+   *   printf) syntax. The query arguments can be enclosed in one array
+   *   instead. Valid %-modifiers are: %s, %d, %f, %b (binary data, do not
+   *   enclose in '') and %%. This is useful when the field is defined by a
+   *   formula.
    * @return
    *   The alias assigned to the field in this query.
    */
   function add_field($table_alias, $field, $alias = NULL) {
     $alias = $alias ? $alias : $table_alias .'_'. $field;
-    $this->fields[$alias] = array(
+    $this->fields[$this->current_part][$alias] = array(
       'field' => $field,
       'table_alias' => $table_alias,
     );
+    $args = func_get_args();
+    array_shift($args); // Skip $table_alias.
+    array_shift($args); // Skip $field.
+    if (count($args)) {
+      array_shift($args); // Skip $alias.
+      if (count($args)) {
+        // Add extra arguments.
+        if (isset($this->field_args[$this->current_part])) {
+          $this->field_args[$this->current_part] = array_merge($this->field_args[$this->current_part], $args);
+        }
+        else {
+          $this->field_args[$this->current_part] = $args;
+        }
+      }
+    }
     return $alias;
   }
 
@@ -1039,21 +1314,24 @@ class faceted_search_query {
    *
    * @param $alias
    *   Alias expected to have been assigned to a field in this query.
-   *
+   * @param $part
+   *   Optional. Part in which to look for the field. When not specified, the
+   *   current part is used.
    * @return
    *   TRUE if the alias is present in the query, FALSE otherwise.
    */
-  function has_field($alias) {
-    return isset($this->fields[$alias]);
+  function has_field($alias, $part = NULL) {
+    $part = isset($part) ? $part : $this->current_part;
+    return isset($this->fields[$part][$alias]);
   }
   
   /**
-   * Adds a WHERE condition.
+   * Add a WHERE condition. When the query is later assembled, all WHERE
+   * conditions are glued together with the AND operator.
    *
    * @param $clause
    *   The condition to add. The caller must ensure that any field is fully
    *   qualified using its table's alias as returned by add_table().
-   *
    * @param ...
    *   A variable number of arguments which are substituted into the query using
    *   printf) syntax. The query arguments can be enclosed in one array
@@ -1061,16 +1339,21 @@ class faceted_search_query {
    *   enclose in '') and %%.
    */
   function add_where($clause) {
-    $this->where[] = $clause;
+    $this->where[$this->current_part][] = $clause;
     $args = func_get_args();
     array_shift($args); // Skip $clause.
     if (count($args)) {
-      $this->where_args = array_merge($this->where_args, $args);
+      if (isset($this->where_args[$this->current_part])) {
+        $this->where_args[$this->current_part] = array_merge($this->where_args[$this->current_part], $args);
+      }
+      else {
+        $this->where_args[$this->current_part] = $args;
+      }
     }
   }
 
   /**
-   * Adds a subquery as a WHERE condition.
+   * Add a subquery as a WHERE condition.
    *
    * @param $clause
    *   The condition to add. The caller must ensure that any field is fully
@@ -1084,35 +1367,38 @@ class faceted_search_query {
    *   enclose in '') and %%.
    */
   function add_subquery($clause) {
-    $this->subqueries[] = $clause;
+    $this->subqueries[$this->current_part][] = $clause;
     $args = func_get_args();
     array_shift($args); // Skip $clause.
     if (count($args)) {
-      $this->subqueries_args = array_merge($this->subqueries_args, $args);
+      if (isset($this->subqueries_args[$this->current_part])) {
+        $this->subqueries_args[$this->current_part] = array_merge($this->subqueries_args[$this->current_part], $args);
+      }
+      else {
+        $this->subqueries_args[$this->current_part] = $args;
+      }
     }
   }
   
   /**
-   * Adds a GROUP BY clause.
+   * Add a GROUP BY clause.
    *
    * @param $clause
    *   The clause to add. The caller must use field aliases as returned by
    *   add_field().
-   *
    * @param $order
    *   Either 'ASC' or 'DESC'.
    */
   function add_groupby($clause, $order = 'ASC') {
-    $this->groupby[] = $clause .' '. $order;
+    $this->groupby[$this->current_part][] = $clause .' '. $order;
   }
 
   /**
-   * Adds a HAVING clause.
+   * Add a HAVING clause.
    *
    * @param $clause
    *   The clause to add. The caller must ensure that any field is fully
    *   qualified using its table's alias as returned by add_table().
-   *
    * @param ...
    *   A variable number of arguments which are substituted into the query using
    *   printf) syntax. The query arguments can be enclosed in one array
@@ -1120,100 +1406,183 @@ class faceted_search_query {
    *   enclose in '') and %%.
    */
   function add_having($clause) {
-    $this->having[] = $clause;
+    $this->having[$this->current_part][] = $clause;
     $args = func_get_args();
     array_shift($args); // Skip $clause.
     if (count($args)) {
-      $this->having_args = array_merge($this->having_args, $args);
+      if (isset($this->having_args[$this->current_part])) {
+        $this->having_args[$this->current_part] = array_merge($this->having_args[$this->current_part], $args);
+      }
+      else {
+        $this->having_args[$this->current_part] = $args;
+      }
     }
   }
 
   /**
-   * Adds an ORDER BY clause.
+   * Add an ORDER BY clause.
    *
    * @param $clause
    *   The clause to add. The caller must use field aliases as returned by
    *   add_field().
-   *
    * @param $order
    *   Either 'ASC' or 'DESC'.
    */
   function add_orderby($clause, $order = 'ASC') {
-    $this->orderby[] = $clause .' '. $order;
+    $this->orderby[$this->current_part][] = $clause .' '. $order;
   }
 
   /**
-   * Returns all arguments that need to be substituted into the query.
+   * Return all arguments that need to be substituted into the query. Only
+   * arguments associated to enabled parts are returned.
+   *
+   * @return
+   *   Array of argument values to pass to the query.
+   * @see query
+   * @see enable_part
    */
   function args() {
-    return array_merge($this->where_args, $this->subqueries_args, $this->having_args);
+    $field_args = array();
+    $where_args = array();
+    $subqueries_args = array();
+    $having_args = array();
+    // Where arguments.
+    foreach ($this->parts as $part) {
+      if (isset($this->field_args[$part])) {
+        $field_args = array_merge($field_args, $this->field_args[$part]);
+      }
+      if (isset($this->where_args[$part])) {
+        $where_args = array_merge($where_args, $this->where_args[$part]);
+      }
+      if (isset($this->subqueries_args[$part])) {
+        $subqueries_args = array_merge($subqueries_args, $this->subqueries_args[$part]);
+      }
+      if (isset($this->having_args[$part])) {
+        $having_args = array_merge($having_args, $this->having_args[$part]);
+      }
+    }
+    return array_merge($field_args, $where_args, $subqueries_args, $having_args);
   }
 
   /**
-   * Returns the SQL query (with unsubstituted arguments, if any).
+   * Return the assembled SQL query (with unsubstituted arguments, if
+   * any). Only query elements associated to enabled parts are used.
    *
    * @see args
+   * @see enable_part
    */
   function query() {
-    // Fields.
-    $fields = array();
-    foreach ($this->fields as $field_alias => $field) {
-      if ($field['table_alias']) {
-        $table = $field['table_alias'];
-        $fields[] = "$table.$field[field] AS $field_alias";
-      }
-      else {
-        $fields[] = "$field[field] AS $field_alias";
-      }
-    }
-    $fields = implode(', ', $fields);
-    if ($this->tables[$this->primary_table_alias]['prefixing']) {
+    // Primary field.
+    if ($this->tables['default'][$this->primary_table_alias]['prefixing']) {
       $wrapper_begin = '{';
       $wrapper_end = '}';
     }
     else {
       $wrapper_begin = $wrapper_end = '';
     }
-    $primary = $wrapper_begin . $this->tables[$this->primary_table_alias]['table'] . $wrapper_end .' AS '. $this->primary_table_alias;
+    $primary = $wrapper_begin . $this->tables['default'][$this->primary_table_alias]['table'] . $wrapper_end .' AS '. $this->primary_table_alias;
 
-    // Joins.
+    // Collect elements from all enabled parts.
+    $fields = array();
     $joins = array();
-    foreach ($this->table_queue as $table_alias) {
-      $table = $this->tables[$table_alias];
-      if ($table['prefixing']) {
-        $wrapper_begin = '{';
-        $wrapper_end = '}';
+    $where = array();
+    $subqueries = array();
+    $groupby = array();
+    $having = array();
+    $orderby = array();
+    foreach ($this->parts as $part) {
+      // Fields.
+      if (isset($this->fields[$part])) {
+        foreach ($this->fields[$part] as $field_alias => $field) {
+          if ($field['table_alias']) {
+            $table = $field['table_alias'];
+            $fields[] = "$table.$field[field] AS $field_alias";
+          }
+          else {
+            $fields[] = "$field[field] AS $field_alias";
+          }
+        }
       }
-      else {
-        $wrapper_begin = $wrapper_end = '';
-      }
-      $joins[] = "$table[join] JOIN $wrapper_begin". $table['table'] ."$wrapper_end AS $table_alias ON $table[left_table_alias].$table[left_field] = $table_alias.$table[field]";
-    }
-    $joins = count($joins) ? ' '. implode(' ', $joins) : '';
+      
+      // Joins.
+      if (isset($this->table_queue[$part])) {
+        foreach ($this->table_queue[$part] as $table_alias) {
+          $table = $this->tables[$part][$table_alias];
+          if ($table['prefixing']) {
+            $wrapper_begin = '{';
+            $wrapper_end = '}';
+          }
+          else {
+            $wrapper_begin = $wrapper_end = '';
+          }
 
-    // Where clauses.
-    $where = count($this->where) ? ' WHERE (('. implode(') AND (', $this->where) .'))' : '';
+          // Build the join condition.
+          if (is_array($table['left_field'])) {
+            // There are multiple fields to use in the join condition.
+            $join_condition = array();
+            foreach ($table['left_field'] as $index => $table_left_field) {
+              $join_condition[] = "{$table[left_table_alias]}.{$table_left_field} = {$table_alias}.{$table[field][$index]}";
+            }
+            $join_condition = implode(' AND ', $join_condition);
+          }
+          else {
+            $join_condition = "{$table[left_table_alias]}.{$table[left_field]} = {$table_alias}.{$table[field]}";
+          }
+
+          // Add the table join clause.
+          $joins[] = "$table[join] JOIN $wrapper_begin". $table['table'] ."$wrapper_end AS $table_alias ON $join_condition";
+        }
+      }
+      
+      // Where clauses.
+      if (isset($this->where[$part])) {
+        $where = array_merge($where, $this->where[$part]);
+      }
+
+      // Subqueries.
+      if (isset($this->subqueries[$part])) {
+        $subqueries = array_merge($subqueries, $this->subqueries[$part]);
+      }
+
+      // Group by clauses.
+      if (isset($this->groupby[$part])) {
+        $groupby = array_merge($groupby, $this->groupby[$part]);
+      }
+        
+      // Having clauses.
+      if (isset($this->having[$part])) {
+        $having = array_merge($having, $this->having[$part]);
+      }
+
+      // Order by clauses.
+      if (isset($this->orderby[$part])) {
+        $orderby = array_merge($orderby, $this->orderby[$part]);
+      }
+    }
+    
+    $fields = implode(', ', $fields);
+    $joins = count($joins) ? ' '. implode(' ', $joins) : '';
+    $where = count($where) ? ' WHERE (('. implode(') AND (', $where) .'))' : '';
 
     // Where subqueries (added as $SUBQUERY$n tokens, which are replaced after the call
     // to db_rewrite_sql(). See related issue: http://drupal.org/node/151910).
-    if (count($this->subqueries)) {
-      $subqueries = $where == '' ? ' WHERE ' : ' AND ';
-      $subqueries .= '$SUBQUERY$'. implode(' AND $SUBQUERY$', array_keys($this->subqueries));
+    if (count($subqueries)) {
+      $subqueries_tokens = (empty($where) ? ' WHERE ' : ' AND ') .'$SUBQUERY$'. implode(' AND $SUBQUERY$', array_keys($subqueries));
     }
       
     // Group by clauses.
-    $groupby = count($this->groupby) ? ' GROUP BY '. implode(', ', $this->groupby) : '';
+    $groupby = count($groupby) ? ' GROUP BY '. implode(', ', $groupby) : '';
 
     // Having clauses.
-    $having = count($this->having) ? ' HAVING (('. implode(') AND (', $this->having) .'))' : '';
+    $having = count($having) ? ' HAVING ('. implode(') AND (', $having) .')' : '';
 
     // Order by clauses.
-    $orderby = count($this->orderby) ? ' ORDER BY '. implode(', ', $this->orderby) : '';
+    $orderby = count($orderby) ? ' ORDER BY '. implode(', ', $orderby) : '';
     
     // Create the query string.
-    $query = db_rewrite_sql("SELECT $fields FROM $primary$joins$where$subqueries$groupby$having$orderby");
-    if (count($this->subqueries)) {
-      foreach ($this->subqueries as $key => $subquery) {
+    $query = db_rewrite_sql("SELECT $fields FROM $primary$joins$where$subqueries_tokens$groupby$having$orderby");
+    if (count($subqueries)) {
+      foreach ($subqueries as $key => $subquery) {
         $search[] = '$SUBQUERY$'. $key;
         $replace[] = $subquery;
       }

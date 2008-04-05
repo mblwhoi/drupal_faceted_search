@@ -1,6 +1,8 @@
 <?php
 // $Id$
 
+// TODO!!! Give user message when searched words are too short.
+
 /**
  * @file
  * An API for performing faceted searches.
@@ -616,13 +618,14 @@ function faceted_search_parse_keywords($text) {
   // called in faceted_search::execute(), which means this processing is done
   // twice. Needs to be fixed. Splitting search_parse_query() into two distinct
   // functions could help.
+
+  // Taken from search_parse_query() (search.module 1.207) - BEGIN
   $keys = array('positive' => array(), 'negative' => array());
 
   // Tokenize query string
   $matches = array();
   preg_match_all('/ (-?)("[^"]+"|[^" ]+)/i', ' '. $text, $matches, PREG_SET_ORDER);
 
-  // Taken from search_parse_query() (search.module 1.207) - BEGIN
   // Classify tokens
   $or = FALSE;
   foreach ($matches as $match) {
@@ -652,6 +655,7 @@ function faceted_search_parse_keywords($text) {
       $or = TRUE;
       continue;
     }
+    //// TODO!!! Add support for explicit AND as in core? Will also impact on keyword_and facet.
     // Plain keyword
     else {
       if ($or) {

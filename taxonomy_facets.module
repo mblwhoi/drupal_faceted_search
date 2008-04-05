@@ -385,7 +385,7 @@ class taxonomy_facet extends faceted_search_facet {
       $query->add_where('term_hierarchy.parent = 0');
     }
     else {
-      $query->add_table('term_node', 'nid');
+      $query->add_table('term_node', 'nid', 'n', 'nid');
     }
     $query->add_table('term_data', 'tid', 'term_node', 'tid');
     $query->add_field('term_data', 'tid');
