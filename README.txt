@@ -259,14 +259,11 @@ aforementioned issue queue instead.
 For general discussions about Faceted Search (or other Drupal search solutions),
 you are invited to join the Search group on http://groups.drupal.org/node/4102.
 
-You may also contact the author for paid customizations to this module
-(http://davidlesieur.com/contact).
-
 
 Credits
 *******
 
-- Project initiated and developed by David Lesieur (http://davidlesieur.com,
+- Project initiated by David Lesieur (http://davidlesieur.com,
   http://drupal.org/user/17157).
 
 - Sponsored in part by Laboratoire NT2 (http://www.labo-nt2.uqam.ca) and Eyos BV
