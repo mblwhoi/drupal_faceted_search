@@ -7,7 +7,7 @@ Description
 ***********
 
 The Faceted Search module provides a search API and a search interface for
-allowing users to navigate content in such a way that they can rapidly get
+allowing users to browse content in such a way that they can rapidly get
 acquainted with the scope and nature of the content, and never feel lost in the
 data. More than a search interface, this is an information navigation and
 discovery tool.

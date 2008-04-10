@@ -330,7 +330,6 @@ class faceted_search_facet {
  * "subcategories", and queries for searching keywords are a special case
  * handled directly by faceted_search::execute().
  */
-/////// TODO!!!! most of this should probably be moved to the keyword_facet class. The keyword_category class would just be a thin shell accessing methods in the facet. That would let the facets store the text any way they want. On pourrait éviter certains traitements redondants; par exemple, pour les 'or', on passe à la facette le résultat de implode(' OR '), puis lors de la consturction du query on fait explode(' OR '). À surveille toutefois, si le get_text() est fréquemment appelé, on veut pas faire les implode à chaque fois.
 class faceted_search_keyword_category extends faceted_search_category { 
   var $_label = '';
   var $_text = '';
@@ -410,9 +409,9 @@ class faceted_search_keyword_facet extends faceted_search_facet {
    */
   function check_word($word) {
     if (is_numeric($word)) {
-      return (int)ltrim($word, '-0'); /////// TODO!!! sans doute problème lors de l'extraction; le '-' est tout de suite interprété comme un NOT, sans check si le mot est numérique!
+      return (int)ltrim($word, '-0');
     }
-    elseif (drupal_strlen($word) >= variable_get('minimum_word_size', 3)) { /// TODO!!! dans le cas d'un NOT, si $word passé ici contient le '-', il faudrait l'enlever pour cette vérification.
+    elseif (drupal_strlen($word) >= variable_get('minimum_word_size', 3)) {
       return $word;
     }
   }
@@ -533,14 +532,11 @@ class faceted_search_keyword_phrase_facet extends faceted_search_keyword_facet {
         // Add phrase match conditions.
         $query->set_current_part("{$this->_type}_search_dataset");
         $query->add_where("{$this->_type}_search_dataset.data LIKE '%% %s %%'", $phrase);
-        //// TODO!!!!! test phrase with multiple spaces between words (both matching and non-matching -- or should it matter?).
         $query->set_current_part(); // Back to default part.
       }
     }
   }
 }
-
-// TODO: Handle negative phrases.
 
 /**
  * A keyword OR facet.
@@ -853,7 +849,7 @@ class faceted_search {
     $matches = 0;
     $word_score_expr = '';
     foreach ($this->_facets as $facet) {
-      if (method_exists($facet, 'build_keyword_query')) { /// TODO!!! séparer keyword facets des autres et éviter cette condition?
+      if (method_exists($facet, 'build_keyword_query')) {
         $facet->build_keyword_query($query, $types, $words, $matches);
       }
       elseif ($category = $facet->get_active_category()) {
@@ -926,7 +922,7 @@ class faceted_search {
         $query->disable_part('normalize');
 
         if (!$normalize) {
-          return; // TODO!!!! what happens if the search is not ready after execute() ??? ... worrying about an infinite loop...
+          return;
         }
 
         $word_score_expr = '('. (1.0 / $normalize) .' * '. $score .')';
@@ -1101,8 +1097,6 @@ class faceted_search {
     $query->add_orderby('score', 'DESC');
   }
 }
-
-////// TODO!!!! évaluer pertinence système de query parts vs. objets query distincts
 
 /**
  * This class allows to build SQL queries piece by piece.
