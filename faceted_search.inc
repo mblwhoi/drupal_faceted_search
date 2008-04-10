@@ -933,11 +933,11 @@ class faceted_search {
       }
     }
 
-    // Add scoring expression to the query.
-    $this->_add_scoring($query, $word_score_expr);
-
     // Add field needed for results.
     $query->add_field('n', 'nid', 'nid'); 
+
+    // Add scoring expression to the query.
+    $this->_add_scoring($query, $word_score_expr);
 
     // Give other modules an opportunity at altering the final query (e.g. for
     // additional filtering).
