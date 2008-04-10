@@ -857,75 +857,75 @@ class faceted_search {
       }
     }
 
-    if (empty($types)) {
-      // No keyword search needed.
-//      $query->add_field(NULL, '1', 'relevance');
-    }
-    elseif (empty($words)) {
-      // Negative words were specified, but no positive words. Negative words
-      // are looked up in search_dataset, but since there are no positive words
-      // it is joined directly with the node table, and search_index is not
-      // needed.
-      foreach ($types as $type) {
-        $query->set_current_part("{$type}_search_dataset");
-        $query->add_table('search_dataset', 'sid', 'n', 'nid', "{$type}_search_dataset");
-        $query->add_where("{$type}_search_dataset.type = '%s'", $type);
-        $query->set_current_part(); // Back to default part.
-      }
-    }
-    else {
-      // Some positive words were specified (and maybe some negatives as well).
-      $words_where = array();
-      $words_args = array();
-      $words_scores = array();
-      foreach ($types as $type) {
-        // Join the search dataset for the current index type, in case we're
-        // dealing with a complex query.
-        $query->set_current_part("{$type}_search_dataset");
-        $query->add_table('search_dataset', array('sid', 'type'), "{$type}_search_index", array('sid', 'type'), "{$type}_search_dataset");
-        $query->set_current_part(); // Back to default part.
-
-        if (!empty($words[$type])) {
-          // TODO: The handling of individual words could be cleaner if the
-          // query builder supported nesting within WHERE clauses.
-          
-          // Join the search index for the current index type.
-          $query->add_table('search_index', 'sid', 'n', 'nid', "{$type}_search_index");
-
-          $words_where[] = '(('. substr(str_repeat("{$type}_search_index.word = '%s' OR ", count($words[$type])), 0, -4) .") AND {$type}_search_index.type = '%s')";
-          $words_args = array_merge($words_args, $words[$type]);
-          $words_args[] = $type;
-      
-          $query->add_table('search_total', 'word', "{$type}_search_index", 'word', "{$type}_search_total");
-
-          $words_scores[] = "{$type}_search_index.score * {$type}_search_total.count";
-        }
-      }
-
-      if (!empty($words_where)) {
-        array_unshift($words_args, implode(' OR ', $words_where));
-        call_user_func_array(array(&$query, 'add_where'), $words_args);
-      }
-
+    if ($matches > 0) {
       $query->add_having('COUNT(*) >= %d', $matches);
+    }
 
-      if (!empty($words_scores)) {
-        // Add word score expression to the query.
-        $score = 'SUM('. implode(' + ', $words_scores) .')';
-        $query->set_current_part('normalize');
-        $query->add_field(NULL, $score, 'score'); 
-        $query->set_current_part();
+    if (!empty($types)) {
+      if (empty($words)) {
+        // Negative words were specified, but no positive words. Negative words
+        // are looked up in search_dataset, but since there are no positive words
+        // it is joined directly with the node table, and search_index is not
+        // needed.
+        foreach ($types as $type) {
+          $query->set_current_part("{$type}_search_dataset");
+          $query->add_table('search_dataset', 'sid', 'n', 'nid', "{$type}_search_dataset");
+          $query->add_where("{$type}_search_dataset.type = '%s'", $type);
+          $query->set_current_part(); // Back to default part.
+        }
+      }
+      else {
+        // Some positive words were specified (and maybe some negatives as well).
+        $words_where = array();
+        $words_args = array();
+        $words_scores = array();
+        foreach ($types as $type) {
+          // Join the search dataset for the current index type, in case we're
+          // dealing with a complex query.
+          $query->set_current_part("{$type}_search_dataset");
+          $query->add_table('search_dataset', array('sid', 'type'), "{$type}_search_index", array('sid', 'type'), "{$type}_search_dataset");
+          $query->set_current_part(); // Back to default part.
 
-        // Perform the word score normalization query.
-        $query->enable_part('normalize');
-        $normalize = db_result(db_query_range($query->query(), $query->args(), 0, 1));
-        $query->disable_part('normalize');
+          if (!empty($words[$type])) {
+            // TODO: The handling of individual words could be cleaner if the
+            // query builder supported nesting within WHERE clauses.
+          
+            // Join the search index for the current index type.
+            $query->add_table('search_index', 'sid', 'n', 'nid', "{$type}_search_index");
 
-        if (!$normalize) {
-          return;
+            $words_where[] = '(('. substr(str_repeat("{$type}_search_index.word = '%s' OR ", count($words[$type])), 0, -4) .") AND {$type}_search_index.type = '%s')";
+            $words_args = array_merge($words_args, $words[$type]);
+            $words_args[] = $type;
+      
+            $query->add_table('search_total', 'word', "{$type}_search_index", 'word', "{$type}_search_total");
+
+            $words_scores[] = "{$type}_search_index.score * {$type}_search_total.count";
+          }
+        }
+        
+        if (!empty($words_where)) {
+          array_unshift($words_args, implode(' OR ', $words_where));
+          call_user_func_array(array(&$query, 'add_where'), $words_args);
         }
 
-        $word_score_expr = '('. (1.0 / $normalize) .' * '. $score .')';
+        if (!empty($words_scores)) {
+          // Add word score expression to the query.
+          $score = 'SUM('. implode(' + ', $words_scores) .')';
+          $query->set_current_part('normalize');
+          $query->add_field(NULL, $score, 'score'); 
+          $query->set_current_part();
+
+          // Perform the word score normalization query.
+          $query->enable_part('normalize');
+          $normalize = db_result(db_query_range($query->query(), $query->args(), 0, 1));
+          $query->disable_part('normalize');
+
+          if (!$normalize) {
+            return;
+          }
+
+          $word_score_expr = '('. (1.0 / $normalize) .' * '. $score .')';
+        }
       }
     }
 

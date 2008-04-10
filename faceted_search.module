@@ -1,8 +1,6 @@
 <?php
 // $Id$
 
-// TODO!!! Give user message when searched words are too short.
-
 /**
  * @file
  * An API for performing faceted searches.
@@ -655,7 +653,6 @@ function faceted_search_parse_keywords($text) {
       $or = TRUE;
       continue;
     }
-    //// TODO!!! Add support for explicit AND as in core? Will also impact on keyword_and facet.
     // Plain keyword
     else {
       if ($or) {
