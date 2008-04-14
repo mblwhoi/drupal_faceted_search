@@ -292,28 +292,34 @@ function faceted_search_edit_form($env_id = NULL) {
   // Add the facets section's content to the form.
   _faceted_search_facet_settings_form($form['facets']['facets'], $facets);
 
-  // Fields section.
-  $form['fields'] = array(
+  // Keyword search section.
+  $form['keyword'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Keyword search'),
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+  );
+  $form['keyword']['fields'] = array(
     '#type' => 'fieldset',
     '#title' => t('Fields'),
     '#collapsible' => TRUE,
     '#collapsed' => FALSE,
     '#description' => t('<p>Users may restrict keyword search by field. <em>Anywhere</em> lets them search for keywords in the full nodes.</p><p>Check the fields you wish to expose to users for keyword search. In listings, the heavier fields will sink and the lighter fields will be positioned nearer the top.</p>'),
   );
-  $form['fields']['fields'] = array(
-    '#theme' => 'faceted_search_fields_settings',
+  $form['keyword']['fields']['keyword_filters'] = array(
+    '#theme' => 'faceted_search_keyword_filters_settings',
     '#tree' => TRUE,
   );
   
   // Gather default filters.
-  $fields = array();
-  faceted_search_collect_default_filters($fields, 'all', $env_id, NULL);
+  $keyword_filters = array();
+  faceted_search_collect_default_filters($keyword_filters, 'all', $env_id, NULL);
   
   // Prepare facets for use, assigning them their settings and sort them.
-  faceted_search_prepare_filters($fields, $all_settings);
+  faceted_search_prepare_filters($keyword_filters, $all_settings);
 
   // Add the facets section's content to the form.
-  _faceted_search_filter_settings_form($form['fields']['fields'], $fields);
+  _faceted_search_filter_settings_form($form['keyword']['fields']['keyword_filters'], $keyword_filters);
 
   // Buttons.
   $form['buttons']['#weight'] = 1000; // Ensure buttons remain at the bottom when form is altered.
@@ -349,9 +355,9 @@ function faceted_search_edit_form_validate($form_id, $form_values) {
       form_set_error("facets][$key][weight", t('Weight must be a numeric value.'));
     }
   }
-  foreach ($form_values['fields'] as $key => $settings) {
+  foreach ($form_values['keyword_filters'] as $key => $settings) {
     if (!is_numeric($settings['weight'])) {
-      form_set_error("fields][$key][weight", t('Weight must be a numeric value.'));
+      form_set_error("keyword_filters][$key][weight", t('Weight must be a numeric value.'));
     }
   }
 }
@@ -368,7 +374,7 @@ function faceted_search_edit_form_submit($form_id, $form_values) {
   }
     
   // Exclude elements that should not be saved as environment variables.
-  $exclude = array('save', 'save_and_edit', 'form_id', 'op', 'form_token', 'env_id', 'facets', 'fields');
+  $exclude = array('save', 'save_and_edit', 'form_id', 'op', 'form_token', 'env_id', 'facets', 'keyword_filters');
 
   // Save form values as environment variables (except those excluded).
   foreach ($form_values as $key => $value) {
@@ -378,7 +384,7 @@ function faceted_search_edit_form_submit($form_id, $form_values) {
   }
 
   // Save filter settings.
-  faceted_search_save_filter_settings($env_id, array_merge($form_values['facets'], $form_values['fields']));
+  faceted_search_save_filter_settings($env_id, array_merge($form_values['facets'], $form_values['keyword_filters']));
   
   // Rebuild the menus, if only for updating titles.
   menu_rebuild();
@@ -764,7 +770,7 @@ function theme_faceted_search_facets_settings($form) {
   return $output;
 }
 
-function theme_faceted_search_fields_settings($form) {
+function theme_faceted_search_keyword_filters_settings($form) {
   uasort($form, '_element_sort');
 
   $output = '';

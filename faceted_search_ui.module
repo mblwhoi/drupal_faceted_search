@@ -171,6 +171,7 @@ function faceted_search_ui_form_alter($form_id, &$form) {
       '#title' => t('Results page'),
       '#collapsible' => TRUE,
       '#collapsed' => FALSE,
+      '#weight' => 1,
     );
     $styles = faceted_search_ui_style_list();
     $options = array();
@@ -197,6 +198,7 @@ function faceted_search_ui_form_alter($form_id, &$form) {
       '#title' => t('Current search'),
       '#collapsible' => TRUE,
       '#collapsed' => TRUE,
+      '#weight' => 2,
     );
     $form['current']['current_block'] = array(
       '#type' => 'checkbox',
@@ -205,18 +207,14 @@ function faceted_search_ui_form_alter($form_id, &$form) {
       '#description' => t('When enabled, this block appears when search terms have been entered. This block can only appear on Faceted Search pages. Block visibility settings may define additional conditions for this block to appear.'),
     );
 
-    // Keyword search block section.
-    $form['keyword'] = array(
-      '#type' => 'fieldset',
-      '#title' => t('Keyword search'),
-      '#collapsible' => TRUE,
-      '#collapsed' => TRUE,
-    );
+    // Keyword search section.
+    $form['keyword']['#weight'] = 3;
     $form['keyword']['keyword_block'] = array(
       '#type' => 'checkbox',
       '#title' => t('Provide Keyword search block'),
       '#default_value' => faceted_search_variable_get($env_id, 'keyword_block', TRUE),
       '#description' => t('When enabled, this block provides a form where a search text can be entered. Block visibility settings may define additional conditions for this block to appear.'),
+      '#weight' => -10,
     );
     $form['keyword']['keyword_mode'] = array(
       '#type' => 'radios',
@@ -224,6 +222,7 @@ function faceted_search_ui_form_alter($form_id, &$form) {
       '#description' => t("Choose the mode to select by default in keyword search. <em>New search</em> might be more intuitive to users not familiar with Faceted Search's interface since it mimics most search engines."),
       '#default_value' => faceted_search_variable_get($env_id, 'keyword_mode', 'new'),
       '#options' => array('new' => t('New search'), 'refine' => t('Search within results')),
+      '#weight' => -5,
     );
 
     // Guided search block section.
@@ -232,6 +231,7 @@ function faceted_search_ui_form_alter($form_id, &$form) {
       '#title' => t('Guided search'),
       '#collapsible' => TRUE,
       '#collapsed' => TRUE,
+      '#weight' => 4,
     );
     $form['guided']['guided_block'] = array(
       '#type' => 'checkbox',
@@ -258,6 +258,7 @@ function faceted_search_ui_form_alter($form_id, &$form) {
       '#title' => t('Related categories'),
       '#collapsible' => TRUE,
       '#collapsed' => TRUE,
+      '#weight' => 5,
     );
     $form['related']['related_block'] = array(
       '#type' => 'checkbox',
