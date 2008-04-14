@@ -48,11 +48,11 @@ function content_type_facet_form_alter($form_id, &$form) {
 /**
  * Implementation of hook_faceted_search_collect().
  */
-function content_type_facet_faceted_search_collect(&$facets, $domain, $env_id, $filter, $arg = NULL) {
+function content_type_facet_faceted_search_collect(&$facets, $domain, $env_id, $selection, $arg = NULL) {
   switch ($domain) {
     case 'all':
       // If the content type facet is allowed.
-      if (!isset($filter) || isset($filter['content_type'][1])) {
+      if (!isset($selection) || isset($selection['content_type'][1])) {
         $types = content_type_facet_get_types($env_id);
         $facets[] = new content_type_facet($types);
       }
@@ -60,7 +60,7 @@ function content_type_facet_faceted_search_collect(&$facets, $domain, $env_id, $
 
     case 'text':
       // If the content type facet is allowed.
-      if (!isset($filter) || isset($filter['content_type'][1])) {
+      if (!isset($selection) || isset($selection['content_type'][1])) {
         $types = content_type_facet_get_types($env_id);
         // Scan the search text for a 'content_type:type' token, and extract a
         // facet from it.
@@ -78,7 +78,7 @@ function content_type_facet_faceted_search_collect(&$facets, $domain, $env_id, $
 
     case 'node':
       // If the content type facet is allowed.
-      if (!isset($filter) || isset($filter['content_type'][1])) {
+      if (!isset($selection) || isset($selection['content_type'][1])) {
         $types = content_type_facet_get_types($env_id);
         if (isset($types[$arg->type])) {
           // Create a facet with the node's type as the active category.

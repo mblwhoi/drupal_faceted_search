@@ -13,18 +13,18 @@ require_once('./'. drupal_get_path('module', 'faceted_search') .'/faceted_search
 /**
  * Implementation of hook_faceted_search_collect().
  */
-function date_authored_facet_faceted_search_collect(&$facets, $domain, $env_id, $filter, $arg = NULL) {
+function date_authored_facet_faceted_search_collect(&$facets, $domain, $env_id, $selection, $arg = NULL) {
   switch ($domain) {
     case 'all':
       // If the date authored facet is allowed.
-      if (!isset($filter) || isset($filter['date_authored'][1])) {
+      if (!isset($selection) || isset($selection['date_authored'][1])) {
         $facets[] = new date_authored_facet();
       }
       break;
 
     case 'text':
       // If the date authored facet is allowed.
-      if (!isset($filter) || isset($filter['date_authored'][1])) {
+      if (!isset($selection) || isset($selection['date_authored'][1])) {
         // Scan the given search text for a 'date_authored:date' token, and
         // extract a category from it. Date is formatted as either YYYY,
         // YYYY-MM, or YYYY-MM-DD.
@@ -61,7 +61,7 @@ function date_authored_facet_faceted_search_collect(&$facets, $domain, $env_id, 
 
     case 'node':
       // If the date authored facet is allowed.
-      if (!isset($filter) || isset($filter['date_authored'][1])) {
+      if (!isset($selection) || isset($selection['date_authored'][1])) {
         // Convert the node's creation date into the user's timezone.
         $timestamp = $arg->created + _date_authored_facet_get_user_timezone();
         $year = gmdate('Y', $timestamp);
