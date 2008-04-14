@@ -120,13 +120,13 @@ function taxonomy_facets_taxonomy($op, $type, $array = NULL) {
 /**
  * Implementation of hook_faceted_search_collect().
  */
-function taxonomy_facets_faceted_search_collect(&$facets, $domain, $env_id, $filter, $arg = NULL) {
+function taxonomy_facets_faceted_search_collect(&$facets, $domain, $env_id, $selection, $arg = NULL) {
   switch ($domain) {
     case 'all':
       $vocabularies = taxonomy_get_vocabularies();
       foreach ($vocabularies as $vocabulary) {
         // If the vocabulary's corresponding facet is allowed.
-        if (!isset($filter) || isset($filter['taxonomy'][$vocabulary->vid])) {
+        if (!isset($selection) || isset($selection['taxonomy'][$vocabulary->vid])) {
           $facets[] = new taxonomy_facet($vocabulary);
         }
       }
@@ -151,7 +151,7 @@ function taxonomy_facets_faceted_search_collect(&$facets, $domain, $env_id, $fil
             if (!$term) {
               break; // No term for tid
             }
-            if (!isset($vocabularies[$term->vid]) || (isset($filter) && !isset($filter['taxonomy'][$term->vid]))) {
+            if (!isset($vocabularies[$term->vid]) || (isset($selection) && !isset($selection['taxonomy'][$term->vid]))) {
               break; // Term's vocabulary not allowed.
             }
             if ($previous_tid != 0) {
@@ -186,7 +186,7 @@ function taxonomy_facets_faceted_search_collect(&$facets, $domain, $env_id, $fil
       foreach ($arg->taxonomy as $term) {
         $vid = $term->vid;
         // If the vocabulary's corresponding facet is allowed.
-        if (isset($vocabularies[$vid]) && (!isset($filter) || isset($filter['taxonomy'][$vid]))) {
+        if (isset($vocabularies[$vid]) && (!isset($selection) || isset($selection['taxonomy'][$vid]))) {
           $path = array();
           // Retrieve ancestor terms.
           while ($term) {
@@ -252,7 +252,7 @@ function taxonomy_facets_edit_form_submit($form_id, $form_values) {
 
   // Find what vocabularies were enabled before this form submission.
   $old_status = array();
-  $results = db_query("SELECT env_id, facet_id AS vid FROM {faceted_search_facets} WHERE facet_key = 'taxonomy' AND status = 1");
+  $results = db_query("SELECT env_id, filter_id AS vid FROM {faceted_search_filters} WHERE filter_key = 'taxonomy' AND status = 1");
   while ($r = db_fetch_object($results)) {
     $old_status[$r->vid][$r->env_id] = TRUE;
   }
@@ -538,7 +538,7 @@ function _taxonomy_facets_update($nid) {
   // that do not meet those conditions do not belong in the
   // taxonomy_facets_term_node table.
   $tids = array();
-  $results = db_query("SELECT tn.tid, t.vid FROM {term_node} tn INNER JOIN {term_data} t ON t.tid = tn.tid INNER JOIN {faceted_search_facets} f ON f.facet_id = t.vid INNER JOIN {vocabulary} v ON t.vid = v.vid WHERE tn.nid = %d AND f.facet_key = 'taxonomy' AND f.status = 1 AND v.hierarchy > 0", $nid);
+  $results = db_query("SELECT tn.tid, t.vid FROM {term_node} tn INNER JOIN {term_data} t ON t.tid = tn.tid INNER JOIN {faceted_search_filters} f ON f.filter_id = t.vid INNER JOIN {vocabulary} v ON t.vid = v.vid WHERE tn.nid = %d AND f.filter_key = 'taxonomy' AND f.status = 1 AND v.hierarchy > 0", $nid);
   while ($r = db_fetch_object($results)) {
     // Create associations between the node and all of the term's ancestors.
     $ancestors = taxonomy_get_parents_all($r->tid);
@@ -548,6 +548,8 @@ function _taxonomy_facets_update($nid) {
       $tids[$term->tid] = $term->tid;
     }
   }
+
+  // TODO: lock table
   
   // Delete the node's old term associations from taxonomy_facets_term_node.
   db_query('DELETE FROM {taxonomy_facets_term_node} WHERE nid = %d', $nid);

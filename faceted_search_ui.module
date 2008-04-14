@@ -412,8 +412,8 @@ function faceted_search_ui_stage_facet($env_id, $facet_key_id = '', $facet_sort 
   $_faceted_search[$env_id]->execute();
 
   // Find what facet to show
-  list($index, $facet) = $_faceted_search[$env_id]->get_facet_by_id($facet_key, $facet_id);
-  if (!isset($index) || !isset($facet)) {
+  list($index, $facet) = $_faceted_search[$env_id]->get_filter_by_id($facet_key, $facet_id);
+  if (!isset($index) || !isset($facet) || !$facet->is_browsable()) {
     drupal_not_found();
     return;
   }
@@ -457,9 +457,9 @@ function faceted_search_ui_stage_categories($env_id, $facet_key_id = '', $facet_
 
   // Find what facet to show
   $found = FALSE;
-  $facets = $_faceted_search[$env_id]->get_facets();
+  $facets = $_faceted_search[$env_id]->get_filters();
   foreach ($facets as $index => $facet) {
-    if ($facet->get_key() == $facet_key && $facet->get_id() == $facet_id) {
+    if ($facet->is_browsable() && $facet->get_key() == $facet_key && $facet->get_id() == $facet_id) {
       $found = TRUE;
       break; // Found
     }
@@ -504,10 +504,10 @@ function faceted_search_ui_current_block($search) {
     return; // No current search
   }
 
-  foreach ($search->get_facets() as $index => $facet) {
-    if ($facet->is_active()) {
-      $content = theme('faceted_search_ui_facet_heading', $search->get_env_id(), $search->ui_state, $search->get_facets(), $index, 'current');
-      $output .= theme('faceted_search_ui_facet_wrapper', $search->get_env_id(), $facet, 'current', $content);
+  foreach ($search->get_filters() as $index => $filter) {
+    if ($filter->is_active()) {
+      $content = theme('faceted_search_ui_facet_heading', $search->get_env_id(), $search->ui_state, $search->get_filters(), $index, 'current');
+      $output .= theme('faceted_search_ui_facet_wrapper', $search->get_env_id(), $filter, 'current', $content);
     }
   }
   
@@ -528,9 +528,9 @@ function faceted_search_ui_guided_block($search) {
   faceted_search_ui_add_tooltips($search->get_env_id());
   
   $facet_content = array();
-  foreach ($search->get_facets() as $index => $facet) {
-    if ($facet->get_key() == 'keyword') {
-      // Keyword "facets" are ignored in guided search.
+  foreach ($search->get_filters() as $index => $facet) {
+    if (!$facet->is_browsable()) {
+      // Not a facet.
       continue; 
     }
 
@@ -543,7 +543,7 @@ function faceted_search_ui_guided_block($search) {
     
     $categories = faceted_search_ui_build_categories($search, $index, 0, $max_count);
     if (count($categories) > 0 || $facet->is_active()) {
-      $content = theme('faceted_search_ui_facet_heading', $search->get_env_id(), $search->ui_state, $search->get_facets(), $index, 'guided');
+      $content = theme('faceted_search_ui_facet_heading', $search->get_env_id(), $search->ui_state, $search->get_filters(), $index, 'guided');
       $content .= theme('faceted_search_ui_categories', $facet, $categories, $search->ui_state['stage']);
       $facet_content[] = theme('faceted_search_ui_facet_wrapper', $search->get_env_id(), $facet, 'guided', $content);
     }
@@ -564,20 +564,20 @@ function faceted_search_ui_related_block($env_id, $node) {
   }
 
   // Load settings for all enabled facets in this search environment.
-  $all_settings = faceted_search_load_facet_settings($env_id);
+  $all_settings = faceted_search_load_filter_settings($env_id);
     
-  // Make a filter with all enabled facets.
-  $filter = faceted_search_get_facet_filter($all_settings);
+  // Make a selection with all enabled facets.
+  $selection = faceted_search_get_filter_selection($all_settings);
   
   // Collect all facets relevant to this node.
   $facets = array();
   foreach (module_implements('faceted_search_collect') as $module) {
     $hook = $module .'_faceted_search_collect';
-    $hook($facets, 'node', $env_id, $filter, $node);
+    $hook($facets, 'node', $env_id, $selection, $node);
   }
 
   // Prepare facets for use, assigning them their settings are sorting them.
-  faceted_search_prepare_facets($facets, $all_settings);
+  faceted_search_prepare_filters($facets, $all_settings);
   
   // Organize facets so that those that have a common label are grouped together.
   $groups = array(); // All groups of facets.
@@ -644,7 +644,7 @@ function faceted_search_ui_get_style($search) {
 function faceted_search_ui_sort_block($search) {
   $ui_state = $search->ui_state;
   if ($ui_state['stage'] == 'facet') {
-    list($index, $facet) = $search->get_facet_by_id($search->ui_state['facet-key'], $search->ui_state['facet-id']);
+    list($index, $facet) = $search->get_filter_by_id($search->ui_state['facet-key'], $search->ui_state['facet-id']);
     $sort_options = $facet->get_sort_options();
     if (count($sort_options) > 1) {
       $sort_links = array();
@@ -665,9 +665,9 @@ function faceted_search_ui_sort_block($search) {
 function faceted_search_ui_set_title($search) {
   if ($search->get_text()) {
     $labels = array();
-    foreach ($search->get_facets() as $facet) {
-      if ($facet->is_active()) {
-        $category = $facet->get_active_category();
+    foreach ($search->get_filters() as $filter) {
+      if ($filter->is_active()) {
+        $category = $filter->get_active_category();
         // Note: get_label() is responsible for filtering its returned string.
         $labels[] = $category->get_label(FALSE);
       }
@@ -865,13 +865,10 @@ function faceted_search_ui_build_path($env_id, $ui_state, $text, $facets = array
  *
  * @param $ui_state
  *   The current state of the user interface.
- *
  * @param $env_id
  *   The id of the search environment to use.
- *
  * @param $facets
  *   The facets to take into account in the remover's links.
- *
  * @param $index
  *   Index of the facet whose remover shall be built.
  */
@@ -890,23 +887,17 @@ function faceted_search_ui_build_remover_path($env_id, $ui_state, $facets, $inde
  *
  * @param $ui_state
  *   The current state of the user interface.
- *
  * @param $env_id
  *   The id of the search environment to use.
- *
  * @param $facets
  *   The facets to take into account in the breadcrumb's links.
- *
  * @param $index
  *   Index of the facet whose breadcrumb shall be built.
- *
  * @param $breadcrumb
  *   Array of initial components (or prefix components) of the breadcrumb, if
  *   any is desired.
- *
  * @param $context
  *   The caller's context (either 'guided', 'current', or 'related').
- *
  * @return
  *   Array of breadcrumb components.
  */
@@ -946,21 +937,17 @@ function faceted_search_ui_build_breadcrumb($env_id, $ui_state, $facets, $index,
  *
  * @param $search
  *   The search context.
- *
  * @param $index
  *   Index of the facet within the search context.
- *
  * @param $from
  *   Ordinal number of the first category to load. Numbering starts at 0.
- *
  * @param $max_count
  *   Number of categories to load.
- *
  * @param $links
  *   TRUE to generate category links, FALSE to generate text.
  */
 function faceted_search_ui_build_categories($search, $index, $from = NULL, $max_count = NULL, $links = TRUE) {
-  $facets = $search->get_facets();
+  $facets = $search->get_filters();
   $facet = $facets[$index];
   $facet->set_sort($search->ui_state['facet-sort']);
   
@@ -1029,8 +1016,8 @@ function faceted_search_ui_add_css() {
  */
 function faceted_search_ui_add_robots_directive($search) {
   $active = FALSE;
-  foreach ($search->get_facets() as $facet) {
-    if ($facet->is_active() && $facet->get_key() != 'keyword') {
+  foreach ($search->get_filters() as $filter) {
+    if ($filter->is_browsable() && $filter->is_active()) {
       if ($active) {
         // There is already an active facet, add the meta tag.
         drupal_set_html_head('<meta name="robots" content="noindex, nofollow" />');
@@ -1197,6 +1184,8 @@ function theme_faceted_search_ui_facet_wrapper($env_id, $facet, $context, $conte
  * @param $show_label
  *   Determines whether to display the facet's label. True by default.
  */
+// TODO: 'facet' is too specific now that we have the more general concept of
+// 'filter'. Rename as 'theme_faceted_search_ui_heading'?
 function theme_faceted_search_ui_facet_heading($env_id, $ui_state, $facets, $index, $context, $show_label = TRUE) {
   $facet = $facets[$index];
   $remover_path = faceted_search_ui_build_remover_path($env_id, $ui_state, $facets, $index);
@@ -1205,11 +1194,14 @@ function theme_faceted_search_ui_facet_heading($env_id, $ui_state, $facets, $ind
     $output .= theme('faceted_search_ui_remover_link_current_search', $remover_path) .' ';
   }
 
-  // Render the facet's label (except for keyword facets).
-  if ($show_label && $facet->get_key() != 'keyword') {
-    $output .= theme('faceted_search_ui_facet_label', $facets, $index, $context);
-    if ($facet->is_active()) {
-      $output .= ': ';
+  // Render the facet's label.
+  if ($show_label) {
+    $label = theme('faceted_search_ui_facet_label', $facets, $index, $context);
+    if (!empty($label)) {
+      $output .= $label;
+      if ($facet->is_active()) {
+        $output .= ': ';
+      }
     }
   }
 
@@ -1259,7 +1251,11 @@ function theme_faceted_search_ui_categories($facet, $categories, $stage) {
 }
 
 function theme_faceted_search_ui_facet_label($facets, $index, $label) {
-  return '<h3>'. $facets[$index]->get_label() .'</h3>';
+  $label = $facets[$index]->get_label();
+  if (!empty($label)) {
+    return '<h3>'. $label .'</h3>';
+  }
+  return '';
 }
 
 /**
@@ -1363,7 +1359,7 @@ function theme_faceted_search_ui_stage_select($search, $keyword_block_content, $
 
 function theme_faceted_search_ui_stage_facet($search, $index, $facet, $categories) {
   $content .= '<p>'. ($search->get_text() ? t('Click a term to refine your current search.') : t('Click a term to initiate a search.')) .'</p>';
-  $content .= theme('faceted_search_ui_facet_heading', $search->get_env_id(), $search->ui_state, $search->get_facets(), $index, 'guided');
+  $content .= theme('faceted_search_ui_facet_heading', $search->get_env_id(), $search->ui_state, $search->get_filters(), $index, 'guided');
   $content .= theme('faceted_search_ui_categories', $facet, $categories, $search->ui_state['stage']);
   $content = theme('faceted_search_ui_facet_wrapper', $search->get_env_id(), $facet, 'guided', $content);
   return theme('faceted_search_ui_page', $search, $content);
@@ -1374,7 +1370,6 @@ function theme_faceted_search_ui_stage_facet($search, $index, $facet, $categorie
  *
  * @param $search
  *   The search context.
- *
  * @param $facets
  *   Array of individually rendered facets.
  */

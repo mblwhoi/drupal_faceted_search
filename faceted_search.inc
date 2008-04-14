@@ -3,9 +3,163 @@
 
 /**
  * @file
- * Provides base classes for implementing facets, and classes needed by other
- * modules.
+ * Provides base classes for implementing filters and facets, and classes needed
+ * by other modules.
  */
+
+/**
+ * The base class for filters.
+ *
+ * Filters actually impact results only when they have an active category (a
+ * "category" is a filtering value). The filtering is delegated to the active
+ * category.
+ */
+class faceted_search_filter {
+  
+  /**
+   * The key identifying this class of filter. Keys are used in the form of
+   * 'key:text' tokens in the search text.
+   */
+  var $_key = '';
+
+  /**
+   * The status of this filter.
+   */
+  var $_status = FALSE;
+  
+  /**
+   * The weight of this filter, for sorting purposes.
+   */
+  var $_weight = 0;
+
+  /**
+   * An array representing the path of categories leading to the active category
+   * of this facet. This path includes the active category itself.
+   */
+  var $_path = array();
+  
+  /**
+   * Constructor.
+   *
+   * @param $key
+   *   Key corresponding to this class of filter. This should be the same string
+   *   as used to construct the filter from the search text in the module's
+   *   implementation of hook_faceted_search_parse(). 
+   * @param $active_path
+   *   Array representing the path leading to the active category, including the
+   *   active category itself. Defaults to an empty array, meaning no active
+   *   category.
+   */
+  function faceted_search_filter($key, $active_path = array()) {
+    $this->_key = $key;
+    $this->_path = $active_path;
+  }
+
+  /**
+   * Return TRUE if this filter offers browsable categories, or FALSE otherwise.
+   */
+  function is_browsable() {
+    return FALSE;
+  }
+  
+  /**
+   * Assign settings to this filter.
+   *
+   * @param $settings
+   *   Array of settings.
+   */
+  function set($settings) {
+    if (isset($settings['status'])) {
+      $this->_status = $settings['status'];
+    }
+    if (isset($settings['weight'])) {
+      $this->_weight = $settings['weight'];
+    }
+  }
+  
+  /**
+   * Return the key for this class of filter.
+   */
+  function get_key() {
+    return $this->_key;
+  }
+
+  /**
+   * Return a help text for site administrators.
+   */
+  function get_help() {
+    return '';
+  }
+  
+  /**
+   * Return the status of this filter.
+   *
+   * @return
+   *   TRUE when the filter is enabled, FALSE otherwise.
+   */
+  function get_status() {
+    return $this->_status;
+  }
+
+  /**
+   * Change the status of this filter.
+   *
+   * @param $status
+   *   TRUE to enable the filter, FALSE to disable it.
+   */
+  function set_status($status) {
+    $this->_status = $status;
+  }
+  
+  /**
+   * Return the configured weight of this filter, for sorting purposes.
+   */
+  function get_weight() {
+    return $this->_weight;
+  }
+
+  /**
+   * Assign the weight of this filter.
+   */
+  function set_weight($weight) {
+    $this->_weight = $weight;
+  }
+
+  /**
+   * Return TRUE if this facet has an active category. If a facet is active, it
+   * normally means that it is used in the current search.
+   */
+  function is_active() {
+    return count($this->_path) > 0;
+  }
+
+  /**
+   * Return an array representing the path to the active category, including the
+   * active category itself. Return an empty array if there is no active
+   * category.
+   */
+  function get_active_path() {
+    return $this->_path;
+  }
+
+  /**
+   * Set the path of the active category, including the active category itself.
+   *
+   * @param $path
+   *   The path of the category (array of categories). Defaults to no active
+   *   path.
+   */
+  function set_active_path($path = array()) {
+    $this->_path = $path;
+  }
+
+  /**
+   * Return the active category, or NULL if there is no active category.
+   */
+  function get_active_category() {
+    return end($this->_path);
+  }
+}
 
 /**
  * Base class for facet categories.
@@ -38,6 +192,13 @@ class faceted_search_category {
   }
 
   /**
+   * Return weight of this category, for sorting purposes.
+   */
+  function get_weight() {
+    return 0;
+  }
+
+  /**
    * Updates a query for retrieving the subcategories of this category and their
    * associated nodes within the current search results. 
    *
@@ -45,7 +206,6 @@ class faceted_search_category {
    *
    * @param $query
    *   The query object to update.
-   *
    * @return
    *   FALSE if this facet can't have subcategories.
    */
@@ -55,26 +215,12 @@ class faceted_search_category {
 }
 
 /**
- * The base class for facets.
+ * The parent class for facets.
+ *
+ * A facet is a filter with browsable categories.
  */
-class faceted_search_facet {
+class faceted_search_facet extends faceted_search_filter {
   
-  /**
-   * The key identifying this class of facet in search texts. Keys are used in
-   * the form of 'key:text' tokens in search texts.
-   */
-  var $_key = '';
-
-  /**
-   * The status of this facet.
-   */
-  var $_status = FALSE;
-  
-  /**
-   * The weight of this facet, for sorting purposes.
-   */
-  var $_weight = 0;
-
   /**
    * The current sort criteria to use for this facet. This determines how to
    * sort the facet's categories.
@@ -87,28 +233,27 @@ class faceted_search_facet {
   var $_max_categories = 10;
 
   /**
-   * An array representing the path of categories leading to the active category
-   * of this facet (i.e. without the active category itself).
-   */
-  var $_path = array();
-  
-  /**
    * Constructor.
    *
    * @param $key
    *   Key corresponding to this class of facet. This should be the same string
    *   as used to construct the facet from the search text in the module's
    *   implementation of hook_faceted_search_parse(). 
-   * @param $active_path
-   *   Array representing the path leading to the active category, including the
-   *   active category itself. Defaults to an empty array, meaning no active
-   *   category.
    */
   function faceted_search_facet($key, $active_path = array()) {
-    $this->_key = $key;
-    $this->_path = $active_path;
+    parent::faceted_search_filter($key, $active_path);
   }
 
+  /**
+   * Return TRUE if this filter offers browsable categories, or FALSE otherwise.
+   *
+   * A browsable filter implies that categories retrieval and sorting methods
+   * are available.
+   */
+  function is_browsable() {
+    return TRUE;
+  }
+  
   /**
    * Assign settings to this facet.
    *
@@ -116,66 +261,13 @@ class faceted_search_facet {
    *   Array of settings.
    */
   function set($settings) {
-    if (isset($settings['status'])) {
-      $this->_status = $settings['status'];
-    }
-    if (isset($settings['weight'])) {
-      $this->_weight = $settings['weight'];
-    }
+    parent::set($settings);
     if (isset($settings['sort'])) {
       $this->_sort = $settings['sort'];
     }
     if (isset($settings['max_categories'])) {
       $this->_max_categories = $settings['max_categories'];
     }
-  }
-  
-  /**
-   * Return the key for this class of facet.
-   */
-  function get_key() {
-    return $this->_key;
-  }
-
-  /**
-   * Return a help text for site administrators.
-   */
-  function get_help() {
-    return '';
-  }
-  
-  /**
-   * Return the status of this facet.
-   *
-   * @return
-   *   TRUE when the facet is enabled, FALSE otherwise.
-   */
-  function get_status() {
-    return $this->_status;
-  }
-
-  /**
-   * Change the status of this facet.
-   *
-   * @param $status
-   *   TRUE to enable the facet, FALSE to disable it.
-   */
-  function set_status($status) {
-    $this->_status = $status;
-  }
-  
-  /**
-   * Return the configured weight of this facet, for sorting purposes.
-   */
-  function get_weight() {
-    return $this->_weight;
-  }
-
-  /**
-   * Assign the weight of this facet.
-   */
-  function set_weight($weight) {
-    $this->_weight = $weight;
   }
   
   /**
@@ -244,14 +336,13 @@ class faceted_search_facet {
   }
   
   /**
-   * Updates a query for retrieving the root categories of this facet and their
-   * associated nodes within the current search results. 
+   * Updates a query for retrieving the root categories of this filter and their
+   * associated nodes within the current search results.
    *
    * @param $query
    *   The query object to update.
-   *
    * @return
-   *   FALSE if this facet can't have root categories.
+   *   FALSE if this filter can't have root categories.
    */
   function build_root_categories_query() {
     return FALSE;
@@ -263,7 +354,6 @@ class faceted_search_facet {
    *
    * @param $results
    *   $results A database query result resource.
-   *
    * @return
    *   Array of categories.
    */
@@ -272,134 +362,30 @@ class faceted_search_facet {
   }
   
   /**
-   * Return TRUE if this facet has an active category.
-   */
-  function is_active() {
-    return count($this->_path) > 0;
-  }
-
-  /**
-   * Return an array representing the path to the active category, including the
-   * active category itself. Return an empty array if there is no active
-   * category.
-   */
-  function get_active_path() {
-    return $this->_path;
-  }
-
-  /**
-   * Set the path of the active category, including the active category itself.
+   * Inject components into the query for selecting nodes matching this facet's
+   * active category.
    *
-   * @param $path
-   *   The path of the category (array of categories). Defaults to no active
-   *   path.
+   * @param $query
+   *   Query to inject the components into.
+   * @param $words
+   *   Array keyed by search index type, each element being an array of positive
+   *   words to lookup for that index type. This method should insert any words
+   *   it cares about.
+   * @param $matches
+   *   Minimum number of words that should match in query results.
    */
-  function set_active_path($path = array()) {
-    $this->_path = $path;
-  }
-
-  /**
-   * Return the active category, or NULL if there is no active category.
-   */
-  function get_active_category() {
-    return end($this->_path);
-  }
-  
-  /**
-   * Replace the active category in the active path.
-   *
-   * The caller is responsible for making sure that the specified category is
-   * consistent with the existing path (e.g. that the path contains actual
-   * ancestors of that category).
-   */
-  function set_active_category($category) {
-    $count = count($this->_path);
-    if ($count > 0) {
-      $this->_path[$count - 1] = $category;
-    }
-    else {
-      $this->_path = array($category);
-    }
-  }
-}
-
-/**
- * A keyword category (for keyword facets).
- *
- * This is actually just a label and a search text, since keywords do not have
- * "subcategories", and queries for searching keywords are a special case
- * handled directly by faceted_search::execute().
- */
-class faceted_search_keyword_category extends faceted_search_category { 
-  var $_label = '';
-  var $_text = '';
-  
-  function faceted_search_keyword_category($label, $text) {
-    $this->_label = $label;
-    $this->_text = $text;
-  }
-
-  /**
-   * Return the label of this category.
-   *
-   * @param $html
-   *   TRUE when HTML is allowed in the label, FALSE otherwise. Checking this
-   *   flag allows implementors to provide a rich-text label if desired, and an
-   *   alternate plain text version for cases where HTML cannot be used. The
-   *   implementor is responsible to ensure adequate security filtering.
-   */
-  function get_label($html = FALSE) {
-    // Note: No need for calling check_plain() here, because the label has
-    // already been checked by either of
-    // theme_faceted_search_keyword_and_label(),
-    // theme_faceted_search_keyword_or_label(),
-    // theme_faceted_search_keyword_not_label, or
-    // theme_faceted_search_keyword_phrase_label().
-    if ($html) {
-      return $this->_label;
-    }
-    else {
-      // Some categories (e.g. OR keyword categories) may contain HTML tags.
-      return strip_tags($this->_label);
-    }
-  }
-
-  function get_text() {
-    return $this->_text;
-  }
-}
-
-/**
- * A keyword facet. This is the base class for other keyword facets.
- *
- * Keywords are not really facets, but giving them the same interface as a facet
- * helps display them in the current search block.
- */
-class faceted_search_keyword_facet extends faceted_search_facet {
-  var $_type = ''; // Type of search index entry this facet is interested in.
-  
-  function faceted_search_keyword_facet($active_category = NULL, $type = 'node') {
-    parent::faceted_search_facet('keyword', $active_category ? array($active_category) : array());
-    parent::set_status(TRUE); // Keyword facets are always enabled.
-    $this->_type = $type;
-  }
-
-  /**
-   * Return the available sort options for this facet.
-   */
-  function get_sort_options() {
-    return array(); // Sort options are not relevant to this kind of facet.
-  }
-
-  /**
-   * Return the search text corresponding to this facet's active category.
-   */
-  function get_text() {
+  function build_results_query(&$query, &$words, &$matches) {
+    // Note: Facets ignore $words and $matches.
     if ($category = $this->get_active_category()) {
-      return $category->get_text();
+      $category->build_results_query($query);
     }
-    return '';
   }
+}
+
+/**
+ * The base class of keyword categories.
+ */
+class faceted_search_keyword_category {
 
   /**
    * Check whether a given word is allowed for searching.
@@ -415,226 +401,366 @@ class faceted_search_keyword_facet extends faceted_search_facet {
       return $word;
     }
   }
-}
-
-/**
- * A keyword AND facet.
- */
-class faceted_search_keyword_and_facet extends faceted_search_keyword_facet {
-
-  function faceted_search_keyword_and_facet($keyword = '', $type = 'node') {
-    if ($keyword) {
-      $active_category = new faceted_search_keyword_category(theme('faceted_search_keyword_and_label', $keyword), $keyword);
-    }
-    parent::faceted_search_keyword_facet($active_category, $type);
-    parent::set_weight(-999); // Assign default weight.
-  }
-
-  function get_id() {
-    return 'and';
-  }
-
-  function get_label() {
-    return t('Keyword (AND)');
-  }
 
   /**
-   * Inject keyword search components into the query.
-   *
-   * @param $query
-   *   Query to update for searching with this facet's active category.
-   * @param $types
-   *   Array of search index types. This method should insert the type it cares
-   *   about.
-   * @param $words
-   *   Array keyed by search index type, each element being an array of positive
-   *   words to lookup for that index type. This method should insert any words
-   *   it cares about.
-   * @param $matches
-   *   Minimum number of words that should match in query results.
+   * Prepare a label for output.
    */
-  function build_keyword_query(&$query, &$types, &$words, &$matches) {
-    if ($this->is_active()) {
-      $word = $this->get_active_category()->get_text();
-      if ($word = $this->check_word($word)) {
-        if (!isset($words[$word])) {
-          $types[$this->_type] = $this->_type;
-          $words[$this->_type][$word] = $word;
-          $matches++;
-
-          // The dataset will have to be looked up as well if the query becomes
-          // more complex because of other keyword search operators.
-          $query->set_current_part("{$this->_type}_search_dataset");
-          $query->add_where("{$this->_type}_search_dataset.data LIKE '%% %s %%'", $word);
-          $query->set_current_part(); // Back to default part.
-        }
-      }
+  function check_label($label, $html = FALSE) {
+    if (!$html) {
+      return strip_tags($label);
     }
+    return $label;
   }
 }
 
 /**
- * A keyword phrase facet.
+ * The keyword AND category.
  */
-class faceted_search_keyword_phrase_facet extends faceted_search_keyword_facet {
-
-  function faceted_search_keyword_phrase_facet($phrase = '', $type = 'node') {
-    if ($phrase) {
-      $active_category = new faceted_search_keyword_category(theme('faceted_search_keyword_phrase_label', $phrase), '"'. $phrase .'"');
-    }
-    parent::faceted_search_keyword_facet($active_category, $type);
-    parent::set_weight(-998); // Assign default weight.
-  }
-
-  function get_id() {
-    return 'phrase';
-  }
-
-  function get_label() {
-    return t('Keyword (Phrase)');
-  }
-
-  /**
-   * Inject keyword search components into the query.
-   *
-   * @param $query
-   *   Query to update for searching with this facet's active category.
-   * @param $types
-   *   Array of search index types. This method should insert the type it cares
-   *   about.
-   * @param $words
-   *   Array keyed by search index type, each element being an array of positive
-   *   words to lookup for that index type. This method should insert any words
-   *   it cares about.
-   * @param $matches
-   *   Minimum number of words that should match in query results.
-   */
-  function build_keyword_query(&$query, &$types, &$words, &$matches) {
-    if ($this->is_active()) {
-      $phrase = trim($this->get_active_category()->get_text(), '"');
-      $split = explode(' ', $phrase);
-      foreach ($split as $word) {
-        if ($word = $this->check_word($word)) {
-          if (!isset($words[$word])) {
-            $words[$this->_type][$word] = $word;
-          }
-        }
-      }
-      if (count($split) > 0) {
-        $matches++; // A phrase counts as one match.
-        $types[$this->_type] = $this->_type;
-
-        if (count($split) > 1) {
-          // Real phrase. We'll have to verify it against the dataset.
-          $query->enable_part("{$this->_type}_search_dataset");
-        }
-        
-        // Add phrase match conditions.
-        $query->set_current_part("{$this->_type}_search_dataset");
-        $query->add_where("{$this->_type}_search_dataset.data LIKE '%% %s %%'", $phrase);
-        $query->set_current_part(); // Back to default part.
-      }
-    }
-  }
-}
-
-/**
- * A keyword OR facet.
- */
-class faceted_search_keyword_or_facet extends faceted_search_keyword_facet {
+class faceted_search_keyword_and_category extends faceted_search_keyword_category {
+  var $_word = '';
   
-  function faceted_search_keyword_or_facet($keywords = array(), $type = 'node') {
-    if (count($keywords) > 0) {
-      $active_category = new faceted_search_keyword_category(theme('faceted_search_keyword_or_label', $keywords), implode(' OR ', $keywords));
-    }
-    parent::faceted_search_keyword_facet($active_category, $type);
-    parent::set_weight(-997); // Assign default weight.
-  }
-
-  function get_id() {
-    return 'or';
-  }
-
-  function get_label() {
-    return t('Keyword (OR)');
+  /**
+   * Constructor.
+   *
+   * @param $phrase
+   *   String containing the word to search.
+   */
+  function faceted_search_keyword_and_category($word) {
+    $this->_word = $word;
   }
 
   /**
-   * Inject keyword search components into the query.
+   * Return the label for this category.
+   *
+   * @param $html
+   *   TRUE when HTML is allowed in the label, FALSE otherwise.
+   */
+  function get_label($html = FALSE) {
+    return parent::check_label(theme('faceted_search_keyword_and_label', $this->_word), $html);
+  }
+
+  /**
+   * Return the search text for this category.
+   */
+  function get_text() {
+    return $this->_word;
+  }
+
+  /**
+   * Return the weight of this category, for sorting purposes.
+   */
+  function get_weight() {
+    return 0;
+  }
+
+  /**
+   * Inject components into the query for selecting nodes matching this category.
    *
    * @param $query
-   *   Query to update for searching with this facet's active category.
-   * @param $types
-   *   Array of search index types. This method should insert the type it cares
-   *   about.
+   *   Query to inject the components into.
    * @param $words
    *   Array keyed by search index type, each element being an array of positive
    *   words to lookup for that index type. This method should insert any words
    *   it cares about.
    * @param $matches
    *   Minimum number of words that should match in query results.
+   * @param $type
+   *   Type of search index entry to be searched.
    */
-  function build_keyword_query(&$query, &$types, &$words, &$matches) {
-    if ($this->is_active()) {
-      $split = explode(' OR ', $this->get_active_category()->get_text());
-      $where = '';
-      $where_args = array();
-      foreach ($split as $word) {
-        if ($word = $this->check_word($word)) {
-          if (!isset($words[$word])) {
-            $words[$this->_type][$word] = $word;
-            if (!empty($where)) {
-              $where .= ' OR ';
-            }
-            $where .= "{$this->_type}_search_dataset.data LIKE '%% %s %%'";
-            $where_args[] = $word;
-          }
-        }
-      }
-      if (!empty($where)) {
-        $matches++;
-        $types[$this->_type] = $this->_type;
+  function build_results_query(&$query, &$words, &$matches, $type) {
+    if (($word = parent::check_word($this->_word)) && !isset($words[$type][$word])) {
+      $words[$type][$word] = $word;
+      $matches++;
 
-        // Matches will have to be checked against the dataset.
-        $query->enable_part("{$this->_type}_search_dataset");
-        $query->set_current_part("{$this->_type}_search_dataset");
-        array_unshift($where_args, $where);
-        call_user_func_array(array(&$query, 'add_where'), $where_args);
-        $query->set_current_part(); // Back to default part.
-      }
+      // The dataset will have to be looked up as well if the query becomes more
+      // complex because of other keyword search operators.
+      $query->set_current_part("{$type}_search_dataset");
+      $query->add_where("{$type}_search_dataset.data LIKE '%% %s %%'", $word);
+      $query->set_current_part(); // Back to default part.
     }
   }
 }
 
 /**
- * A keyword NOT facet.
+ * The keyword phrase category.
  */
-class faceted_search_keyword_not_facet extends faceted_search_keyword_facet {
+class faceted_search_keyword_phrase_category extends faceted_search_keyword_category {
+  var $_phrase = '';
 
-  function faceted_search_keyword_not_facet($keyword = '', $type = 'node') {
-    if ($keyword) {
-      $active_category = new faceted_search_keyword_category(theme('faceted_search_keyword_not_label', $keyword), '-'. $keyword);
-    }
-    parent::faceted_search_keyword_facet($active_category, $type);
-    parent::set_weight(-996); // Assign default weight.
-  }
-
-  function get_id() {
-    return 'not';
-  }
-
-  function get_label() {
-    return t('Keyword (NOT)');
+  /**
+   * Constructor.
+   *
+   * @param $phrase
+   *   String containing the phrase to search.
+   */
+  function faceted_search_keyword_phrase_category($phrase) {
+    $this->_phrase = $phrase;
   }
 
   /**
-   * Inject keyword search components into the query.
+   * Return the label for this category.
+   *
+   * @param $html
+   *   TRUE when HTML is allowed in the label, FALSE otherwise.
+   */
+  function get_label($html = FALSE) {
+    return parent::check_label(theme('faceted_search_keyword_phrase_label', $this->_phrase), $html);
+  }
+
+  /**
+   * Return the search text for this operator.
+   */
+  function get_text() {
+    return '"'. $this->_phrase .'"';
+  }
+
+  /**
+   * Return the weight of this category, for sorting purposes.
+   */
+  function get_weight() {
+    return 1;
+  }
+
+  /**
+   * Inject components into the query for selecting nodes matching this category.
    *
    * @param $query
-   *   Query to update for searching with this facet's active category.
-   * @param $types
-   *   Array of search index types. This method should insert the type it cares
-   *   about.
+   *   Query to inject the components into.
+   * @param $words
+   *   Array keyed by search index type, each element being an array of positive
+   *   words to lookup for that index type. This method should insert any words
+   *   it cares about.
+   * @param $matches
+   *   Minimum number of words that should match in query results.
+   * @param $type
+   *   Type of search index entry to be searched.
+   */
+  function build_results_query(&$query, &$words, &$matches, $type) {
+    $split = explode(' ', $this->_phrase);
+    foreach ($split as $word) {
+      if ($word = parent::check_word($word)) {
+        $words[$type][$word] = $word;
+      }
+    }
+    if (count($split) > 0) {
+      $matches++; // A phrase counts as one match.
+
+      if (count($split) > 1) {
+        // Real phrase. We'll have to verify it against the dataset.
+        $query->enable_part("{$type}_search_dataset");
+      }
+        
+      // Add phrase match conditions.
+      $query->set_current_part("{$type}_search_dataset");
+      $query->add_where("{$type}_search_dataset.data LIKE '%% %s %%'", $this->_phrase);
+      $query->set_current_part(); // Back to default part.
+    }
+  }
+}
+
+/**
+ * The keyword OR category.
+ */
+class faceted_search_keyword_or_category extends faceted_search_keyword_category {
+  var $_words = array();
+
+  /**
+   * Constructor.
+   *
+   * @param $words
+   *   Array containing the words to search.
+   */
+  function faceted_search_keyword_or_category($words) {
+    $this->_words = $words;
+  }
+  
+  /**
+   * Return the label for this category.
+   *
+   * @param $html
+   *   TRUE when HTML is allowed in the label, FALSE otherwise.
+   */
+  function get_label($html = FALSE) {
+    return parent::check_label(theme('faceted_search_keyword_or_label', $this->_words), $html);
+  }
+
+  /**
+   * Return the search text for this category.
+   */
+  function get_text() {
+    return implode(' OR ', $this->_words);
+  }
+
+  /**
+   * Return the weight of this category, for sorting purposes.
+   */
+  function get_weight() {
+    return 2;
+  }
+
+  /**
+   * Inject components into the query for selecting nodes matching this category.
+   *
+   * @param $query
+   *   Query to inject the components into.
+   * @param $words
+   *   Array keyed by search index type, each element being an array of positive
+   *   words to lookup for that index type. This method should insert any words
+   *   it cares about.
+   * @param $matches
+   *   Minimum number of words that should match in query results.
+   * @param $type
+   *   Type of search index entry to be searched.
+   */
+  function build_results_query(&$query, &$words, &$matches, $type) {
+    $where = '';
+    $where_args = array();
+    foreach ($this->_words as $word) {
+      if (($word = parent::check_word($word)) && !isset($words[$type][$word])) {
+        $words[$type][$word] = $word;
+        if (!empty($where)) {
+          $where .= ' OR ';
+        }
+        $where .= "{$type}_search_dataset.data LIKE '%% %s %%'";
+        $where_args[] = $word;
+      }
+    }
+    if (!empty($where)) {
+      $matches++;
+
+      // Matches will have to be checked against the dataset.
+      $query->enable_part("{$type}_search_dataset");
+      $query->set_current_part("{$type}_search_dataset");
+      array_unshift($where_args, $where);
+      call_user_func_array(array(&$query, 'add_where'), $where_args);
+      $query->set_current_part(); // Back to default part.
+    }
+  }
+}
+
+/**
+ * The keyword NOT category.
+ */
+class faceted_search_keyword_not_category extends faceted_search_keyword_category {
+  var $_word = '';
+  
+  /**
+   * Constructor.
+   *
+   * @param $word
+   *   String containing the word to exclude from the search.
+   */
+  function faceted_search_keyword_not_category($word) {
+    $this->_word = $word;
+  }
+  
+  /**
+   * Return the weight of this category, for sorting purposes.
+   */
+  function get_weight() {
+    return 3;
+  }
+
+  /**
+   * Return the label for this category.
+   *
+   * @param $html
+   *   TRUE when HTML is allowed in the label, FALSE otherwise.
+   */
+  function get_label($html = FALSE) {
+    return parent::check_label(theme('faceted_search_keyword_not_label', $this->_word), $html);
+  }
+
+  /**
+   * Return the search text for this operator.
+   */
+  function get_text() {
+    return '-'. $this->_word;
+  }
+
+  /**
+   * Inject components into the query for selecting nodes matching this category.
+   *
+   * @param $query
+   *   Query to inject the components into.
+   * @param $words
+   *   Array keyed by search index type, each element being an array of positive
+   *   words to lookup for that index type. This method should insert any words
+   *   it cares about.
+   * @param $matches
+   *   Minimum number of words that should match in query results.
+   * @param $type
+   *   Type of search index entry to be searched.
+   */
+  function build_results_query(&$query, &$words, &$matches, $type) {
+    if ($word = parent::check_word($this->_word)) {
+      // This is a negative word; do not insert it, but mark the type as used.
+      if (!isset($words[$type])) {
+        $words[$type] = array();
+      }
+        
+      // Negative words are checked against the dataset.
+      $query->enable_part("{$type}_search_dataset");
+      $query->set_current_part("{$type}_search_dataset");
+      $query->add_where("{$type}_search_dataset.data NOT LIKE '%% %s %%'", $word);
+      $query->set_current_part(); // Back to default part.
+    }
+  }
+}
+
+/**
+ * The filter for keyword search.
+ */
+class faceted_search_keyword_filter extends faceted_search_filter {
+  var $_type = ''; // Type of search index entry this facet is interested in.
+  var $_label = ''; // Label of the field.
+
+  /**
+   * Constructor.
+   *
+   * @param $type
+   *   Type of the search index entries corresponding to the field.
+   * @param $label
+   *   Label of the field.
+   * @param $category
+   *   Active category of the field.
+   */
+  function faceted_search_keyword_filter($type, $label, $category = NULL) {
+    parent::faceted_search_filter('keyword', isset($category) ? array($category) : array());
+    $this->_type = $type;
+    $this->_label = $label;
+  }
+
+  /**
+   * Returns the id of this filter.
+   */
+  function get_id() { 
+    return $this->_type;
+  }
+
+  /**
+   * Return the search text corresponding to this filter.
+   */
+  function get_text() {
+    if ($category = $this->get_active_category()) {
+      return $category->get_text();
+    }
+    return '';
+  }
+
+  /**
+   * Return the label of this filter. This method is responsible for ensuring
+   * adequate security filtering.
+   */
+  function get_label() {
+    return check_plain($this->_label);
+  }
+  
+  /**
+   * Inject components into the query for selecting nodes matching this filter.
+   *
+   * @param $query
+   *   Query to inject the components into.
    * @param $words
    *   Array keyed by search index type, each element being an array of positive
    *   words to lookup for that index type. This method should insert any words
@@ -642,18 +768,9 @@ class faceted_search_keyword_not_facet extends faceted_search_keyword_facet {
    * @param $matches
    *   Minimum number of words that should match in query results.
    */
-  function build_keyword_query(&$query, &$types, &$words, &$matches) {
-    if ($this->is_active()) {
-      $word = ltrim($this->get_active_category()->get_text(), '-');
-      if ($word = $this->check_word($word)) {
-        $types[$this->_type] = $this->_type;
-        
-        // Negative words are checked against the dataset.
-        $query->enable_part("{$this->_type}_search_dataset");
-        $query->set_current_part("{$this->_type}_search_dataset");
-        $query->add_where("{$this->_type}_search_dataset.data NOT LIKE '%% %s %%'", $word);
-        $query->set_current_part(); // Back to default part.
-      }
+  function build_results_query(&$query, &$words, &$matches) {
+    if ($category = $this->get_active_category()) {
+      $category->build_results_query($query, $words, $matches, $this->_type);
     }
   }
 }
@@ -697,9 +814,9 @@ class faceted_search {
   var $_ready = FALSE;
   
   /**
-   * Collection of facets currently used by this search.
+   * Collection of filters currently used by this search.
    */
-  var $_facets = array();
+  var $_filters = array();
 
   /**
    * Constructor. Initialize the search data and parses the given search text.
@@ -714,49 +831,48 @@ class faceted_search {
     $this->_text = $text;
     $this->_results_table = 'temp_faceted_search_results_'. $env_id;
 
-    // Load settings for all enabled facets in this search environment.
-    $all_settings = faceted_search_load_facet_settings($env_id);
+    // Load settings for all enabled filters in this search environment.
+    $all_settings = faceted_search_load_filter_settings($env_id);
     
-    // Make a filter with all enabled facets.
-    $filter = faceted_search_get_facet_filter($all_settings);
+    // Make a selection with all enabled filters.
+    $selection = faceted_search_get_filter_selection($all_settings);
 
-    // Collect all facets relevant to this search.
+    // Collect all filters relevant to this search.
     foreach (module_implements('faceted_search_collect') as $module) {
-      $module_facets = array();
+      $module_filters = array();
       $hook = $module .'_faceted_search_collect';
 
-      // Parse the search text and obtain corresponding facets. Text is stripped
-      // from facet data so the remaining text is considered as simple keywords.
-      $text = $hook($module_facets, 'text', $env_id, $filter, $text);
+      // Parse the search text and obtain corresponding filters. Text is eaten as
+      // it gets parsed.
+      $text = $hook($module_filters, 'text', $env_id, $selection, $text);
 
-      // Disallow facets that have been collected from the search text.
-      foreach ($module_facets as $facet) {
-        unset($filter[$facet->get_key()][$facet->get_id()]);
+      // Disallow filters that have been collected from the search text.
+      foreach ($module_filters as $filter) {
+        unset($selection[$filter->get_key()][$filter->get_id()]);
       }
       
-      // Obtain remaining allowed facets.
-      if (!empty($filter)) {
-        $hook($module_facets, 'all', $env_id, $filter);
+      // Obtain remaining allowed filters.
+      if (!empty($selection)) {
+        $hook($module_filters, 'all', $env_id, $selection);
       }
       
-      // Merge the facets listed by the current module.
-      $this->_facets = array_merge($this->_facets, $module_facets);
+      // Merge the filters listed by the current module.
+      $this->_filters = array_merge($this->_filters, $module_filters);
 
-      if (empty($filter)) {
-        break; // No more facets allowed.
+      if (empty($selection)) {
+        break; // No more filters allowed.
       }
     }
     
     // Assign the remaining text as keywords.
     $this->_keywords = $text;
 
-    // Keyword pseudo-facets must be created after all the other facets so that
-    // no recognized facet token gets interpreted as a keyword. Keyword facets
-    // also don't need a filter since they are always enabled.
-    faceted_search_collect_keyword_facets($this->_facets, 'text', $env_id, $text);
+    // After filters have been collected, any remaining text is passed to the
+    // default filters.
+    faceted_search_collect_default_filters($this->_filters, 'text', $env_id, $selection, $text);
     
-    // Prepare facets for use, assigning them their settings are sorting them.
-    faceted_search_prepare_facets($this->_facets, $all_settings);
+    // Prepare filters for use, assigning them their settings are sorting them.
+    faceted_search_prepare_filters($this->_filters, $all_settings);
   }
 
   /**
@@ -783,26 +899,26 @@ class faceted_search {
   }
   
   /**
-   * Return the facets used by this search.
+   * Return the filters used by this search.
    */
-  function get_facets() {
-    return $this->_facets;
+  function get_filters() {
+    return $this->_filters;
   }
 
   /**
-   * Return the specified facet.
+   * Return the specified filter.
    */
-  function get_facet($index) {
-    return $this->_facets[$index];
+  function get_filter($index) {
+    return $this->_filters[$index];
   }
 
   /** 
-   * Return the index of a facet given its key and id.
+   * Return the index of a filter given its key and id.
    */
-  function get_facet_by_id($key, $id) {
-    foreach ($this->_facets as $index => $facet) {
-      if ($facet->get_key() == $key && $facet->get_id() == $id) {
-        return array($index, $facet);
+  function get_filter_by_id($key, $id) {
+    foreach ($this->_filters as $index => $filter) {
+      if ($filter->get_key() == $key && $filter->get_id() == $id) {
+        return array($index, $filter);
       }
     }
   }
@@ -830,7 +946,7 @@ class faceted_search {
    * checked against the search_dataset table).
    */
   function execute() {
-    if (!$this->_keywords && !$this->_facets) {
+    if (!$this->_keywords && !$this->_filters) {
       return; // Nothing to search
     }
 
@@ -844,89 +960,74 @@ class faceted_search {
     }
     
     // Inject keyword search conditions if applicable.
-    $types = array(); // Search index entry types to include use the query.
     $words = array(); // Positive words to include in the query.
     $matches = 0;
     $word_score_expr = '';
-    foreach ($this->_facets as $facet) {
-      if (method_exists($facet, 'build_keyword_query')) {
-        $facet->build_keyword_query($query, $types, $words, $matches);
-      }
-      elseif ($category = $facet->get_active_category()) {
-        $category->build_results_query($query);
-      }
+    foreach ($this->_filters as $filter) {
+      $filter->build_results_query($query, $words, $matches);
     }
 
     if ($matches > 0) {
       $query->add_having('COUNT(*) >= %d', $matches);
     }
 
-    if (!empty($types)) {
-      if (empty($words)) {
+    // Some positive words were specified (and maybe some negatives as well).
+    $words_where = array();
+    $words_args = array();
+    $words_scores = array();
+    foreach ($words as $type => $type_words) {
+      if (empty($type_words)) {
         // Negative words were specified, but no positive words. Negative words
-        // are looked up in search_dataset, but since there are no positive words
-        // it is joined directly with the node table, and search_index is not
-        // needed.
-        foreach ($types as $type) {
-          $query->set_current_part("{$type}_search_dataset");
-          $query->add_table('search_dataset', 'sid', 'n', 'nid', "{$type}_search_dataset");
-          $query->add_where("{$type}_search_dataset.type = '%s'", $type);
-          $query->set_current_part(); // Back to default part.
-        }
+        // are looked up in search_dataset, but since there are no positive
+        // words it is joined directly with the node table, and search_index is
+        // not needed.
+        $query->set_current_part("{$type}_search_dataset");
+        $query->add_table('search_dataset', 'sid', 'n', 'nid', "{$type}_search_dataset");
+        $query->add_where("{$type}_search_dataset.type = '%s'", $type);
+        $query->set_current_part(); // Back to default part.
       }
       else {
-        // Some positive words were specified (and maybe some negatives as well).
-        $words_where = array();
-        $words_args = array();
-        $words_scores = array();
-        foreach ($types as $type) {
-          // Join the search dataset for the current index type, in case we're
-          // dealing with a complex query.
-          $query->set_current_part("{$type}_search_dataset");
-          $query->add_table('search_dataset', array('sid', 'type'), "{$type}_search_index", array('sid', 'type'), "{$type}_search_dataset");
-          $query->set_current_part(); // Back to default part.
-
-          if (!empty($words[$type])) {
-            // TODO: The handling of individual words could be cleaner if the
-            // query builder supported nesting within WHERE clauses.
-          
-            // Join the search index for the current index type.
-            $query->add_table('search_index', 'sid', 'n', 'nid', "{$type}_search_index");
-
-            $words_where[] = '(('. substr(str_repeat("{$type}_search_index.word = '%s' OR ", count($words[$type])), 0, -4) .") AND {$type}_search_index.type = '%s')";
-            $words_args = array_merge($words_args, $words[$type]);
-            $words_args[] = $type;
-      
-            $query->add_table('search_total', 'word', "{$type}_search_index", 'word', "{$type}_search_total");
-
-            $words_scores[] = "{$type}_search_index.score * {$type}_search_total.count";
-          }
-        }
+        // Join the search index for the current index type.
+        $query->add_table('search_index', 'sid', 'n', 'nid', "{$type}_search_index");
         
-        if (!empty($words_where)) {
-          array_unshift($words_args, implode(' OR ', $words_where));
-          call_user_func_array(array(&$query, 'add_where'), $words_args);
-        }
+        // Join the search dataset for the current index type, in case we're
+        // dealing with a complex query.
+        $query->set_current_part("{$type}_search_dataset");
+        $query->add_table('search_dataset', array('sid', 'type'), "{$type}_search_index", array('sid', 'type'), "{$type}_search_dataset");
+        $query->set_current_part(); // Back to default part.
 
-        if (!empty($words_scores)) {
-          // Add word score expression to the query.
-          $score = 'SUM('. implode(' + ', $words_scores) .')';
-          $query->set_current_part('normalize');
-          $query->add_field(NULL, $score, 'score'); 
-          $query->set_current_part();
+        $words_where[] = '(('. substr(str_repeat("{$type}_search_index.word = '%s' OR ", count($type_words)), 0, -4) .") AND {$type}_search_index.type = '%s')";
+        $words_args = array_merge($words_args, $type_words);
+        $words_args[] = $type;
+      
+        $query->add_table('search_total', 'word', "{$type}_search_index", 'word', "{$type}_search_total");
 
-          // Perform the word score normalization query.
-          $query->enable_part('normalize');
-          $normalize = db_result(db_query_range($query->query(), $query->args(), 0, 1));
-          $query->disable_part('normalize');
-
-          if (!$normalize) {
-            return;
-          }
-
-          $word_score_expr = '('. (1.0 / $normalize) .' * '. $score .')';
-        }
+        $words_scores[] = "{$type}_search_index.score * {$type}_search_total.count";
       }
+    }
+    
+    if (!empty($words_where)) {
+      array_unshift($words_args, implode(' OR ', $words_where));
+      call_user_func_array(array(&$query, 'add_where'), $words_args);
+    }
+
+    if (!empty($words_scores)) {
+      // Add word score expression to the query.
+      $score = 'SUM('. implode(' + ', $words_scores) .')';
+      $query->set_current_part('normalize');
+      $query->add_field(NULL, $score, 'score'); 
+      $query->set_current_part();
+
+      // Perform the word score normalization query.
+      $query->enable_part('normalize');
+      $normalize = db_result(db_query_range($query->query(), $query->args(), 0, 1));
+      $query->disable_part('normalize');
+
+      if (!$normalize) {
+        return;
+      }
+
+      $word_score_expr = '('. (1.0 / $normalize) .' * '. $score .')';
     }
 
     // Add field needed for results.
@@ -987,13 +1088,10 @@ class faceted_search {
    *
    * @param $facet
    *   The facet whose categories are to be loaded.
-   *
    * @param $from
    *   Ordinal number of the first category to load. Numbering starts at 0.
-   *
    * @param $max_count
    *   Number of categories to load.
-   *
    * @return
    *   Array of categories (objects having the faceted_search_category
    *   interface).
@@ -1092,9 +1190,9 @@ class faceted_search {
       $score_arguments = array_merge(array(NULL, implode(' + ', $score_field), 'score'), $score_arguments);
       // Call $query->add_field() with all arguments.
       call_user_func_array(array(&$query, 'add_field'), $score_arguments);
-    }      
 
-    $query->add_orderby('score', 'DESC');
+      $query->add_orderby('score', 'DESC');
+    }      
   }
 }
 
@@ -1353,7 +1451,6 @@ class faceted_search_query {
    *   The condition to add. The caller must ensure that any field is fully
    *   qualified using its table's alias as returned by add_table(). The caller
    *   is responsible for calling db_rewrite_sql() on the subquery.
-   *
    * @param ...
    *   A variable number of arguments which are substituted into the query using
    *   printf) syntax. The query arguments can be enclosed in one array

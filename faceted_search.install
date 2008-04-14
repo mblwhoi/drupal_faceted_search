@@ -8,15 +8,15 @@ function faceted_search_install() {
   switch ($GLOBALS['db_type']) {
     case 'mysql':
     case 'mysqli':
-      db_query("CREATE TABLE {faceted_search_facets} (
+      db_query("CREATE TABLE {faceted_search_filters} (
         env_id int(10) unsigned NOT NULL default '0',
-        facet_key varchar(32) NOT NULL default '',
-        facet_id varchar(32) NOT NULL default '',
+        filter_key varchar(32) NOT NULL default '',
+        filter_id varchar(32) NOT NULL default '',
         status int(11) NOT NULL default '0',
         weight int(11) NOT NULL default '0',
         sort varchar(32) NOT NULL default '',
         max_categories int(11) NOT NULL default '0',
-        PRIMARY KEY (env_id, facet_key, facet_id),
+        PRIMARY KEY (env_id, filter_key, filter_id),
         KEY status (status)
       ) /*!40100 DEFAULT CHARACTER SET UTF8 */ ");
 
@@ -29,17 +29,17 @@ function faceted_search_install() {
       break;
 
     case 'pgsql':
-      db_query("CREATE TABLE {faceted_search_facets} (
+      db_query("CREATE TABLE {faceted_search_filters} (
         env_id int_unsigned NOT NULL default '0',
-        facet_key varchar(32) NOT NULL default '',
-        facet_id varchar(32) NOT NULL default '',
+        filter_key varchar(32) NOT NULL default '',
+        filter_id varchar(32) NOT NULL default '',
         status smallint NOT NULL default '0',
         weight smallint NOT NULL default '0',
         sort varchar(32) NOT NULL default '',
         max_categories int NOT NULL default '0',
-        PRIMARY KEY (env_id, facet_key, facet_id)
+        PRIMARY KEY (env_id, filter_key, filter_id)
       )");
-      db_query("CREATE INDEX {faceted_search_facets}_status_idx ON {faceted_search_facets} (status)");
+      db_query("CREATE INDEX {faceted_search_filters}_status_idx ON {faceted_search_filters} (status)");
 
       db_query("CREATE TABLE {faceted_search_variables} (
         env_id int_unsigned NOT NULL default '0',
@@ -55,7 +55,7 @@ function faceted_search_install() {
  * Implementation of hook_uninstall().
  */
 function faceted_search_uninstall() {
-  db_query('DROP TABLE {faceted_search_facets}');
+  db_query('DROP TABLE {faceted_search_filters}');
   db_query('DROP TABLE {faceted_search_variables}');
 }
 
@@ -126,5 +126,33 @@ function faceted_search_update_2() {
       faceted_search_variable_del($result->env_id, 'excluded_types');
     }
   }
+  return $ret;
+}
+
+/**
+ * Renamed table.
+ */
+function faceted_search_update_3() {
+  $ret = array();
+  switch ($GLOBALS['db_type']) {
+    case 'mysql':
+    case 'mysqli':
+      $ret[] = update_sql("ALTER TABLE {faceted_search_facets} RENAME TO {faceted_search_filters},
+        CHANGE COLUMN facet_key filter_key varchar(32) NOT NULL default '',
+        CHANGE COLUMN facet_id filter_id varchar(32) NOT NULL default '',
+        DROP PRIMARY KEY,
+        ADD PRIMARY KEY (env_id, filter_key, filter_id)");
+      break;
+  }
+  return $ret;
+}
+
+/**
+ * Renamed default filter.
+ */
+function faceted_search_update_4() {
+  $ret = array();
+  $ret[] = update_sql("UPDATE {faceted_search_filters} SET filter_id = 'node' WHERE filter_key = 'keyword' AND filter_id = 'and'");
+  $ret[] = update_sql("DELETE FROM {faceted_search_filters} WHERE filter_key = 'keyword' AND filter_id IN ('phrase', 'or', 'not')");
   return $ret;
 }
