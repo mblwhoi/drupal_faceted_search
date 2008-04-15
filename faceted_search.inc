@@ -436,7 +436,7 @@ class faceted_search_keyword_and_category extends faceted_search_keyword_categor
    *   TRUE when HTML is allowed in the label, FALSE otherwise.
    */
   function get_label($html = FALSE) {
-    return parent::check_label(theme('faceted_search_keyword_and_label', $this->_word), $html);
+    return $this->check_label(theme('faceted_search_keyword_and_label', $this->_word), $html);
   }
 
   /**
@@ -468,7 +468,7 @@ class faceted_search_keyword_and_category extends faceted_search_keyword_categor
    *   Type of search index entry to be searched.
    */
   function build_results_query(&$query, &$words, &$matches, $type) {
-    if (($word = parent::check_word($this->_word)) && !isset($words[$type][$word])) {
+    if (($word = $this->check_word($this->_word)) && !isset($words[$type][$word])) {
       $words[$type][$word] = $word;
       $matches++;
 
@@ -504,7 +504,7 @@ class faceted_search_keyword_phrase_category extends faceted_search_keyword_cate
    *   TRUE when HTML is allowed in the label, FALSE otherwise.
    */
   function get_label($html = FALSE) {
-    return parent::check_label(theme('faceted_search_keyword_phrase_label', $this->_phrase), $html);
+    return $this->check_label(theme('faceted_search_keyword_phrase_label', $this->_phrase), $html);
   }
 
   /**
@@ -538,7 +538,7 @@ class faceted_search_keyword_phrase_category extends faceted_search_keyword_cate
   function build_results_query(&$query, &$words, &$matches, $type) {
     $split = explode(' ', $this->_phrase);
     foreach ($split as $word) {
-      if ($word = parent::check_word($word)) {
+      if ($word = $this->check_word($word)) {
         $words[$type][$word] = $word;
       }
     }
@@ -581,7 +581,7 @@ class faceted_search_keyword_or_category extends faceted_search_keyword_category
    *   TRUE when HTML is allowed in the label, FALSE otherwise.
    */
   function get_label($html = FALSE) {
-    return parent::check_label(theme('faceted_search_keyword_or_label', $this->_words), $html);
+    return $this->check_label(theme('faceted_search_keyword_or_label', $this->_words), $html);
   }
 
   /**
@@ -616,7 +616,7 @@ class faceted_search_keyword_or_category extends faceted_search_keyword_category
     $where = '';
     $where_args = array();
     foreach ($this->_words as $word) {
-      if (($word = parent::check_word($word)) && !isset($words[$type][$word])) {
+      if (($word = $this->check_word($word)) && !isset($words[$type][$word])) {
         $words[$type][$word] = $word;
         if (!empty($where)) {
           $where .= ' OR ';
@@ -668,7 +668,7 @@ class faceted_search_keyword_not_category extends faceted_search_keyword_categor
    *   TRUE when HTML is allowed in the label, FALSE otherwise.
    */
   function get_label($html = FALSE) {
-    return parent::check_label(theme('faceted_search_keyword_not_label', $this->_word), $html);
+    return $this->check_label(theme('faceted_search_keyword_not_label', $this->_word), $html);
   }
 
   /**
@@ -693,7 +693,7 @@ class faceted_search_keyword_not_category extends faceted_search_keyword_categor
    *   Type of search index entry to be searched.
    */
   function build_results_query(&$query, &$words, &$matches, $type) {
-    if ($word = parent::check_word($this->_word)) {
+    if ($word = $this->check_word($this->_word)) {
       // This is a negative word; do not insert it, but mark the type as used.
       if (!isset($words[$type])) {
         $words[$type] = array();
@@ -1105,11 +1105,6 @@ class faceted_search {
       // No temporary table available, search within all nodes.
       $query->add_where('n.status = 1');
 
-      // Apply node type filter.
-      if ($types = faceted_search_types($this->_env_id)) {
-        $query->add_where("n.type IN ('". implode("','", $types) ."')");
-      }
-      
       // There is no results table at this point, so we can't rely on the
       // results table having been filtered already. Therefore, we ask modules
       // to alter the categories query instead.
