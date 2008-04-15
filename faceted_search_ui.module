@@ -560,7 +560,7 @@ function faceted_search_ui_guided_block($search) {
  */
 function faceted_search_ui_related_block($env_id, $node) {
   $types = faceted_search_types($env_id);
-  if (!isset($types[$node->type])) {
+  if (!empty($types) && !isset($types[$node->type])) {
     return; // This node type is not used in the current environment.
   }
 

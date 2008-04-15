@@ -955,7 +955,8 @@ class faceted_search {
     $query->add_groupby('n.nid');
 
     // Apply node type filter
-    if ($types = faceted_search_types($this->_env_id)) {
+    $types = faceted_search_types($this->_env_id);
+    if (!empty($types)) {
       $query->add_where("n.type IN ('". implode("','", $types) ."')");
     }
     
@@ -1134,7 +1135,8 @@ class faceted_search {
     $facet->build_sort_query($query);
     
     // Apply node type filter.
-    if ($types = faceted_search_types($this->_env_id)) {
+    $types = faceted_search_types($this->_env_id);
+    if (!empty($types)) {
       $query->add_where("n.type IN ('". implode("','", $types) ."')");
     }
     

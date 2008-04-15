@@ -61,13 +61,25 @@ function content_type_facet_faceted_search_collect(&$facets, $domain, $env_id, $
     case 'text':
       // If the content type facet is allowed.
       if (!isset($selection) || isset($selection['content_type'][1])) {
+        // Find the allowed types.
+        $all_types = array();
+        foreach (array_keys(node_get_types('names')) as $type) {
+          $all_types[$type] = $type;
+        }
         $types = content_type_facet_get_types($env_id);
+        if (empty($types)) {
+          $allowed_types = $all_types;
+        }
+        else {
+          $allowed_types = array_intersect($types, $all_types);
+        }
+        
         // Scan the search text for a 'content_type:type' token, and extract a
         // facet from it.
         if ($type = search_query_extract($arg, 'content_type')) {
           // Create a facet with the type found in search text as the active
           // category.
-          if (isset($types[$type])) {
+          if (isset($allowed_types[$type])) {
             $facets[] = new content_type_facet($types, $type);
           }
           // Remove the parsed token from the search text.
@@ -80,7 +92,7 @@ function content_type_facet_faceted_search_collect(&$facets, $domain, $env_id, $
       // If the content type facet is allowed.
       if (!isset($selection) || isset($selection['content_type'][1])) {
         $types = content_type_facet_get_types($env_id);
-        if (isset($types[$arg->type])) {
+        if (empty($types) || isset($types[$arg->type])) {
           // Create a facet with the node's type as the active category.
           $facets[] = new content_type_facet($types, $arg->type);
         }
@@ -92,16 +104,26 @@ function content_type_facet_faceted_search_collect(&$facets, $domain, $env_id, $
 /**
  * Return an array of all node types that are allowed to be shown in the content
  * type facet.
+ *
+ * @return
+ *   Array of type names, or an empty array if all types are allowed.
  */
 function content_type_facet_get_types($env_id) {
+  $allowed_types = faceted_search_types($env_id);
   $types = array_filter(faceted_search_variable_get($env_id, 'content_type_facet_types', array()));
-  if (count($types) == 0) {
-    // Return all allowed types.
-    return faceted_search_types($env_id);
+  if (empty($allowed_types) || empty($types)) {
+    // All types are allowed (if there are restrictions in the environment,
+    // they're going to be already built into the query).
+    return $types;
   }
   else {
-    // Only return allowed types.
-    return array_intersect($types, faceted_search_types($env_id));
+    // Only return types that are allowed by the environment.
+    $types = array_intersect($types, $allowed_types);
+    if (count($types) == count($allowed_types)) {
+      // All types are selected; do the same as if none was.
+      return array();
+    }
+    return $types;
   }
 }
 
@@ -116,7 +138,8 @@ class content_type_facet extends faceted_search_facet {
    * Constructor. Optionally assigns the active type of the facet.
    *
    * @param $types
-   *   Array of possible type names for this facet.
+   *   Array of possible type names for this facet, or empty array if all types
+   *   are allowed.
    * @param $type
    *   Optional. Type to set as this facet's active category.
    */
@@ -186,7 +209,9 @@ class content_type_facet extends faceted_search_facet {
     $query->add_table('node_type', 'type', 'n', 'type');
     $query->add_field('node_type', 'type');
     $query->add_field('node_type', 'name');
-    $query->add_where("node_type.type IN ('". implode("', '", $this->_types) ."')");
+    if (!empty($this->_types)) {
+      $query->add_where("node_type.type IN ('". implode("', '", $this->_types) ."')");
+    }
     $query->add_groupby('node_type_type');
     return TRUE;
   }
