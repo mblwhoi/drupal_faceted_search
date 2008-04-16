@@ -67,12 +67,14 @@ function taxonomy_facets_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
 
     case 'insert':
       // Insert a record for storing the node's term associations status.
-      db_query('INSERT INTO {taxonomy_facets_node} (nid, changed) VALUES (%d, %d)', $node->nid, time());
+      db_query('INSERT INTO {taxonomy_facets_node} (nid, changed) VALUES (%d, %d)', $node->nid, 0);
+      // Immediately update the node's term associations.
+      _taxonomy_facets_update($node->nid);
       break;
       
     case 'update':
-      // Mark the node's term associations as needing an update (if not already marked as such).
-      db_query('UPDATE {taxonomy_facets_node} SET changed = %d WHERE changed = 0 AND nid = %d', time(), $node->nid);
+      // Immediately update the node's term associations.
+      _taxonomy_facets_update($node->nid);
       break;
   }
 }
@@ -549,15 +551,14 @@ function _taxonomy_facets_update($nid) {
     }
   }
 
-  // TODO: lock table
-  
+  db_lock_table('{taxonomy_facets_term_node}');
   // Delete the node's old term associations from taxonomy_facets_term_node.
   db_query('DELETE FROM {taxonomy_facets_term_node} WHERE nid = %d', $nid);
-
   // Insert the node's updated term associations into taxonomy_facets_term_node.
   foreach ($tids as $tid) {
     db_query("INSERT INTO {taxonomy_facets_term_node} (nid, tid) VALUES (%d, %d)", $nid, $tid);
   }
+  db_unlock_tables();
 }
 
 /**
