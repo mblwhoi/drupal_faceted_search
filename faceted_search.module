@@ -887,7 +887,7 @@ function _faceted_search_filter_settings_form(&$form, $filters) {
  *   The filters whose settings are to be added.
  */
 function _faceted_search_facet_settings_form(&$form, $filters) {
-  $form = _faceted_search_filter_settings_form(&$form, $filters);
+  $form = _faceted_search_filter_settings_form($form, $filters);
   foreach ($filters as $filter) {
     $key = $filter->get_key() .'_'. $filter->get_id();
 
