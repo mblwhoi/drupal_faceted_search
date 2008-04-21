@@ -964,6 +964,7 @@ class faceted_search {
     $words = array(); // Positive words to include in the query.
     $matches = 0;
     $word_score_expr = '';
+    $word_score_arg = 0;
     foreach ($this->_filters as $filter) {
       $filter->build_results_query($query, $words, $matches);
     }
@@ -1028,14 +1029,15 @@ class faceted_search {
         return;
       }
 
-      $word_score_expr = '('. (1.0 / $normalize) .' * '. $score .')';
+      $word_score_expr = '(%f * '. $score .')';
+      $word_score_arg = 1.0 / $normalize;
     }
 
     // Add field needed for results.
     $query->add_field('n', 'nid', 'nid'); 
 
     // Add scoring expression to the query.
-    $this->_add_scoring($query, $word_score_expr);
+    $this->_add_scoring($query, $word_score_expr, $word_score_arg);
 
     // Give other modules an opportunity at altering the final query (e.g. for
     // additional filtering).
@@ -1153,7 +1155,7 @@ class faceted_search {
   /**
    * Add scoring expression to the search query.
    */
-  function _add_scoring(&$query, $word_score_expr = '') {
+  function _add_scoring(&$query, $word_score_expr = '', $word_score_arg = 0) {
     // Based on node_search() -- START
 
     $score_field = array();
@@ -1161,6 +1163,7 @@ class faceted_search {
     if (!empty($word_score_expr) && $weight = (int)variable_get('node_rank_relevance', 5)) {
       $score_field[] = "%d * $word_score_expr";
       $score_arguments[] = $weight;
+      $score_arguments[] = $word_score_arg;
     }
     if ($weight = (int)variable_get('node_rank_recent', 5)) {
       // Exponential decay with half-life of 6 months, starting at last indexed node
