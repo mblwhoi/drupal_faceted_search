@@ -1,5 +1,5 @@
 ; $Id$
 name = Faceted Search Views
 description = "Allows to use Views to display Faceted Search results."
-dependencies = faceted_search_ui views
+dependencies = faceted_search faceted_search_ui search views
 package = Faceted Search
