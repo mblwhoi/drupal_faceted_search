@@ -862,6 +862,9 @@ function _faceted_search_filter_settings_form(&$form, $filters) {
       '#type' => 'checkbox',
       '#default_value' => $filter->get_status(),
     );
+    if ($filter->get_key() == 'keyword') {
+      $form[$key]['status']['#disabled'] = TRUE;
+    }
     $form[$key]['type'] = array(
       '#type' => 'markup',
       '#value' => check_plain($filter->get_key()),
