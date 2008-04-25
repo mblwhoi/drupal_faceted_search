@@ -118,6 +118,9 @@ Recommended modules
   Exposes Content Construction Kit (CCK) (http://drupal.org/project/cck) fields
   as facets.
 
+- Organic Group Facets (http://drupal.org/project/og_facets)
+  Exposes organic groups (http://drupal.org/project/og) as facets.
+
 - Views (http://drupal.org/project/views): In combination with the Faceted
   Search Views module, the Views module can give you tremendous flexibility for
   displaying Faceted Search's results, and even for performing additional
