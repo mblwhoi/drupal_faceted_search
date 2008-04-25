@@ -6,6 +6,8 @@
  * Allows to use Views to display Faceted Search results.
  */
 
+require_once('./'. drupal_get_path('module', 'faceted_search') .'/faceted_search_ui.inc');
+
 /**
  * Implementation of hook_faceted_search_ui_style_info().
  *
