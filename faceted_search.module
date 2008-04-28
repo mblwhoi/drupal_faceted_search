@@ -96,10 +96,6 @@ function faceted_search_menu($may_cache) {
  *   The search text. Only used when the domain is 'text'.
  */ 
 function faceted_search_collect_default_filters(&$filters, $domain, $env_id, $selection, $text = '') {
-  if (isset($selection) && !isset($selection['keyword']['node'])) {
-    return; // Default filter is not allowed.
-  }
-  
   switch ($domain) {
     case 'all':
       $filter = new faceted_search_keyword_filter('node', t('Anywhere'));
@@ -863,6 +859,7 @@ function _faceted_search_filter_settings_form(&$form, $filters) {
       '#default_value' => $filter->get_status(),
     );
     if ($filter->get_key() == 'keyword') {
+      $form[$key]['status']['#value'] = TRUE;
       $form[$key]['status']['#disabled'] = TRUE;
     }
     $form[$key]['type'] = array(
