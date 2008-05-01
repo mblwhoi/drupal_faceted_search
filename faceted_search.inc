@@ -1026,7 +1026,8 @@ class faceted_search {
       $query->disable_part('normalize');
 
       if (!$normalize) {
-        return;
+        $this->_ready = TRUE; 
+        return; // Return with no results.
       }
 
       $word_score_expr = '(%f * '. $score .')';
