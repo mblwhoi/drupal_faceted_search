@@ -108,8 +108,16 @@ function taxonomy_facets_taxonomy($op, $type, $array = NULL) {
     if ($type == 'term') {
       $vocabulary = taxonomy_get_vocabulary($array['vid']);
       if ($vocabulary->hierarchy) {
-        // A term from a hierarchical vocabulary has changed.
-        _taxonomy_facets_touch($array['vid']);
+        if ($op == 'update') {
+          // A term from a hierarchical vocabulary has changed.
+          _taxonomy_facets_touch($array['vid']);
+        }
+        else { // $op == 'delete'
+          // A term from a hierarchical vocabulary has been deleted. We can't
+          // use _taxonomy_facets_touch() here, because at this point the term
+          // has already been removed from the term_data table.
+          _taxonomy_facets_touch_term($array['tid']);
+        }
       }
     }
     else {
@@ -567,6 +575,19 @@ function _taxonomy_facets_update($nid) {
  */
 function _taxonomy_facets_touch($vid) {
   // Mark nodes with the current time, unless they're already marked.
+  // TODO: Under D6, the taxonomy_facets_node table should get replaced by the
+  // reindex column of the search_dataset table.
   db_query('UPDATE {taxonomy_facets_node} SET changed = %d WHERE changed = 0 AND nid IN (SELECT tn.nid FROM {term_node} tn INNER JOIN {term_data} t ON t.tid = tn.tid WHERE t.vid = %d)', time(), $vid);
+}
+
+/**
+ * Mark all nodes associated with the specified term or one of the term's
+ * children as needing an update.
+ */
+function _taxonomy_facets_touch_term($tid) {
+  // Mark nodes with the current time, unless they're already marked.
+  // TODO: Under D6, the taxonomy_facets_node table should get replaced by the
+  // reindex column of the search_dataset table.
+  db_query('UPDATE {taxonomy_facets_node} SET changed = %d WHERE changed = 0 AND nid IN (SELECT tn.nid FROM {taxonomy_facets_term_node} tn WHERE tn.tid = %d)', time(), $tid);
 }
 
