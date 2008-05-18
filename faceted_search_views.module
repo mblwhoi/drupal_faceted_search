@@ -142,7 +142,7 @@ class faceted_search_views_style extends faceted_search_ui_style {
     // assumes that the view is counting node.id.
     $views_query = preg_replace('!count\(((DISTINCT\()?node.nid\)?)\)!', '$1', $queries['countquery']); 
     $views_query = db_rewrite_sql($views_query, 'node');
-    $query->add_subquery('n.nid IN ('. $views_query .')');
+    $query->add_subquery('n.nid IN ('. $views_query .')', $queries['args']);  
   }
 
   /**

@@ -1462,6 +1462,10 @@ class faceted_search_query {
     $this->subqueries[$this->current_part][] = $clause;
     $args = func_get_args();
     array_shift($args); // Skip $clause.
+    if (isset($args[0]) && is_array($args[0])) {
+      // Using the "all arguments in one array" syntax.
+      $args = $args[0];
+    }
     if (count($args)) {
       if (isset($this->subqueries_args[$this->current_part])) {
         $this->subqueries_args[$this->current_part] = array_merge($this->subqueries_args[$this->current_part], $args);
