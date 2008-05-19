@@ -688,45 +688,34 @@ function faceted_search_ui_set_title($search) {
  * Render the search form.
  */
 function faceted_search_ui_form($search) {
-  $form['basic']['keywords']['and'] = array(
-    '#type' => 'textfield',
-    '#title' => $search->ui_state['stage'] == 'select' ? t('With all of the words') : '',
-    '#default_value' => '',
-    '#size' => 20,
-    '#maxlength' => 255,
-  );
   $ui_state = $search->ui_state;
   $current_stage = $ui_state['stage'];
   if ($current_stage == 'select') {
-    $form['advanced'] = array(
-      '#type' => 'fieldset',
-      '#title' => t('Advanced search'),
-      '#collapsible' => TRUE,
-      '#collapsed' => TRUE,
-      '#attributes' => array('class' => 'faceted-search-advanced'),
-    );
-    $form['advanced']['keywords']['phrase'] = array(
-      '#type' => 'textfield',
-      '#title' => t('With the exact phrase'),
-      '#default_value' => '',
-      '#size' => 20,
-      '#maxlength' => 255,
-    );
-    $form['advanced']['keywords']['or'] = array(
-      '#type' => 'textfield',
-      '#title' => t('With at least one of the words'),
-      '#default_value' => '',
-      '#size' => 20,
-      '#maxlength' => 255,
-    );
-    $form['advanced']['keywords']['not'] = array(
-      '#type' => 'textfield',
-      '#title' => t('Without the words'),
-      '#default_value' => '',
-      '#size' => 20,
-      '#maxlength' => 255,
+    $form['operator'] = array(
+      '#type' => 'select',
+      '#title' => '',
+      '#options' => array(
+        'and' => t('With all of the words'),
+        'phrase' => t('With the exact phrase'),
+        'or' => t('With at least one of the words'),
+        'not' => t('Without the words'),
+      ),
+      '#default_value' => 'and',
     );
   }
+  else {
+    $form['operator'] = array(
+      '#type' => 'value',
+      '#value' => 'and',
+    );
+  }
+  $form['keywords'] = array(
+    '#type' => 'textfield',
+    '#title' => '',
+    '#default_value' => '',
+    '#size' => $current_stage == 'select' ? 35 : 20,
+    '#maxlength' => 255,
+  );
   if ($search->get_text() != '') {
     $form['text'] = array(
       '#type' => 'hidden',
@@ -790,26 +779,30 @@ function faceted_search_ui_form($search) {
  * Process a search form submission.
  */
 function faceted_search_ui_form_submit($form_id, $form_values) {
-  // Based on node_search_validate() - BEGIN
-  if ($form_values['and'] != '') {
-    if (preg_match_all('/ ("[^"]+"|[^" ]+)/i', ' '. $form_values['and'], $matches)) {
-      $new_text .= ' '. implode(' ', $matches[1]);
-    }
+  switch ($form_values['operator']) {
+    // The following cases are based on node_search_validate().
+    case 'and':
+      if (preg_match_all('/ ("[^"]+"|[^" ]+)/i', ' '. $form_values['keywords'], $matches)) {
+        $new_text .= ' '. implode(' ', $matches[1]);
+      }
+      break;
+
+    case 'or':
+      if (preg_match_all('/ ("[^"]+"|[^" ]+)/i', ' '. $form_values['keywords'], $matches)) {
+        $new_text .= ' '. implode(' OR ', $matches[1]);
+      }
+      break;
+
+    case 'not':
+      if (preg_match_all('/ ("[^"]+"|[^" ]+)/i', ' '. $form_values['keywords'], $matches)) {
+        $new_text .= ' -'. implode(' -', $matches[1]);
+      }
+      break;
+
+    case 'phrase':
+      $new_text .= ' "'. str_replace('"', ' ', $form_values['keywords']) .'"';
+      break;
   }
-  if ($form_values['or'] != '') {
-    if (preg_match_all('/ ("[^"]+"|[^" ]+)/i', ' '. $form_values['or'], $matches)) {
-      $new_text .= ' '. implode(' OR ', $matches[1]);
-    }
-  }
-  if ($form_values['not'] != '') {
-    if (preg_match_all('/ ("[^"]+"|[^" ]+)/i', ' '. $form_values['not'], $matches)) {
-      $new_text .= ' -'. implode(' -', $matches[1]);
-    }
-  }
-  if ($form_values['phrase'] != '') {
-    $new_text .= ' "'. str_replace('"', ' ', $form_values['phrase']) .'"';
-  }
-  // Based on node_search_validate() - END
 
   // Combine pre-exiting text with new one
   if ($form_values['refine'] == 'new') {
