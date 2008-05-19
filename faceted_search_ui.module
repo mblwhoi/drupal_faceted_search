@@ -722,10 +722,9 @@ function faceted_search_ui_form($search) {
       '#value' => $search->get_text(),
     );
     $form['refine'] = array(
-      '#type' => 'radios',
-      '#title' => '',
-      '#default_value' => faceted_search_variable_get($search->get_env_id(), 'keyword_mode', 'new'),
-      '#options' => array('new' => t('New search'), 'refine' => t('Search within results')),
+      '#type' => 'checkbox',
+      '#title' => t('Search within results'),
+      '#default_value' => faceted_search_variable_get($search->get_env_id(), 'keyword_mode', 'new') == 'new' ? 0 : 1,
     );
   }
   $form['env_id'] = array(
@@ -804,12 +803,13 @@ function faceted_search_ui_form_submit($form_id, $form_values) {
       break;
   }
 
-  // Combine pre-exiting text with new one
-  if ($form_values['refine'] == 'new') {
-    $text = trim($new_text);
+  if ($form_values['refine']) {
+    // Combine pre-exiting text with new one
+    $text = trim($form_values['text'] . $new_text);
   }
   else {
-    $text = trim($form_values['text'] . $new_text);
+    // Search with new text.
+    $text = trim($new_text);
   }
 
   // Define resulting path. Note: $form_values has the same keys as the usual
