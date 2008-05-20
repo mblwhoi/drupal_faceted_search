@@ -1226,7 +1226,7 @@ function theme_faceted_search_ui_stage_results($results, $style) {
       $numbering = t('Result @to of @total', array('@to' => $to, '@total' => $total));
     }
     elseif ($total <= $limit) {
-      $numbering = t('@total results', array('@total' => $pager_total_items[0]));
+      $numbering = t('@total results', array('@total' => $total));
     }
     else {
       $numbering = t('Results @from - @to of @total', array('@from' => $from, '@to' => $to, '@total' => $total));
