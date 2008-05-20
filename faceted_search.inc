@@ -869,8 +869,8 @@ class faceted_search {
     $this->_keywords = $text;
 
     // After filters have been collected, any remaining text is passed to the
-    // default filters.
-    faceted_search_collect_default_filters($this->_filters, 'text', $env_id, $text);
+    // node filters.
+    faceted_search_collect_node_keyword_filters($this->_filters, 'text', $env_id, $text);
     
     // Prepare filters for use, assigning them their settings are sorting them.
     faceted_search_prepare_filters($this->_filters, $all_settings);

@@ -75,9 +75,13 @@ function faceted_search_menu($may_cache) {
 }
 
 /**
- * Similar to hook_faceted_search_collect(), this function collects field
- * filters only and is called separately. Fields cannot be handled through the
- * normal hook since these are a special case.
+ 
+ * Similar to hook_faceted_search_collect(), this function collects the node
+ * keyword filters only and is called separately. Those filters allow searching
+ * keywords on the full nodes index.
+ *
+ * These are handled separately from other filters because they do not use a key
+ * in the search text and must therefore be processed after all other filters.
  *
  * @param $filters
  *   Array of filters into which this function should append new filters.
@@ -91,7 +95,7 @@ function faceted_search_menu($may_cache) {
  * @param $text
  *   The search text. Only used when the domain is 'text'.
  */ 
-function faceted_search_collect_default_filters(&$filters, $domain, $env_id, $text = '') {
+function faceted_search_collect_node_keyword_filters(&$filters, $domain, $env_id, $text = '') {
   switch ($domain) {
     case 'all':
       $filter = new faceted_search_keyword_filter('node', t('Anywhere'));
@@ -303,9 +307,9 @@ function faceted_search_edit_form($env_id = NULL) {
     '#tree' => TRUE,
   );
   
-  // Gather default filters.
+  // Gather node filters.
   $keyword_filters = array();
-  faceted_search_collect_default_filters($keyword_filters, 'all', $env_id);
+  faceted_search_collect_node_keyword_filters($keyword_filters, 'all', $env_id);
   
   // Prepare facets for use, assigning them their settings and sort them.
   faceted_search_prepare_filters($keyword_filters, $all_settings);
