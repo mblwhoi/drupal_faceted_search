@@ -88,14 +88,10 @@ function faceted_search_menu($may_cache) {
  * @param $env_id
  *   Id of the environment for which filters are collected. This is NULL in the
  *   case of a new environment.
- * @param $selection
- *   An array keyed by filter key and filter id that specifies the allowed
- *   filters. A filter is allowed only if present in this array. If NULL, no
- *   selection is taken into account.
  * @param $text
  *   The search text. Only used when the domain is 'text'.
  */ 
-function faceted_search_collect_default_filters(&$filters, $domain, $env_id, $selection, $text = '') {
+function faceted_search_collect_default_filters(&$filters, $domain, $env_id, $text = '') {
   switch ($domain) {
     case 'all':
       $filter = new faceted_search_keyword_filter('node', t('Anywhere'));
@@ -309,7 +305,7 @@ function faceted_search_edit_form($env_id = NULL) {
   
   // Gather default filters.
   $keyword_filters = array();
-  faceted_search_collect_default_filters($keyword_filters, 'all', $env_id, NULL);
+  faceted_search_collect_default_filters($keyword_filters, 'all', $env_id);
   
   // Prepare facets for use, assigning them their settings and sort them.
   faceted_search_prepare_filters($keyword_filters, $all_settings);

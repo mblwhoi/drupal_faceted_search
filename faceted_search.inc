@@ -870,7 +870,7 @@ class faceted_search {
 
     // After filters have been collected, any remaining text is passed to the
     // default filters.
-    faceted_search_collect_default_filters($this->_filters, 'text', $env_id, $selection, $text);
+    faceted_search_collect_default_filters($this->_filters, 'text', $env_id, $text);
     
     // Prepare filters for use, assigning them their settings are sorting them.
     faceted_search_prepare_filters($this->_filters, $all_settings);
