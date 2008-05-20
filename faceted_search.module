@@ -611,8 +611,8 @@ function faceted_search_build_text($filters) {
     if ($text) {
       $text .= ' ';
     }
-    if ($key == 'keyword') {
-      // Keywords are a special case where the filter's key do not appear in text
+    if ($key == 'node') {
+      // This is a special case where the filter's key does not appear in text.
       $text .= implode(' ', $texts);
     }
     else {
@@ -858,7 +858,7 @@ function _faceted_search_filter_settings_form(&$form, $filters) {
       '#type' => 'checkbox',
       '#default_value' => $filter->get_status(),
     );
-    if ($filter->get_key() == 'keyword') {
+    if ($filter->get_key() == 'node') {
       $form[$key]['status']['#value'] = TRUE;
       $form[$key]['status']['#disabled'] = TRUE;
     }

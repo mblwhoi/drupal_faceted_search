@@ -710,9 +710,11 @@ class faceted_search_keyword_not_category extends faceted_search_keyword_categor
 
 /**
  * The filter for keyword search.
+ *
+ * Note: For keyword filters, the key corresponds to the type of search index
+ * entry, and the id is always 'keyword'.
  */
 class faceted_search_keyword_filter extends faceted_search_filter {
-  var $_type = ''; // Type of search index entry this facet is interested in.
   var $_label = ''; // Label of the field.
 
   /**
@@ -726,8 +728,7 @@ class faceted_search_keyword_filter extends faceted_search_filter {
    *   Active category of the field.
    */
   function faceted_search_keyword_filter($type, $label, $category = NULL) {
-    parent::faceted_search_filter('keyword', isset($category) ? array($category) : array());
-    $this->_type = $type;
+    parent::faceted_search_filter($type, isset($category) ? array($category) : array());
     $this->_label = $label;
   }
 
@@ -735,7 +736,7 @@ class faceted_search_keyword_filter extends faceted_search_filter {
    * Returns the id of this filter.
    */
   function get_id() { 
-    return $this->_type;
+    return 'keyword';
   }
 
   /**
@@ -770,7 +771,7 @@ class faceted_search_keyword_filter extends faceted_search_filter {
    */
   function build_results_query(&$query, &$words, &$matches) {
     if ($category = $this->get_active_category()) {
-      $category->build_results_query($query, $words, $matches, $this->_type);
+      $category->build_results_query($query, $words, $matches, $this->get_key());
     }
   }
 }

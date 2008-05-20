@@ -532,8 +532,7 @@ function faceted_search_ui_guided_block($search) {
   $facet_content = array();
   foreach ($search->get_filters() as $index => $facet) {
     if (!$facet->is_browsable()) {
-      // Not a facet.
-      continue; 
+      continue; // Not a facet.
     }
 
     if ($facet->get_max_categories() > 0) {
@@ -778,6 +777,7 @@ function faceted_search_ui_form($search) {
  * Process a search form submission.
  */
 function faceted_search_ui_form_submit($form_id, $form_values) {
+  $new_text = '';
   switch ($form_values['operator']) {
     // The following cases are based on node_search_validate().
     case 'and':

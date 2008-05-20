@@ -156,3 +156,12 @@ function faceted_search_update_4() {
   $ret[] = update_sql("DELETE FROM {faceted_search_filters} WHERE filter_key = 'keyword' AND filter_id IN ('phrase', 'or', 'not')");
   return $ret;
 }
+
+/**
+ * Renamed filter key.
+ */
+function faceted_search_update_5() {
+  $ret = array();
+  $ret[] = update_sql("UPDATE {faceted_search_filters} SET filter_key = 'node', filter_id = 'keyword' WHERE filter_key = 'keyword'");
+  return $ret;
+}
