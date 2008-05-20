@@ -847,14 +847,14 @@ class faceted_search {
       // it gets parsed.
       $text = $hook($module_filters, 'text', $env_id, $selection, $text);
 
-      // Disallow filters that have been collected from the search text.
+      // Disallow filters that already have been collected from the search text.
       foreach ($module_filters as $filter) {
         unset($selection[$filter->get_key()][$filter->get_id()]);
       }
       
-      // Obtain remaining allowed filters.
+      // Collect any remaining allowed facets.
       if (!empty($selection)) {
-        $hook($module_filters, 'all', $env_id, $selection);
+        $hook($module_filters, 'facets', $env_id, $selection);
       }
       
       // Merge the filters listed by the current module.

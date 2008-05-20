@@ -87,7 +87,7 @@ function faceted_search_menu($may_cache) {
  *   Array of filters into which this function should append new filters.
  * @param $domain
  *   The domain where to look for filters. Possible values:
- *   - 'all': All possible field filters.
+ *   - 'keyword filters': All possible keyword filters.
  *   - 'text': Filters specified in the specified search text.
  * @param $env_id
  *   Id of the environment for which filters are collected. This is NULL in the
@@ -97,7 +97,7 @@ function faceted_search_menu($may_cache) {
  */ 
 function faceted_search_collect_node_keyword_filters(&$filters, $domain, $env_id, $text = '') {
   switch ($domain) {
-    case 'all':
+    case 'keyword filters':
       $filter = new faceted_search_keyword_filter('node', t('Anywhere'));
       $filter->set_weight(-999); // Default weight.
       $filter->set_status(TRUE); // Default status.
@@ -279,7 +279,7 @@ function faceted_search_edit_form($env_id = NULL) {
   $facets = array();
   foreach (module_implements('faceted_search_collect') as $module) {
     $hook = $module .'_faceted_search_collect';
-    $hook($facets, 'all', $env_id, NULL);
+    $hook($facets, 'facets', $env_id, NULL);
   }
 
   // Prepare facets for use, assigning them their settings and sort them.
@@ -309,7 +309,7 @@ function faceted_search_edit_form($env_id = NULL) {
   
   // Gather node filters.
   $keyword_filters = array();
-  faceted_search_collect_node_keyword_filters($keyword_filters, 'all', $env_id);
+  faceted_search_collect_node_keyword_filters($keyword_filters, 'keyword filters', $env_id);
   
   // Prepare facets for use, assigning them their settings and sort them.
   faceted_search_prepare_filters($keyword_filters, $all_settings);

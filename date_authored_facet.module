@@ -15,7 +15,7 @@ require_once('./'. drupal_get_path('module', 'faceted_search') .'/faceted_search
  */
 function date_authored_facet_faceted_search_collect(&$facets, $domain, $env_id, $selection, $arg = NULL) {
   switch ($domain) {
-    case 'all':
+    case 'facets':
       // If the date authored facet is allowed.
       if (!isset($selection) || isset($selection['date_authored'][1])) {
         $facets[] = new date_authored_facet();

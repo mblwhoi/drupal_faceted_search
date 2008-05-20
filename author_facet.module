@@ -47,7 +47,7 @@ function author_facet_form_alter($form_id, &$form) {
  */
 function author_facet_faceted_search_collect(&$facets, $domain, $env_id, $selection, $arg = NULL) {
   switch ($domain) {
-    case 'all':
+    case 'facets':
       // If the author facet is allowed.
       if (!isset($selection) || isset($selection['author'][1])) {
         $excluded_roles = author_facet_excluded_roles($env_id);

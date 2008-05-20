@@ -50,7 +50,7 @@ function content_type_facet_form_alter($form_id, &$form) {
  */
 function content_type_facet_faceted_search_collect(&$facets, $domain, $env_id, $selection, $arg = NULL) {
   switch ($domain) {
-    case 'all':
+    case 'facets':
       // If the content type facet is allowed.
       if (!isset($selection) || isset($selection['content_type'][1])) {
         $types = content_type_facet_get_types($env_id);

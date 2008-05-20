@@ -132,7 +132,7 @@ function taxonomy_facets_taxonomy($op, $type, $array = NULL) {
  */
 function taxonomy_facets_faceted_search_collect(&$facets, $domain, $env_id, $selection, $arg = NULL) {
   switch ($domain) {
-    case 'all':
+    case 'facets':
       $vocabularies = taxonomy_get_vocabularies();
       foreach ($vocabularies as $vocabulary) {
         // If the vocabulary's corresponding facet is allowed.
