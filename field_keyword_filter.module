@@ -84,7 +84,6 @@ class field_keyword_filter extends faceted_search_keyword_filter {
    */
   function get_text() {
     if ($category = $this->get_active_category()) {
-      $escape_char = variable_get('faceted_search_escape_char', '\\');
       // Quote and escape the value.
       return '"'. faceted_search_quoted_query_escape(parent::get_text()) .'"';
     }
