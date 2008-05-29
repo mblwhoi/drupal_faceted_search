@@ -45,6 +45,12 @@ table.faceted-search td {
 .faceted-search-stage-select table.faceted-search td {
   width:50%;
 }
+.faceted-search-stage-select #edit-keywords,
+.faceted-search-stage-select #edit-field {
+  float:left;
+  margin-right:1em;
+}
+
 /* Tooltip */
 #faceted-search-tooltip {
   display:none;

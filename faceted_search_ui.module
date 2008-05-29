@@ -215,7 +215,7 @@ function faceted_search_ui_form_alter($form_id, &$form) {
       '#title' => t('Provide Keyword search block'),
       '#default_value' => faceted_search_variable_get($env_id, 'keyword_block', TRUE),
       '#description' => t('When enabled, this block provides a form where a search text can be entered. Block visibility settings may define additional conditions for this block to appear.'),
-      '#weight' => -10,
+      '#weight' => -15
     );
     $form['keyword']['keyword_mode'] = array(
       '#type' => 'radios',
@@ -223,6 +223,13 @@ function faceted_search_ui_form_alter($form_id, &$form) {
       '#description' => t("Choose the mode to select by default in keyword search. <em>New search</em> might be more intuitive to users not familiar with Faceted Search's interface since it mimics most search engines."),
       '#default_value' => faceted_search_variable_get($env_id, 'keyword_mode', 'new'),
       '#options' => array('new' => t('New search'), 'refine' => t('Search within results')),
+      '#weight' => -10,
+    );
+    $form['keyword']['keyword_field_selector'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Provide field selector in the Keyword search block'),
+      '#default_value' => faceted_search_variable_get($env_id, 'keyword_field_selector', FALSE),
+      '#description' => t('When enabled, the field selector will appear in the Keyword search block if there is at least one field enabled for keyword search. Note that the field selector is always shown on the <em>More options</em> page.'),
       '#weight' => -5,
     );
 
@@ -689,6 +696,74 @@ function faceted_search_ui_set_title($search) {
 function faceted_search_ui_form($search) {
   $ui_state = $search->ui_state;
   $current_stage = $ui_state['stage'];
+
+  // Add the keywords to search.
+  $form['keywords'] = array(
+    '#type' => 'textfield',
+    '#title' => '',
+    '#default_value' => '',
+    '#size' => $current_stage == 'select' ? 35 : 20,
+    '#maxlength' => 255,
+  );
+
+  // TODO: This ought to be cached and greatly simplified... {
+  
+  // Load settings for all enabled filters in this search environment.
+  $all_settings = faceted_search_load_filter_settings($search->get_env_id());
+
+  // Make a selection with all enabled filters.
+  $selection = faceted_search_get_filter_selection($all_settings);
+
+  // Disallow filters that are already used by the search.
+  // TODO: Remove this limitation; see http://drupal.org/node/261111#comment-859279
+  foreach ($search->get_filters() as $filter) {
+    if ($filter->is_active()) {
+      unset($selection[$filter->get_key()][$filter->get_id()]);
+    }
+  }
+  
+  // Gather keyword filters.
+  $keyword_filters = array();
+  foreach (module_implements('faceted_search_collect') as $module) {
+    $hook = $module .'_faceted_search_collect';
+    $hook($keyword_filters, 'keyword filters', $search->get_env_id(), $selection);
+  }
+  // Gather the node keyword filter. This is the default, always-enabled keyword
+  // filter that allows searching in the full node index.
+  faceted_search_collect_node_keyword_filters($keyword_filters, 'keyword filters', $search->get_env_id());
+  // Prepare facets for use, assigning them their settings and sorting them.
+  faceted_search_prepare_filters($keyword_filters, $all_settings);
+
+  // TODO }
+  
+  // Add the field selector.
+  $options = array();
+  if ($current_stage == 'select' || faceted_search_variable_get($search->get_env_id(), 'keyword_field_selector', FALSE)) {
+    foreach ($keyword_filters as $filter) {
+      if ($filter->get_key() == 'node') {
+        $options[$filter->get_key()] = $filter->get_label();
+      }
+      else {
+        $options[$filter->get_key()] = t('in @field', array('@field' => $filter->get_label()));
+      }
+    }
+  }
+  if (count($options) > 1) {
+    $form['field'] = array(
+      '#type' => 'select',
+      '#title' => '',
+      '#options' => $options,
+      '#default_value' => 'node'
+    );
+  }
+  else {
+    $form['field'] = array(
+      '#type' => 'value',
+      '#value' => 'node'
+    );
+  }
+
+  // Add the keyword operator.
   if ($current_stage == 'select') {
     $form['operator'] = array(
       '#type' => 'select',
@@ -708,13 +783,8 @@ function faceted_search_ui_form($search) {
       '#value' => 'and',
     );
   }
-  $form['keywords'] = array(
-    '#type' => 'textfield',
-    '#title' => '',
-    '#default_value' => '',
-    '#size' => $current_stage == 'select' ? 35 : 20,
-    '#maxlength' => 255,
-  );
+  
+  // Various search states.
   if ($search->get_text() != '') {
     $form['text'] = array(
       '#type' => 'hidden',
@@ -769,7 +839,7 @@ function faceted_search_ui_form($search) {
     $path = faceted_search_ui_build_path($search->get_env_id(), $ui_state, $search->get_text());
     $form['go-select']['#value'] = l(t('More options'), $path);
   }
-  
+
   return $form;
 }
 
@@ -782,19 +852,19 @@ function faceted_search_ui_form_submit($form_id, $form_values) {
     // The following cases are based on node_search_validate().
     case 'and':
       if (preg_match_all('/ ("[^"]+"|[^" ]+)/i', ' '. $form_values['keywords'], $matches)) {
-        $new_text .= ' '. implode(' ', $matches[1]);
+        $new_text = implode(' ', $matches[1]);
       }
       break;
 
     case 'or':
       if (preg_match_all('/ ("[^"]+"|[^" ]+)/i', ' '. $form_values['keywords'], $matches)) {
-        $new_text .= ' '. implode(' OR ', $matches[1]);
+        $new_text = implode(' OR ', $matches[1]);
       }
       break;
 
     case 'not':
       if (preg_match_all('/ ("[^"]+"|[^" ]+)/i', ' '. $form_values['keywords'], $matches)) {
-        $new_text .= ' -'. implode(' -', $matches[1]);
+        $new_text = '-'. implode(' -', $matches[1]);
       }
       break;
 
@@ -803,13 +873,18 @@ function faceted_search_ui_form_submit($form_id, $form_values) {
       break;
   }
 
+  if ($new_text != '' && $form_values['field'] != 'node') {
+    $escape_char = variable_get('faceted_search_escape_char', '\\');
+    $new_text = $form_values['field'] .':"'. faceted_search_quoted_query_escape($new_text) .'"';
+  }
+  
   if ($form_values['refine']) {
     // Combine pre-exiting text with new one
-    $text = trim($form_values['text'] . $new_text);
+    $text = trim($form_values['text'] .' '. $new_text);
   }
   else {
     // Search with new text.
-    $text = trim($new_text);
+    $text = $new_text;
   }
 
   // Define resulting path. Note: $form_values has the same keys as the usual

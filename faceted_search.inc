@@ -159,6 +159,13 @@ class faceted_search_filter {
   function get_active_category() {
     return end($this->_path);
   }
+
+  /**
+   * Append keywords used by this filter into the specified array.
+   */
+  function get_keywords(&$keywords) {
+    // Does nothing by default.
+  }
 }
 
 /**
@@ -372,7 +379,7 @@ class faceted_search_facet extends faceted_search_filter {
    *   words to lookup for that index type. This method should insert any words
    *   it cares about.
    * @param $matches
-   *   Minimum number of words that should match in query results.
+   *   Minimum number of words that should match in query results for each index type.
    */
   function build_results_query(&$query, &$words, &$matches) {
     // Note: Facets ignore $words and $matches.
@@ -386,6 +393,13 @@ class faceted_search_facet extends faceted_search_filter {
  * The base class of keyword categories.
  */
 class faceted_search_keyword_category {
+  
+  /**
+   * Append keywords used by this category into the specified array.
+   */
+  function get_keywords(&$keywords) {
+    // Does nothing by default.
+  }
 
   /**
    * Check whether a given word is allowed for searching.
@@ -447,6 +461,13 @@ class faceted_search_keyword_and_category extends faceted_search_keyword_categor
   }
 
   /**
+   * Append keywords used by this category into the specified array.
+   */
+  function get_keywords(&$keywords) {
+    $keywords[] = $this->_word;
+  }
+  
+  /**
    * Return the weight of this category, for sorting purposes.
    */
   function get_weight() {
@@ -463,14 +484,14 @@ class faceted_search_keyword_and_category extends faceted_search_keyword_categor
    *   words to lookup for that index type. This method should insert any words
    *   it cares about.
    * @param $matches
-   *   Minimum number of words that should match in query results.
+   *   Minimum number of words that should match in query results for each index type.
    * @param $type
    *   Type of search index entry to be searched.
    */
   function build_results_query(&$query, &$words, &$matches, $type) {
     if (($word = $this->check_word($this->_word)) && !isset($words[$type][$word])) {
       $words[$type][$word] = $word;
-      $matches++;
+      $matches[$type]++;
 
       // The dataset will have to be looked up as well if the query becomes more
       // complex because of other keyword search operators.
@@ -515,6 +536,13 @@ class faceted_search_keyword_phrase_category extends faceted_search_keyword_cate
   }
 
   /**
+   * Append keywords used by this category into the specified array.
+   */
+  function get_keywords(&$keywords) {
+    $keywords[] = $this->_phrase;
+  }
+  
+  /**
    * Return the weight of this category, for sorting purposes.
    */
   function get_weight() {
@@ -531,7 +559,7 @@ class faceted_search_keyword_phrase_category extends faceted_search_keyword_cate
    *   words to lookup for that index type. This method should insert any words
    *   it cares about.
    * @param $matches
-   *   Minimum number of words that should match in query results.
+   *   Minimum number of words that should match in query results for each index type.
    * @param $type
    *   Type of search index entry to be searched.
    */
@@ -543,7 +571,7 @@ class faceted_search_keyword_phrase_category extends faceted_search_keyword_cate
       }
     }
     if (count($split) > 0) {
-      $matches++; // A phrase counts as one match.
+      $matches[$type]++; // A phrase counts as one match.
 
       if (count($split) > 1) {
         // Real phrase. We'll have to verify it against the dataset.
@@ -592,6 +620,13 @@ class faceted_search_keyword_or_category extends faceted_search_keyword_category
   }
 
   /**
+   * Append keywords used by this category into the specified array.
+   */
+  function get_keywords(&$keywords) {
+    array_merge($keywords, $this->_words);
+  }
+  
+  /**
    * Return the weight of this category, for sorting purposes.
    */
   function get_weight() {
@@ -608,7 +643,7 @@ class faceted_search_keyword_or_category extends faceted_search_keyword_category
    *   words to lookup for that index type. This method should insert any words
    *   it cares about.
    * @param $matches
-   *   Minimum number of words that should match in query results.
+   *   Minimum number of words that should match in query results for each index type.
    * @param $type
    *   Type of search index entry to be searched.
    */
@@ -626,7 +661,7 @@ class faceted_search_keyword_or_category extends faceted_search_keyword_category
       }
     }
     if (!empty($where)) {
-      $matches++;
+      $matches[$type]++;
 
       // Matches will have to be checked against the dataset.
       $query->enable_part("{$type}_search_dataset");
@@ -655,13 +690,6 @@ class faceted_search_keyword_not_category extends faceted_search_keyword_categor
   }
   
   /**
-   * Return the weight of this category, for sorting purposes.
-   */
-  function get_weight() {
-    return 3;
-  }
-
-  /**
    * Return the label for this category.
    *
    * @param $html
@@ -679,6 +707,13 @@ class faceted_search_keyword_not_category extends faceted_search_keyword_categor
   }
 
   /**
+   * Return the weight of this category, for sorting purposes.
+   */
+  function get_weight() {
+    return 3;
+  }
+
+  /**
    * Inject components into the query for selecting nodes matching this category.
    *
    * @param $query
@@ -688,7 +723,7 @@ class faceted_search_keyword_not_category extends faceted_search_keyword_categor
    *   words to lookup for that index type. This method should insert any words
    *   it cares about.
    * @param $matches
-   *   Minimum number of words that should match in query results.
+   *   Minimum number of words that should match in query results for each index type.
    * @param $type
    *   Type of search index entry to be searched.
    */
@@ -758,6 +793,15 @@ class faceted_search_keyword_filter extends faceted_search_filter {
   }
   
   /**
+   * Append keywords used by this filter into the specified array.
+   */
+  function get_keywords(&$keywords) {
+    if ($category = $this->get_active_category()) {
+      $category->get_keywords($keywords);
+    }
+  }
+  
+  /**
    * Inject components into the query for selecting nodes matching this filter.
    *
    * @param $query
@@ -767,7 +811,7 @@ class faceted_search_keyword_filter extends faceted_search_filter {
    *   words to lookup for that index type. This method should insert any words
    *   it cares about.
    * @param $matches
-   *   Minimum number of words that should match in query results.
+   *   Minimum number of words that should match in query results for each index type.
    */
   function build_results_query(&$query, &$words, &$matches) {
     if ($category = $this->get_active_category()) {
@@ -793,9 +837,9 @@ class faceted_search {
   var $_text = '';
 
   /**
-   * The search keywords text.
+   * An array with all keywords found in the search text.
    */
-  var $_keywords = '';
+  var $_keywords = array();
 
   /**
    * Name of the temporary results table. While it exists, this table can be
@@ -865,15 +909,17 @@ class faceted_search {
       }
     }
     
-    // Assign the remaining text as keywords.
-    $this->_keywords = $text;
-
     // After filters have been collected, any remaining text is passed to the
     // node filters.
     faceted_search_collect_node_keyword_filters($this->_filters, 'text', $env_id, $text);
     
     // Prepare filters for use, assigning them their settings are sorting them.
     faceted_search_prepare_filters($this->_filters, $all_settings);
+
+    // Assign the keywords found.
+    foreach ($this->_filters as $filter) {
+      $filter->get_keywords($this->_keywords);
+    }
   }
 
   /**
@@ -892,8 +938,7 @@ class faceted_search {
   }
 
   /**
-   * Return the search keywords (the search text after having extracted the
-   * facets).
+   * Return an array with keywords used in the search.
    */
   function get_keywords() {
     return $this->_keywords;
@@ -947,7 +992,7 @@ class faceted_search {
    * checked against the search_dataset table).
    */
   function execute() {
-    if (!$this->_keywords && !$this->_filters) {
+    if (!$this->_filters) {
       return; // Nothing to search
     }
 
@@ -963,15 +1008,15 @@ class faceted_search {
     
     // Inject keyword search conditions if applicable.
     $words = array(); // Positive words to include in the query.
-    $matches = 0;
+    $matches = array();
     $word_score_expr = '';
     $word_score_arg = 0;
-    foreach ($this->_filters as $filter) {
+    foreach ($this->_filters as $filter) { // TODO: All filters are iterated; We should avoid iterating through those that are disabled.
       $filter->build_results_query($query, $words, $matches);
     }
 
-    if ($matches > 0) {
-      $query->add_having('COUNT(*) >= %d', $matches);
+    if (count($matches) > 0) {
+      $query->add_having('COUNT(*) >= %d', max($matches));
     }
 
     // Some positive words were specified (and maybe some negatives as well).
@@ -999,7 +1044,7 @@ class faceted_search {
         $query->add_table('search_dataset', array('sid', 'type'), "{$type}_search_index", array('sid', 'type'), "{$type}_search_dataset");
         $query->set_current_part(); // Back to default part.
 
-        $words_where[] = '(('. substr(str_repeat("{$type}_search_index.word = '%s' OR ", count($type_words)), 0, -4) .") AND {$type}_search_index.type = '%s')";
+        $words_where[] = '('. substr(str_repeat("{$type}_search_index.word = '%s' OR ", count($type_words)), 0, -4) .") AND {$type}_search_index.type = '%s'";
         $words_args = array_merge($words_args, $type_words);
         $words_args[] = $type;
       
@@ -1008,9 +1053,9 @@ class faceted_search {
         $words_scores[] = "{$type}_search_index.score * {$type}_search_total.count";
       }
     }
-    
+
     if (!empty($words_where)) {
-      array_unshift($words_args, implode(' OR ', $words_where));
+      array_unshift($words_args, implode(' AND ', $words_where));
       call_user_func_array(array(&$query, 'add_where'), $words_args);
     }
 

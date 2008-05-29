@@ -63,7 +63,7 @@ class faceted_search_ui_extract_style extends faceted_search_ui_style {
         'node' => $node,
         'extra' => $extra,
         'score' => $item->score,
-        'snippet' => search_excerpt($search->get_keywords(), $node->body));
+        'snippet' => search_excerpt(implode(' ', $search->get_keywords()), $node->body));
     }
     // Taken from node_search() - END
     

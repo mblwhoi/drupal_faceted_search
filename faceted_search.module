@@ -75,7 +75,6 @@ function faceted_search_menu($may_cache) {
 }
 
 /**
- 
  * Similar to hook_faceted_search_collect(), this function collects the node
  * keyword filters only and is called separately. Those filters allow searching
  * keywords on the full nodes index.
@@ -282,7 +281,7 @@ function faceted_search_edit_form($env_id = NULL) {
     $hook($facets, 'facets', $env_id, NULL);
   }
 
-  // Prepare facets for use, assigning them their settings and sort them.
+  // Prepare facets for use, assigning them their settings and sorting them.
   faceted_search_prepare_filters($facets, $all_settings);
 
   // Add the facets section's content to the form.
@@ -307,11 +306,17 @@ function faceted_search_edit_form($env_id = NULL) {
     '#tree' => TRUE,
   );
   
-  // Gather node filters.
+  // Gather keyword filters.
   $keyword_filters = array();
+  foreach (module_implements('faceted_search_collect') as $module) {
+    $hook = $module .'_faceted_search_collect';
+    $hook($keyword_filters, 'keyword filters', $env_id, NULL);
+  }
+  // Gather the node keyword filter. This is the default, always-enabled keyword
+  // filter that allows searching in the full node index.
   faceted_search_collect_node_keyword_filters($keyword_filters, 'keyword filters', $env_id);
   
-  // Prepare facets for use, assigning them their settings and sort them.
+  // Prepare facets for use, assigning them their settings and sorting them.
   faceted_search_prepare_filters($keyword_filters, $all_settings);
 
   // Add the facets section's content to the form.
@@ -625,26 +630,36 @@ function faceted_search_build_text($filters) {
   return trim($text);
 }
 
-// TODO: Document this!
 function faceted_search_quoted_query_extract($keys, $option) {
   // Based on search_query_extract, but matching a quoted value. Double-quotes
-  // are allowed into the value when escaped with the backslash character.
-  if (preg_match('/(^| )'. $option .':"((\\\.|[^"])*?)"( |$)/i', $keys, $matches)) {
-    return $matches[2];
+  // are allowed into the value when escaped.
+  $escape_char = variable_get('faceted_search_escape_char', '\\');
+  if (preg_match('/(^| )'. $option .':"(('. $escape_char .'.|[^"])*?)"( |$)/i', $keys, $matches)) {
+    return faceted_search_quoted_query_unescape($matches[2]);
   }
 }
 
-// TODO: Document this!
 function faceted_search_quoted_query_insert($keys, $option, $value = '') {
   // Based on search_query_extract, but matching a quoted value. Double-quotes
-  // are allowed into the value when escaped with the backslash character.
+  // are allowed into the value when escaped.
+  $escape_char = variable_get('faceted_search_escape_char', '\\');
   if (search_query_extract($keys, $option)) {
-    $keys = trim(preg_replace('/(^| )'. $option .':"((\\\.|[^"])*?)"( |$)/i', ' ', $keys));
+    $keys = trim(preg_replace('/(^| )'. $option .':"(('. $escape_char .'.|[^"])*?)"( |$)/i', ' ', $keys));
   }
   if ($value != '') {
     $keys .= ' '. $option .':'. $value;
   }
   return $keys;
+}
+
+function faceted_search_quoted_query_escape($text) {
+  $escape_char = variable_get('faceted_search_escape_char', '\\');
+  return strtr($text, array('"' => $escape_char .'"', $escape_char => $escape_char . $escape_char));
+}
+
+function faceted_search_quoted_query_unescape($text) {
+  $escape_char = variable_get('faceted_search_escape_char', '\\');
+  return strtr($text, array($escape_char .'"' => '"', $escape_char . $escape_char => $escape_char));
 }
 
 /**
@@ -653,11 +668,6 @@ function faceted_search_quoted_query_insert($keys, $option, $value = '') {
  * @return Array with positive and negative keywords.
  */
 function faceted_search_parse_keywords($text) {
-  // TODO: Most of this function was taken from search_parse_query(), which is
-  // called in faceted_search::execute(), which means this processing is done
-  // twice. Needs to be fixed. Splitting search_parse_query() into two distinct
-  // functions could help.
-
   // Taken from search_parse_query() (search.module 1.207) - BEGIN
   $keys = array('positive' => array(), 'negative' => array());
 
@@ -678,6 +688,14 @@ function faceted_search_parse_keywords($text) {
     $words = search_simplify($match[2]);
     // Re-explode in case simplification added more words, except when matching a phrase
     $words = $phrase ? array($words) : preg_split('/ /', $words, -1, PREG_SPLIT_NO_EMPTY);
+    // Remove short words (this is original code NOT from search_parse_query()).
+    if (($min = variable_get('minimum_word_size', 3)) > 0) {
+      foreach (array_keys($words) as $index) {
+        if (strlen($words[$index]) < $min) {
+          unset($words[$index]); // TODO: Warn user about short words being ignored.
+        }
+      }
+    }
     // Negative matches
     if ($match[1] == '-') {
       $keys['negative'] = array_merge($keys['negative'], $words);
