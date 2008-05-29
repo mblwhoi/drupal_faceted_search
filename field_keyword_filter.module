@@ -3,7 +3,7 @@
 
 /**
  * @file
- * Allows Faceted Search users to restrict a keyword search to a specific field.
+ * Allows users to perform keyword searches restricted by field.
  */
 
 require_once('./'. drupal_get_path('module', 'faceted_search') .'/faceted_search.inc');

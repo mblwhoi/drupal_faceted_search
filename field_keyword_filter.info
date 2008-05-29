@@ -1,5 +1,5 @@
 ; $Id$
 name = Field Keyword Filter
-description = "Allows Faceted Search users to restrict a keyword search to a specific field."
+description = "Allows users to perform keyword searches restricted by field."
 dependencies = search faceted_search field_indexer
 package = Faceted Search
