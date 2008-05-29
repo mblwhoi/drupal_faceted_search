@@ -169,11 +169,14 @@ Installation
 
    - Faceted Search
    - Faceted Search UI
-   - At least one of the following modules (which are provided with Faceted Search):
+   - At least one of the following modules (which are provided with Faceted
+     Search). Technically, you could use Faceted Search without any of these,
+     but there would not be much benefit over Drupal's standard search:
      - Author Facet
      - Content Type Facet
      - Date Authored Facet
      - Taxonomy Facets
+     - Field Keyword Filter
    - Search (Drupal core module)
    - Taxonomy (Drupal core module -- only needed if you intend to use Taxonomy Facets)
 
