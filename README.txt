@@ -78,6 +78,9 @@ Faceted Search is in fact a bundle of modules.
 
 - Date Facets Format: Provides formatting options for date-based facets.
 
+- Field Keyword Filter: Allows to perform keyword searches restricted by field
+  (requires the Field Indexer module).
+
 Hopefully, many more facets will be developed. The API is meant to make it easy
 to implement new facets.
 
@@ -89,7 +92,7 @@ This module is undergoing development. The provided features and API might still
 change without warning.
 
 Although this code uses some object-oriented programming, it is still compatible
-with PHP 4 at the moment.
+with PHP 4 at the moment (but not as much tested as with PHP 5).
 
 
 Caution
@@ -126,6 +129,11 @@ Recommended modules
   displaying Faceted Search's results, and even for performing additional
   filtering of the search results. See the "Views integration" topic below for
   more details.
+
+- Field Indexer (http://drupal.org/project/field_indexer): The Field Indexer
+  module indexes field data into Drupal's search index. Faceted Search's Field
+  Keyword Filter module relies on this data to let users perform keyword
+  searches restricted by field.
 
 - jQuery Update (http://drupal.org/project/jquery_update): If you wish to use
   Faceted Search UI's tooltips feature (for showing subcategories when hovering
