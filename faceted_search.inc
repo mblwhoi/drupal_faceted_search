@@ -623,7 +623,7 @@ class faceted_search_keyword_or_category extends faceted_search_keyword_category
    * Append keywords used by this category into the specified array.
    */
   function get_keywords(&$keywords) {
-    array_merge($keywords, $this->_words);
+    $keywords = array_merge($keywords, $this->_words);
   }
   
   /**
