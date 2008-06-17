@@ -236,9 +236,6 @@ styles, because the view might provide additional filters. A view must use the
 "Faceted Search: Environment ID" argument to become available to Faceted Search
 as a display style.
 
-Note also that, because it is embedded in Faceted Search's results page, the
-view cannot use exposed filters or URL-based arguments.
-
 Assuming that both Views and Faceted Search are already installed on your site,
 here are the step-by-step instructions to use a View to display search results:
 
@@ -259,6 +256,15 @@ here are the step-by-step instructions to use a View to display search results:
 6. Go to Administer > Site configuration > Faceted search, choose to edit your
    faceted search environment, and select your new view in the "Display style"
    field of the "Results page" section.
+
+Known limitations:
+
+- When embedded, as is the case with the Faceted Search Views integration, a
+  view cannot use exposed filters or URL-based arguments.
+
+- A view's "Title", "Use pager", and "Empty text" options are ignored under
+  Faceted Search. However, the view's "Nodes per page" option will properly
+  determine how many search results are shown per page.
 
 
 Support
