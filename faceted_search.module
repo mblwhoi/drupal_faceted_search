@@ -407,20 +407,17 @@ function faceted_search_edit_form_submit($form_id, $form_values) {
  *   Array with type names. Empty when all types are allowed in the environment.
  */
 function faceted_search_types($env_id) {
-  static $types = NULL;
-  if (!isset($types)) {
-    $all_types = array();
-    foreach (array_keys(node_get_types('names')) as $type) {
-      $all_types[$type] = $type;
-    }
-    $types = array_filter(faceted_search_variable_get($env_id, 'types', array()));
-    if (!empty($types)) {
-      // Only return types that still exist.
-      $types = array_intersect($types, $all_types);
-      if (count($types) == count($all_types)) {
-        // All types are selected in the environment; do the same as if none was.
-        $types = array();
-      }
+  $all_types = array();
+  foreach (array_keys(node_get_types('names')) as $type) {
+    $all_types[$type] = $type;
+  }
+  $types = array_filter(faceted_search_variable_get($env_id, 'types', array()));
+  if (!empty($types)) {
+    // Only return types that still exist.
+    $types = array_intersect($types, $all_types);
+    if (count($types) == count($all_types)) {
+      // All types are selected in the environment; do the same as if none was.
+      $types = array();
     }
   }
   return $types;
