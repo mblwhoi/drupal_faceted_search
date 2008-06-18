@@ -266,6 +266,25 @@ Known limitations:
   Faceted Search. However, the view's "Nodes per page" option will properly
   determine how many search results are shown per page.
 
+Known issues:
+
+- If your site is using table prefixing, you will need to tell Drupal not to
+  prefix temporary tables needed by Faceted Search Views. In settings.php, you
+  need something like the following:
+
+    $db_prefix = array(
+      'default' => '[your_default_prefix]_',
+      'temp_faceted_search_results_[env_id]' => '',
+    );
+
+  You will need as many 'temp_faceted_search_results_[env_id]' entries as there
+  are faceted search environments (env_id is the numeric identifier for the
+  faceted search environment, to be specified without the brackets). You can
+  find out the env_id by editing an environment and looking at its URL path,
+  which has the form 'admin/settings/faceted_search/[env_id]'.
+
+  Reference: http://drupal.org/node/227634#comment-864171.
+
 
 Support
 *******
