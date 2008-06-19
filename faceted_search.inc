@@ -1045,7 +1045,7 @@ class faceted_search {
         $query->set_current_part(); // Back to default part.
 
         $words_where[] = '('. substr(str_repeat("{$type}_search_index.word = '%s' OR ", count($type_words)), 0, -4) .") AND {$type}_search_index.type = '%s'";
-        $words_args = array_merge($words_args, $type_words);
+        $words_args = array_merge($words_args, array_values($type_words));
         $words_args[] = $type;
       
         $query->add_table('search_total', 'word', "{$type}_search_index", 'word', "{$type}_search_total");
