@@ -685,14 +685,6 @@ function faceted_search_parse_keywords($text) {
     $words = search_simplify($match[2]);
     // Re-explode in case simplification added more words, except when matching a phrase
     $words = $phrase ? array($words) : preg_split('/ /', $words, -1, PREG_SPLIT_NO_EMPTY);
-    // Remove short words (this is original code NOT from search_parse_query()).
-    if (($min = variable_get('minimum_word_size', 3)) > 0) {
-      foreach (array_keys($words) as $index) {
-        if (strlen($words[$index]) < $min) {
-          unset($words[$index]); // TODO: Warn user about short words being ignored.
-        }
-      }
-    }
     // Negative matches
     if ($match[1] == '-') {
       $keys['negative'] = array_merge($keys['negative'], $words);

@@ -411,9 +411,7 @@ class faceted_search_keyword_category {
     if (is_numeric($word)) {
       return (int)ltrim($word, '-0');
     }
-    elseif (drupal_strlen($word) >= variable_get('minimum_word_size', 3)) {
-      return $word;
-    }
+    return $word;
   }
 
   /**
@@ -490,8 +488,18 @@ class faceted_search_keyword_and_category extends faceted_search_keyword_categor
    */
   function build_results_query(&$query, &$words, &$matches, $type) {
     if (($word = $this->check_word($this->_word)) && !isset($words[$type][$word])) {
-      $words[$type][$word] = $word;
-      $matches[$type]++;
+      if (strlen($word) >= variable_get('minimum_word_size', 3)) {
+        $words[$type][$word] = $word;
+        $matches[$type]++;
+      }
+      else {
+        // Short words are only searched against the dataset.
+        $query->enable_part("{$type}_search_dataset");
+        // Ensure this type will be searched even though it has no "long" word.
+        if (!isset($words[$type])) {
+          $words[$type] = array();
+        }
+      }
 
       // The dataset will have to be looked up as well if the query becomes more
       // complex because of other keyword search operators.
@@ -1025,10 +1033,11 @@ class faceted_search {
     $words_scores = array();
     foreach ($words as $type => $type_words) {
       if (empty($type_words)) {
-        // Negative words were specified, but no positive words. Negative words
-        // are looked up in search_dataset, but since there are no positive
-        // words it is joined directly with the node table, and search_index is
-        // not needed.
+        // Negative words and/or short words were specified, but no positive
+        // "long" words. Negative words and short words are looked up in
+        // search_dataset, but since there are no positive "long" words, in this
+        // particular case it is joined directly with the node table and we can
+        // avoid joining search_index.
         $query->set_current_part("{$type}_search_dataset");
         $query->add_table('search_dataset', 'sid', 'n', 'nid', "{$type}_search_dataset");
         $query->add_where("{$type}_search_dataset.type = '%s'", $type);
