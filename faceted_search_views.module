@@ -125,7 +125,11 @@ class faceted_search_views_style extends faceted_search_ui_style {
    */
   function get_limit() {
     $view = $this->get_view();
-    return $view->nodes_per_page;
+    if ($view->nodes_per_page > 0) {
+      return $view->nodes_per_page;
+    }
+    // The pager is mandatory for search results, thus a valid limit required.
+    return variable_get('default_nodes_main', 10);
   }
 
   /**

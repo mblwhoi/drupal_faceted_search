@@ -264,7 +264,8 @@ Known limitations:
 
 - A view's "Title", "Use pager", and "Empty text" options are ignored under
   Faceted Search. However, the view's "Nodes per page" option will properly
-  determine how many search results are shown per page.
+  determine how many search results are shown per page when it is greater than
+  zero.
 
 Known issues:
 
