@@ -85,22 +85,13 @@ Hopefully, many more facets will be developed. The API is meant to make it easy
 to implement new facets.
 
 
-Current status
-**************
-
-This module is undergoing development. The provided features and API might still
-change without warning.
-
-Although this code uses some object-oriented programming, it is still compatible
-with PHP 4 at the moment (but not as much tested as with PHP 5).
-
-
 Caution
 *******
 
 Faceted Search is database-intensive. If your server can barely keep up with
 your traffic, this package will make things worst. Make sure to benchmark
-performance before deploying this system on a busy site.
+performance before deploying this system on a busy site or on a site with many
+thousand nodes.
 
 
 Requirements
