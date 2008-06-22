@@ -293,7 +293,7 @@ function taxonomy_facets_edit_form_submit($form_id, $form_values) {
   }
       
   if ($enabled) {
-    drupal_set_message(t('You must now run <a href="@cron">cron.php</a> for newly enabled taxonomy facets to become fully effective.', array('@cron' => base_path() .'cron.php'))); // TODO: Add link to indexing status page.
+    drupal_set_message(t('The newly enabled taxonomy facets will only become effective after their indexes have been built by <a href="@cron">cron.php</a> runs.', array('@cron' => base_path() .'cron.php'))); // TODO: Add link to indexing status page.
   }
 }
 
@@ -303,7 +303,7 @@ function taxonomy_facets_edit_form_submit($form_id, $form_values) {
 function taxonomy_facets_rebuild($goto_admin = TRUE) {
   // Mark nodes with the current time, unless they're already marked.
   db_query('UPDATE {taxonomy_facets_node} SET changed = %d WHERE changed = 0', time());
-  drupal_set_message(t('Index will be rebuilt the next time <a href="@cron">cron.php</a> is run.', array('@cron' => base_path() .'cron.php')));
+  drupal_set_message(t('Indexing will start on the next <a href="@cron">cron.php</a> run.', array('@cron' => base_path() .'cron.php')));
   if ($goto_admin) {
     drupal_goto('admin/settings/faceted_search/taxonomy_facets');
   }
