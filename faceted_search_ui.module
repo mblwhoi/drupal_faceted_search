@@ -156,7 +156,7 @@ function faceted_search_ui_form_alter($form_id, &$form) {
       '#title' => t('Base path'),
       '#default_value' => $base_path,
       '#required' => TRUE,
-      '#description' => t('The base path under which this faceted search environment will be accessed. All faceted search links will be derived from that base path. Do not begin or end the base path with a /.'), 
+      '#description' => t('The base path under which this faceted search environment will be accessed. All faceted search links will be derived from that base path. Do not begin or end the base path with a /. Be careful to assign each faceted search environment its own distinct path.'), 
     );
     $form['info']['start_page'] = array( // TODO: Proper validation of the path.
       '#type' => 'textfield',
