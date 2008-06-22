@@ -631,6 +631,9 @@ function faceted_search_quoted_query_extract($keys, $option) {
   // Based on search_query_extract, but matching a quoted value. Double-quotes
   // are allowed into the value when escaped.
   $escape_char = variable_get('faceted_search_escape_char', '\\');
+  if ($escape_char == '\\') {
+    $escape_char .= '\\'; // Special case for regex.
+  }
   if (preg_match('/(^| )'. $option .':"(('. $escape_char .'.|[^"])*?)"( |$)/i', $keys, $matches)) {
     return faceted_search_quoted_query_unescape($matches[2]);
   }
@@ -640,6 +643,9 @@ function faceted_search_quoted_query_insert($keys, $option, $value = '') {
   // Based on search_query_extract, but matching a quoted value. Double-quotes
   // are allowed into the value when escaped.
   $escape_char = variable_get('faceted_search_escape_char', '\\');
+  if ($escape_char == '\\') {
+    $escape_char .= '\\'; // Special case for regex.
+  }
   if (search_query_extract($keys, $option)) {
     $keys = trim(preg_replace('/(^| )'. $option .':"(('. $escape_char .'.|[^"])*?)"( |$)/i', ' ', $keys));
   }
