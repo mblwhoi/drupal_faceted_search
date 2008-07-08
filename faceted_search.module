@@ -628,7 +628,7 @@ function faceted_search_build_text($filters) {
 }
 
 function faceted_search_quoted_query_extract($keys, $option) {
-  // Based on search_query_extract, but matching a quoted value. Double-quotes
+  // Based on search_query_extract(), but matching a quoted value. Double-quotes
   // are allowed into the value when escaped.
   $escape_char = variable_get('faceted_search_escape_char', '\\');
   if ($escape_char == '\\') {
@@ -640,7 +640,7 @@ function faceted_search_quoted_query_extract($keys, $option) {
 }
 
 function faceted_search_quoted_query_insert($keys, $option, $value = '') {
-  // Based on search_query_extract, but matching a quoted value. Double-quotes
+  // Based on search_query_insert(), but matching a quoted value. Double-quotes
   // are allowed into the value when escaped.
   $escape_char = variable_get('faceted_search_escape_char', '\\');
   if ($escape_char == '\\') {
