@@ -1005,7 +1005,10 @@ class faceted_search {
     }
 
     $query = new faceted_search_query;
-    $query->add_where('n.status = 1');
+    if (!faceted_search_variable_get($this->_env_id, 'ignore_status', FALSE) || !user_access('administer nodes')) {
+      // Restrict the search to published nodes only.
+      $query->add_where('n.status = 1');
+    }
     $query->add_groupby('n.nid');
 
     // Apply node type filter
@@ -1162,7 +1165,10 @@ class faceted_search {
     $query->add_field(NULL, 'COUNT(DISTINCT(n.nid))', 'count');
     if (!$this->_ready) {
       // No temporary table available, search within all nodes.
-      $query->add_where('n.status = 1');
+      if (!faceted_search_variable_get($this->_env_id, 'ignore_status', FALSE) || !user_access('administer nodes')) {
+        // Restrict the search to published nodes only.
+        $query->add_where('n.status = 1');
+      }
 
       // There is no results table at this point, so we can't rely on the
       // results table having been filtered already. Therefore, we ask modules

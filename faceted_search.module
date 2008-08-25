@@ -259,6 +259,13 @@ function faceted_search_edit_form($env_id = NULL) {
     '#description' => t('Only the checked types will appear in this search environment. If none is checked, all types will be allowed.'),
     '#default_value' => array_intersect($types, array_filter(faceted_search_variable_get($env_id, 'types', array()))),
   );
+  $form['info']['ignore_status'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Let unpublished nodes appear in search results'),
+    '#default_value' => isset($env_id) ? faceted_search_variable_get($env_id, 'ignore_status', FALSE) : FALSE,
+    '#description' => t("When this is enabled, unpublished nodes are allowed to appear in search results to users with the 'administer nodes' permission. Note that unpublished nodes are never indexed by Drupal core, so they will never appear in keyword search results although they <em>will</em> appear in guided search results."),
+    '#weight' => 1,
+  );
 
   // Facets section.
   $form['facets'] = array(
