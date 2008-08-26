@@ -1102,8 +1102,14 @@ class faceted_search {
     // additional filtering).
     module_invoke_all('faceted_search_query_alter', $this, $query);
 
-    // Perform the search results query.
-    db_query_temporary($query->query(), $query->args(), $this->_results_table);
+    // Perform the search results query and store results in a temporary table.
+    //
+    // This is MySQL-specific. db_query_temporary() is not used because of the
+    // need to specify the primary key. The index provides a huge performance
+    // improvement.
+    //
+    // See http://drupal.org/node/109513 regarding the use of HEAP engine.
+    db_query('CREATE TEMPORARY TABLE '. $this->_results_table .' (nid int unsigned NOT NULL, PRIMARY KEY (nid)) Engine=HEAP '. $query->query(), $query->args(), $this->_results_table);
     $this->_results_count = db_result(db_query('SELECT COUNT(*) FROM '. $this->_results_table));
     $this->_ready = TRUE; 
   }
