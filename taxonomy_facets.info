@@ -1,6 +1,9 @@
 ; $Id$
 name = Taxonomy Facets
 description = "Provides facets based on taxonomy."
-dependencies = taxonomy search faceted_search
+dependencies[] = taxonomy
+dependencies[] = search
+dependencies[] = faceted_search
 package = Faceted Search
+core = 6.x
 

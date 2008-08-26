@@ -67,14 +67,14 @@ function date_authored_facet_faceted_search_collect(&$facets, $domain, $env_id, 
         $year = gmdate('Y', $timestamp);
         $month = gmdate('n', $timestamp);
         $day = gmdate('j', $timestamp);
-  
+
         // Build the path of categories.
         $path = array(
           new date_authored_facet_category($year),
           new date_authored_facet_category($year, $month),
           new date_authored_facet_category($year, $month, $day),
         );
-  
+
         // Create a facet with the node's creation date as the active category.
         $facets[] = new date_authored_facet($path);
       }
@@ -144,10 +144,10 @@ class date_authored_facet extends faceted_search_facet {
     }
     return '';
   }
-  
+
   /**
    * Updates a query for retrieving the root categories of this facet and their
-   * associated nodes within the current search results. 
+   * associated nodes within the current search results.
    *
    * @param $query
    *   The query object to update.
@@ -161,7 +161,7 @@ class date_authored_facet extends faceted_search_facet {
     $query->add_groupby('node_created_year');
     return TRUE;
   }
-  
+
   /**
    * This factory method creates categories given query results that include the
    * fields selected in get_root_categories_query() or get_subcategories_query().
@@ -188,7 +188,7 @@ class date_authored_facet_category extends faceted_search_category {
   var $_year = NULL;
   var $_month = NULL;
   var $_day = NULL;
-  
+
   /**
    * Constructs a category for the specified date.
    *
@@ -205,7 +205,7 @@ class date_authored_facet_category extends faceted_search_category {
    * @param $count
    *   The number of nodes associated to this category within the current
    *   search. Optional.
-   * 
+   *
    * Note: We consider the specified date as within the user's timezone.
    */
   function date_authored_facet_category($year, $month = NULL, $day = NULL, $count = NULL) {
@@ -255,10 +255,10 @@ class date_authored_facet_category extends faceted_search_category {
     }
     return $text;
   }
-  
+
   /**
    * Updates a query for retrieving the subcategories of this category and their
-   * associated nodes within the current search results. 
+   * associated nodes within the current search results.
    *
    * This only needs to be overridden for hierarchical facets.
    *
@@ -371,6 +371,6 @@ function _date_authored_facet_check_date($year = NULL, $month = NULL, $day = NUL
   if (isset($day) && (!isset($month) || !is_numeric($month) || !is_numeric($day) || !checkdate($month, $day, $year))) {
     return FALSE;
   }
-  
+
   return TRUE;
 }

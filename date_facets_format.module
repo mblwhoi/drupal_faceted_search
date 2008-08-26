@@ -9,19 +9,16 @@
 /**
  * Implementation of hook_menu().
  */
-function date_facets_format_menu($may_cache) {
+function date_facets_format_menu() {
   $items = array();
-  if ($may_cache) {
-    $items[] = array(
-      'path' => 'admin/settings/faceted_search/date_format',
-      'title' => t('Date formats'),
-      'callback' => 'drupal_get_form',
-      'callback arguments' => array('date_facets_format_admin_settings_form'),
-      'access' => user_access('administer site configuration'),
-      'type' => MENU_LOCAL_TASK,
-    );
-  }
-  
+  $items['admin/settings/faceted_search/date_format'] = array(
+    'title' => 'Date formats',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('date_facets_format_admin_settings_form'),
+    'access arguments' => array('administer site configuration'),
+    'type' => MENU_LOCAL_TASK,
+  );
+
   return $items;
 }
 

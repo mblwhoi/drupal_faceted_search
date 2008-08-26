@@ -11,34 +11,32 @@ require_once('./'. drupal_get_path('module', 'faceted_search') .'/faceted_search
 /**
  * Implementation of hook_form_alter().
  */
-function author_facet_form_alter($form_id, &$form) {
-  if ($form_id == 'faceted_search_edit_form') {
-    $env_id = $form['env_id']['#value'];
-    
-    $form['author_facet'] = array(
-      '#type' => 'fieldset',
-      '#title' => t('Author Facet options'),
-      '#collapsible' => TRUE,
-      '#collapsed' => TRUE,
-      '#weight' => 10,
+function author_facet_form_faceted_search_edit_form_alter(&$form, $form_state) {
+  $env_id = $form['env_id']['#value'];
+
+  $form['author_facet'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Author Facet options'),
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+    '#weight' => 10,
+  );
+
+  $roles = array_filter(user_roles(TRUE), '_author_facet_filter_role');
+  if (count($roles)) {
+    $form['author_facet']['author_facet_excluded_roles'] = array( // TODO: Invert the logic, and ensure that all roles are included when none is checked.
+      '#type' => 'checkboxes',
+      '#title' => t('Roles to exclude from the Author facet'),
+      '#description' => t('Any user having one or more of the checked roles will not appear in the facet. Note that this setting is not a filter for search results; content from excluded users can still be searchable through other facets or from text searches.'),
+      '#options' => $roles,
+      '#default_value' => isset($env_id) ? author_facet_excluded_roles($env_id) : array(),
     );
-    
-    $roles = array_filter(user_roles(TRUE), '_author_facet_filter_role');
-    if (count($roles)) {
-      $form['author_facet']['author_facet_excluded_roles'] = array( // TODO: Invert the logic, and ensure that all roles are included when none is checked.
-        '#type' => 'checkboxes',
-        '#title' => t('Roles to exclude from the Author facet'),
-        '#description' => t('Any user having one or more of the checked roles will not appear in the facet. Note that this setting is not a filter for search results; content from excluded users can still be searchable through other facets or from text searches.'),
-        '#options' => $roles,
-        '#default_value' => isset($env_id) ? author_facet_excluded_roles($env_id) : array(),
-      );
-    }
-    else {
-      $form['author_facet']['author_facet_help'] = array(
-        '#type' => 'markup',
-        '#value' => '<p>'. t('No roles are currently available.') .'</p>',
-      );
-    }
+  }
+  else {
+    $form['author_facet']['author_facet_help'] = array(
+      '#type' => 'markup',
+      '#value' => '<p>'. t('No roles are currently available.') .'</p>',
+    );
   }
 }
 
@@ -119,12 +117,12 @@ function _author_facet_filter_role($role) {
 }
 
 /**
- * A facet for node authors. 
+ * A facet for node authors.
  */
 class author_facet extends faceted_search_facet {
 
   var $_excluded_roles;
-  
+
   /**
    * Constructor. Optionally assigns the active user of the facet.
    */
@@ -182,7 +180,7 @@ class author_facet extends faceted_search_facet {
 
   /**
    * Updates a query for retrieving the root categories of this facet and their
-   * associated nodes within the current search results. 
+   * associated nodes within the current search results.
    *
    * @param $query
    *   The query object to update.
@@ -226,7 +224,7 @@ class author_facet extends faceted_search_facet {
 class author_facet_category extends faceted_search_category {
   var $_uid = 0;
   var $_name = '';
-  
+
   function author_facet_category($uid, $name, $count = NULL) {
     parent::faceted_search_category($count);
     $this->_uid = $uid;

@@ -25,46 +25,40 @@ function faceted_search_ui_perm() {
 /**
  * Implementation of hook_menu().
  */
-function faceted_search_ui_menu($may_cache) {
+function faceted_search_ui_menu() {
   $items = array();
-  if ($may_cache) {
-    foreach (faceted_search_get_env_ids() as $env_id) {
-      $base_path = faceted_search_variable_get($env_id, 'base_path', ''); 
-      $items[] = array(
-        'path' => $base_path,
-        'title' => check_plain(faceted_search_variable_get($env_id, 'title', t('Search'))), // Needed for breadcrumb.
-        'callback' => 'faceted_search_ui_stage_select',
-        'callback arguments' => array($env_id),
-        'access' => user_access('use faceted search'),
-        'type' => MENU_CALLBACK,
-      );
-      $items[] = array(
-        'path' => $base_path .'/results',
-        'callback' => 'faceted_search_ui_stage_results',
-        'callback arguments' => array($env_id),
-        'access' => user_access('use faceted search'),
-        'type' => MENU_CALLBACK,
-      );
-      $items[] = array(
-        'path' => $base_path .'/facet',
-        'callback' => 'faceted_search_ui_stage_facet',
-        'callback arguments' => array($env_id),
-        'access' => user_access('use faceted search'),
-        'type' => MENU_CALLBACK,
-      );
-      $items[] = array(
-        'path' => $base_path .'/categories',
-        'callback' => 'faceted_search_ui_stage_categories',
-        'callback arguments' => array($env_id),
-        'access' => user_access('use faceted search'),
-        'type' => MENU_CALLBACK,
-      );
-    }
-
-    // TODO: Per-environment access control setting (à la Views). Then, will no
-    // longer need the 'use faceted search' permission.
+  foreach (faceted_search_get_env_ids() as $env_id) {
+    $base_path = faceted_search_variable_get($env_id, 'base_path', '');
+    $items[$base_path] = array(
+      'title' => check_plain(faceted_search_variable_get($env_id, 'title', 'Search')), // Needed for breadcrumb.
+      'page callback' => 'faceted_search_ui_stage_select',
+      'page arguments' => array($env_id),
+      'access arguments' => array('use faceted search'),
+      'type' => MENU_CALLBACK,
+    );
+    $items[$base_path .'/results'] = array(
+      'page callback' => 'faceted_search_ui_stage_results',
+      'page arguments' => array($env_id),
+      'access arguments' => array('use faceted search'),
+      'type' => MENU_CALLBACK,
+    );
+    $items[$base_path .'/facet'] = array(
+      'page callback' => 'faceted_search_ui_stage_facet',
+      'page arguments' => array($env_id),
+      'access arguments' => array('use faceted search'),
+      'type' => MENU_CALLBACK,
+    );
+    $items[$base_path .'/categories'] = array(
+      'page callback' => 'faceted_search_ui_stage_categories',
+      'page arguments' => array($env_id),
+      'access arguments' => array('use faceted search'),
+      'type' => MENU_CALLBACK,
+    );
   }
-  
+
+  // TODO: Per-environment access control setting (à la Views). Then, will no
+  // longer need the 'use faceted search' permission.
+
   return $items;
 }
 
@@ -95,7 +89,7 @@ function faceted_search_ui_block($op = 'list', $delta = 0, $edit = array()) {
   }
   elseif ($op == 'view' && user_access('use faceted search')) {
     global $_faceted_search;
-    
+
     // Determine the environment id and requested block.
     list($env_id, $delta) = explode('_', $delta, 2);
 
@@ -105,17 +99,17 @@ function faceted_search_ui_block($op = 'list', $delta = 0, $edit = array()) {
       $_faceted_search[$env_id] = new faceted_search($env_id);
       $_faceted_search[$env_id]->ui_state = _faceted_search_ui_defaults();
     }
-    
+
     faceted_search_ui_add_css();
     switch ($delta) {
       case 'current':
-        $block['subject'] = t('Current search'); 
+        $block['subject'] = t('Current search');
         $block['content'] = faceted_search_ui_current_block($_faceted_search[$env_id]);
         break;
 
       case 'keyword':
         if ($_faceted_search[$env_id]->ui_state['stage'] == 'results') {
-          $block['subject'] = t('Keyword search'); 
+          $block['subject'] = t('Keyword search');
           $block['content'] = faceted_search_ui_keyword_block($_faceted_search[$env_id]);
         }
         break;
@@ -128,8 +122,8 @@ function faceted_search_ui_block($op = 'list', $delta = 0, $edit = array()) {
         break;
 
       case 'related':
-        if (arg(0) == 'node' && is_numeric(arg(1)) && !arg(2) && $node = node_load(arg(1))) {
-          $block['subject'] = t('Related categories'); 
+        if ($node = menu_get_object() && !arg(2)) {
+          $block['subject'] = t('Related categories');
           $block['content'] = faceted_search_ui_related_block($env_id, $node);
         }
         break;
@@ -145,151 +139,149 @@ function faceted_search_ui_block($op = 'list', $delta = 0, $edit = array()) {
 /**
  * Implementation of hook_form_alter().
  */
-function faceted_search_ui_form_alter($form_id, &$form) {
-  if ($form_id == 'faceted_search_edit_form') {
-    $env_id = $form['env_id']['#value'];
+function faceted_search_ui_form_faceted_search_edit_form_alter(&$form, &$form_state) {
+  $env_id = $form['env_id']['#value'];
 
-    // Basic information section.
-    $base_path = faceted_search_variable_get($env_id, 'base_path', '');
-    $form['info']['base_path'] = array( // TODO: Proper validation of the path.
-      '#type' => 'textfield',
-      '#title' => t('Base path'),
-      '#default_value' => $base_path,
-      '#required' => TRUE,
-      '#description' => t('The base path under which this faceted search environment will be accessed. All faceted search links will be derived from that base path. Do not begin or end the base path with a /. Be careful to assign each faceted search environment its own distinct path.'), 
-    );
-    $form['info']['start_page'] = array( // TODO: Proper validation of the path.
-      '#type' => 'textfield',
-      '#title' => t('Start page'),
-      '#required' => TRUE,
-      '#default_value' => faceted_search_variable_get($env_id, 'start_page', $base_path),
-      '#description' => t("Path to go to when the current search is cleared. Popular options are the base path as entered above (shows a full search page), the base path followed by <code>/results</code> (shows all content using the same display style as search results), and <code>&lt;front&gt;</code> (goes to your site's front page). Do not begin or end the start page's path with a /."),
-    );
-    
-    // Results page section.
-    $form['results'] = array(
-      '#type' => 'fieldset',
-      '#title' => t('Results page'),
-      '#collapsible' => TRUE,
-      '#collapsed' => FALSE,
-      '#weight' => 1,
-    );
-    $styles = faceted_search_ui_style_list();
-    $options = array();
-    foreach ($styles as $key => $style) {
-      $options[$key] = $style->get_label();
-    }
-    $form['results']['results_style'] = array(
-      '#type' => 'select',
-      '#title' => t('Display style'),
-      '#options' => $options,
-      '#default_value' => faceted_search_variable_get($env_id, 'results_style', 'faceted_search_ui:teasers'),
-      '#description' => t('When the <em>Extracts</em> option is selected, search results show extracts relevant to the search keywords. With the <em>Teasers</em> option, search results use standard teasers. Other modules may provide additional display styles.'),
-    );
-    $form['results']['results_style_selective_extracts'] = array(
-      '#type' => 'checkbox',
-      '#title' => t('Use the <em>Extracts</em> display style selectively.'),
-      '#default_value' => faceted_search_variable_get($env_id, 'results_style_selective_extracts', TRUE),
-      '#description' => t('If this is enabled, search results will be shown in the <em>Extracts</em> display style when the current search uses keywords, or use the above display style otherwise.'),
-    );
+  // Basic information section.
+  $base_path = faceted_search_variable_get($env_id, 'base_path', '');
+  $form['info']['base_path'] = array( // TODO: Proper validation of the path.
+    '#type' => 'textfield',
+    '#title' => t('Base path'),
+    '#default_value' => $base_path,
+    '#required' => TRUE,
+    '#description' => t('The base path under which this faceted search environment will be accessed. All faceted search links will be derived from that base path. Do not begin or end the base path with a /. Be careful to assign each faceted search environment its own distinct path.'), 
+  );
+  $form['info']['start_page'] = array( // TODO: Proper validation of the path.
+    '#type' => 'textfield',
+    '#title' => t('Start page'),
+    '#required' => TRUE,
+    '#default_value' => faceted_search_variable_get($env_id, 'start_page', $base_path),
+    '#description' => t("Path to go to when the current search is cleared. Popular options are the base path as entered above (shows a full search page), the base path followed by <code>/results</code> (shows all content using the same display style as search results), and <code>&lt;front&gt;</code> (goes to your site's front page). Do not begin or end the start page's path with a /."),
+  );
 
-    // Current search block section.
-    $form['current'] = array(
-      '#type' => 'fieldset',
-      '#title' => t('Current search'),
-      '#collapsible' => TRUE,
-      '#collapsed' => TRUE,
-      '#weight' => 2,
-    );
-    $form['current']['current_block'] = array(
-      '#type' => 'checkbox',
-      '#title' => t('Provide Current search block'),
-      '#default_value' => faceted_search_variable_get($env_id, 'current_block', TRUE),
-      '#description' => t('When enabled, this block appears when search terms have been entered. This block can only appear on Faceted Search pages. Block visibility settings may define additional conditions for this block to appear.'),
-    );
-
-    // Keyword search section.
-    $form['keyword']['#weight'] = 3;
-    $form['keyword']['keyword_block'] = array(
-      '#type' => 'checkbox',
-      '#title' => t('Provide Keyword search block'),
-      '#default_value' => faceted_search_variable_get($env_id, 'keyword_block', TRUE),
-      '#description' => t('When enabled, this block provides a form where a search text can be entered. Block visibility settings may define additional conditions for this block to appear.'),
-      '#weight' => -15
-    );
-    $form['keyword']['keyword_mode'] = array(
-      '#type' => 'radios',
-      '#title' => t('Default mode'),
-      '#description' => t("Choose the mode to select by default in keyword search. <em>New search</em> might be more intuitive to users not familiar with Faceted Search's interface since it mimics most search engines."),
-      '#default_value' => faceted_search_variable_get($env_id, 'keyword_mode', 'new'),
-      '#options' => array('new' => t('New search'), 'refine' => t('Search within results')),
-      '#weight' => -10,
-    );
-    $form['keyword']['keyword_field_selector'] = array(
-      '#type' => 'checkbox',
-      '#title' => t('Provide field selector in the Keyword search block'),
-      '#default_value' => faceted_search_variable_get($env_id, 'keyword_field_selector', FALSE),
-      '#description' => t('When enabled, the field selector will appear in the Keyword search block if there is at least one field enabled for keyword search. Note that the field selector is always shown on the <em>More options</em> page.'),
-      '#weight' => -5,
-    );
-
-    // Guided search block section.
-    $form['guided'] = array(
-      '#type' => 'fieldset',
-      '#title' => t('Guided search'),
-      '#collapsible' => TRUE,
-      '#collapsed' => TRUE,
-      '#weight' => 4,
-    );
-    $form['guided']['guided_block'] = array(
-      '#type' => 'checkbox',
-      '#title' => t('Provide Guided search block'),
-      '#default_value' => faceted_search_variable_get($env_id, 'guided_block', TRUE),
-      '#description' => t('When enabled, this block shows categories that may be selected to start or refine a search. Block visibility settings may define additional conditions for this block to appear.'),
-    );
-    $form['guided']['sort_block'] = array(
-      '#type' => 'checkbox',
-      '#title' => t('Provide Sort options block'),
-      '#default_value' => faceted_search_variable_get($env_id, 'sort_block', TRUE),
-      '#description' => t('When enabled, this block appears when navigating a full-page list of categories (after clicking the <em>More</em> link of a facet in the Guided search). Block visibility settings may define additional conditions for this block to appear.'),
-    );
-    $form['guided']['tooltips'] = array(
-      '#type' => 'checkbox',
-      '#title' => t('Show tooltips on categories'),
-      '#description' => t('Check this option to have tooltips displayed with subcategories when hovering over a category in the Guided search. This feature works only with clients that have JavaScript enabled, but is unobtrusive to clients that lack JavaScript.'),
-      '#default_value' => faceted_search_variable_get($env_id, 'tooltips', FALSE),
-    );
-
-    // Related categories block section.
-    $form['related'] = array(
-      '#type' => 'fieldset',
-      '#title' => t('Related categories'),
-      '#collapsible' => TRUE,
-      '#collapsed' => TRUE,
-      '#weight' => 5,
-    );
-    $form['related']['related_block'] = array(
-      '#type' => 'checkbox',
-      '#title' => t('Provide Related categories block'),
-      '#default_value' => faceted_search_variable_get($env_id, 'related_block', TRUE),
-      '#description' => t('When enabled, this block appears on a node\'s full page, showing categories related to that node. Categories may be selected to start a search. This block only appears for node types allowed in the faceted search environment (see the <em>Basic information</em> section). Block visibility settings may define additional conditions for this block to appear.'),
-    );
-    $form['related']['related_style'] = array(
-      '#type' => 'select',
-      '#title' => t('Display style'),
-      '#options' => array(
-        'list_ungrouped' => t('List - Ungrouped'),
-        'list_grouped' => t('List - Grouped by facet'),
-        'table' => t('Table - Grouped by facet'),
-      ),
-      '#default_value' => faceted_search_variable_get($env_id, 'related_style', 'list_ungrouped'),
-      '#description' => t('Related categories may be grouped by facet (useful when a node uses more than one category per facet), or ungrouped (flat list of categories).'),
-    );
+  // Results page section.
+  $form['results'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Results page'),
+    '#collapsible' => TRUE,
+    '#collapsed' => FALSE,
+    '#weight' => 1,
+  );
+  $styles = faceted_search_ui_style_list();
+  $options = array();
+  foreach ($styles as $key => $style) {
+    $options[$key] = $style->get_label();
   }
+  $form['results']['results_style'] = array(
+    '#type' => 'select',
+    '#title' => t('Display style'),
+    '#options' => $options,
+    '#default_value' => faceted_search_variable_get($env_id, 'results_style', 'faceted_search_ui:teasers'),
+    '#description' => t('When the <em>Extracts</em> option is selected, search results show extracts relevant to the search keywords. With the <em>Teasers</em> option, search results use standard teasers. Other modules may provide additional display styles.'),
+  );
+  $form['results']['results_style_selective_extracts'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Use the <em>Extracts</em> display style selectively.'),
+    '#default_value' => faceted_search_variable_get($env_id, 'results_style_selective_extracts', TRUE),
+    '#description' => t('If this is enabled, search results will be shown in the <em>Extracts</em> display style when the current search uses keywords, or use the above display style otherwise.'),
+  );
+
+  // Current search block section.
+  $form['current'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Current search'),
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+    '#weight' => 2,
+  );
+  $form['current']['current_block'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Provide Current search block'),
+    '#default_value' => faceted_search_variable_get($env_id, 'current_block', TRUE),
+    '#description' => t('When enabled, this block appears when search terms have been entered. This block can only appear on Faceted Search pages. Block visibility settings may define additional conditions for this block to appear.'),
+  );
+
+  // Keyword search section.
+  $form['keyword']['#weight'] = 3;
+  $form['keyword']['keyword_block'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Provide Keyword search block'),
+    '#default_value' => faceted_search_variable_get($env_id, 'keyword_block', TRUE),
+    '#description' => t('When enabled, this block provides a form where a search text can be entered. Block visibility settings may define additional conditions for this block to appear.'),
+    '#weight' => -15
+  );
+  $form['keyword']['keyword_mode'] = array(
+    '#type' => 'radios',
+    '#title' => t('Default mode'),
+    '#description' => t("Choose the mode to select by default in keyword search. <em>New search</em> might be more intuitive to users not familiar with Faceted Search's interface since it mimics most search engines."),
+    '#default_value' => faceted_search_variable_get($env_id, 'keyword_mode', 'new'),
+    '#options' => array('new' => t('New search'), 'refine' => t('Search within results')),
+    '#weight' => -10,
+  );
+  $form['keyword']['keyword_field_selector'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Provide field selector in the Keyword search block'),
+    '#default_value' => faceted_search_variable_get($env_id, 'keyword_field_selector', FALSE),
+    '#description' => t('When enabled, the field selector will appear in the Keyword search block if there is at least one field enabled for keyword search. Note that the field selector is always shown on the <em>More options</em> page.'),
+    '#weight' => -5,
+  );
+
+  // Guided search block section.
+  $form['guided'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Guided search'),
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+    '#weight' => 4,
+  );
+  $form['guided']['guided_block'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Provide Guided search block'),
+    '#default_value' => faceted_search_variable_get($env_id, 'guided_block', TRUE),
+    '#description' => t('When enabled, this block shows categories that may be selected to start or refine a search. Block visibility settings may define additional conditions for this block to appear.'),
+  );
+  $form['guided']['sort_block'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Provide Sort options block'),
+    '#default_value' => faceted_search_variable_get($env_id, 'sort_block', TRUE),
+    '#description' => t('When enabled, this block appears when navigating a full-page list of categories (after clicking the <em>More</em> link of a facet in the Guided search). Block visibility settings may define additional conditions for this block to appear.'),
+  );
+  $form['guided']['tooltips'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Show tooltips on categories'),
+    '#description' => t('Check this option to have tooltips displayed with subcategories when hovering over a category in the Guided search. This feature works only with clients that have JavaScript enabled, but is unobtrusive to clients that lack JavaScript.'),
+    '#default_value' => faceted_search_variable_get($env_id, 'tooltips', FALSE),
+  );
+
+  // Related categories block section.
+  $form['related'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Related categories'),
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+    '#weight' => 5,
+  );
+  $form['related']['related_block'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Provide Related categories block'),
+    '#default_value' => faceted_search_variable_get($env_id, 'related_block', TRUE),
+    '#description' => t('When enabled, this block appears on a node\'s full page, showing categories related to that node. Categories may be selected to start a search. This block only appears for node types allowed in the faceted search environment (see the <em>Basic information</em> section). Block visibility settings may define additional conditions for this block to appear.'),
+  );
+  $form['related']['related_style'] = array(
+    '#type' => 'select',
+    '#title' => t('Display style'),
+    '#options' => array(
+      'list_ungrouped' => t('List - Ungrouped'),
+      'list_grouped' => t('List - Grouped by facet'),
+      'table' => t('Table - Grouped by facet'),
+    ),
+    '#default_value' => faceted_search_variable_get($env_id, 'related_style', 'list_ungrouped'),
+    '#description' => t('Related categories may be grouped by facet (useful when a node uses more than one category per facet), or ungrouped (flat list of categories).'),
+  );
 }
 
 /**
- * Implementation of hook_faceted_search_query_alter.
+ * Implementation of hook_faceted_search_query_alter().
  *
  * Give the display style object an opportunity at altering the search
  * query. The style might, for example, require additional filtering or extra
@@ -323,23 +315,23 @@ function faceted_search_ui_stage_results($env_id, $text = '') {
   $_faceted_search[$env_id] = new faceted_search($env_id, $text);
   $_faceted_search[$env_id]->ui_state = _faceted_search_ui_defaults();
   $_faceted_search[$env_id]->ui_state['stage'] = 'results';
-  
+
   if ($text) {
     // Log the search text.
     $path = faceted_search_ui_build_path($env_id, $_faceted_search[$env_id]->ui_state, $text);
-    watchdog('faceted_search', t('%text.', array('%text' => $text)), WATCHDOG_NOTICE, l(t('results'), $path));
+    watchdog('faceted_search', '%text.', array('%text' => $text), WATCHDOG_NOTICE, l(t('results'), $path));
   }
 
   faceted_search_ui_add_robots_directive($_faceted_search[$env_id]);
   faceted_search_ui_add_css();
-    
+
   // Collect the search results.
   $_faceted_search[$env_id]->execute();
   $style = faceted_search_ui_get_style($_faceted_search[$env_id]);
   if (method_exists($style, 'format_results')) {
     $results = $style->format_results($_faceted_search[$env_id]);
   }
-  
+
   faceted_search_ui_set_title($_faceted_search[$env_id]);
   $content = theme('faceted_search_ui_stage_results', $results, $style);
   return theme('faceted_search_ui_page', $_faceted_search[$env_id], $content);
@@ -371,10 +363,10 @@ function faceted_search_ui_stage_select($env_id, $text = '') {
   $_faceted_search[$env_id] = new faceted_search($env_id, $text);
   $_faceted_search[$env_id]->ui_state = _faceted_search_ui_defaults();
   $_faceted_search[$env_id]->ui_state['stage'] = 'select';
-  
+
   faceted_search_ui_add_robots_directive($_faceted_search[$env_id]);
   faceted_search_ui_add_css();
-    
+
   // Build the search results, which are required to count nodes per category
   $_faceted_search[$env_id]->execute();
 
@@ -397,7 +389,7 @@ function faceted_search_ui_stage_facet($env_id, $facet_key_id = '', $facet_sort 
     drupal_not_found();
     return;
   }
-  
+
   // If the menu system has splitted the search text because of slashes, glue it back.
   if (func_num_args() > 4) {
     $args = func_get_args();
@@ -412,11 +404,11 @@ function faceted_search_ui_stage_facet($env_id, $facet_key_id = '', $facet_sort 
   $_faceted_search[$env_id]->ui_state['facet-key'] = $facet_key;
   $_faceted_search[$env_id]->ui_state['facet-id'] = $facet_id;
   $_faceted_search[$env_id]->ui_state['facet-sort'] = $facet_sort;
-  
+
   faceted_search_ui_add_robots_directive($_faceted_search[$env_id]);
   faceted_search_ui_add_css();
   faceted_search_ui_add_tooltips($env_id);
-  
+
   // Build the search results, which are required to count nodes per category
   $_faceted_search[$env_id]->execute();
 
@@ -442,13 +434,13 @@ function faceted_search_ui_stage_categories($env_id, $facet_key_id = '', $facet_
   if (!$facet_key_id || !$facet_sort) {
     exit();
   }
-  
+
   // If the menu system has splitted the search text because of slashes, glue it back.
   if (func_num_args() > 4) {
     $args = func_get_args();
     $text .= '/'. implode('/', array_slice($args, 4));
   }
-  
+
   // Initialize the current search.
   $_faceted_search[$env_id] = new faceted_search($env_id, $text);
   $_faceted_search[$env_id]->ui_state = _faceted_search_ui_defaults();
@@ -460,7 +452,7 @@ function faceted_search_ui_stage_categories($env_id, $facet_key_id = '', $facet_
 
   // We are returning JavaScript, so tell the browser.
   drupal_set_header('Content-Type: text/javascript; charset=utf-8');
-  
+
   // Build the search results, which are required to count nodes per category
   $_faceted_search[$env_id]->execute();
 
@@ -491,7 +483,7 @@ function faceted_search_ui_stage_categories($env_id, $facet_key_id = '', $facet_
     $content .= theme('faceted_search_ui_categories', $facet, $categories, 'categories');
   }
   else {
-    $content = '<p>'. t('No subcategories.') .'</p>'; 
+    $content = '<p>'. t('No subcategories.') .'</p>';
   }
   $content = theme('faceted_search_ui_facet_wrapper', $env_id, $facet, 'categories', $content);
 
@@ -519,7 +511,7 @@ function faceted_search_ui_current_block($search) {
       $output .= theme('faceted_search_ui_facet_wrapper', $search->get_env_id(), $filter, 'current', $content);
     }
   }
-  
+
   return $output;
 }
 
@@ -535,7 +527,7 @@ function faceted_search_ui_keyword_block($search) {
  */
 function faceted_search_ui_guided_block($search) {
   faceted_search_ui_add_tooltips($search->get_env_id());
-  
+
   $facet_content = array();
   foreach ($search->get_filters() as $index => $facet) {
     if (!$facet->is_browsable()) {
@@ -548,7 +540,7 @@ function faceted_search_ui_guided_block($search) {
     else {
       $max_count = NULL; // No limit.
     }
-    
+
     $categories = faceted_search_ui_build_categories($search, $index, 0, $max_count);
     if (count($categories) > 0 || $facet->is_active()) {
       $content = theme('faceted_search_ui_facet_heading', $search->get_env_id(), $search->ui_state, $search->get_filters(), $index, 'guided');
@@ -573,10 +565,10 @@ function faceted_search_ui_related_block($env_id, $node) {
 
   // Load settings for all enabled facets in this search environment.
   $all_settings = faceted_search_load_filter_settings($env_id);
-    
+
   // Make a selection with all enabled facets.
   $selection = faceted_search_get_filter_selection($all_settings);
-  
+
   // Collect all facets relevant to this node.
   $facets = array();
   foreach (module_implements('faceted_search_collect') as $module) {
@@ -586,7 +578,7 @@ function faceted_search_ui_related_block($env_id, $node) {
 
   // Prepare facets for use, assigning them their settings are sorting them.
   faceted_search_prepare_filters($facets, $all_settings);
-  
+
   // Organize facets so that those that have a common label are grouped together.
   $groups = array(); // All groups of facets.
   $index = -1; // Index of the current group of facets.
@@ -627,7 +619,7 @@ function faceted_search_ui_style_list() {
           $styles[$module .':'. $id] = $style;
         }
       }
-    }  
+    }
   }
   return $styles;
 }
@@ -693,7 +685,7 @@ function faceted_search_ui_set_title($search) {
 /**
  * Render the search form.
  */
-function faceted_search_ui_form($search) {
+function faceted_search_ui_form($form_state, $search) {
   $ui_state = $search->ui_state;
   $current_stage = $ui_state['stage'];
 
@@ -707,7 +699,7 @@ function faceted_search_ui_form($search) {
   );
 
   // TODO: This ought to be cached and greatly simplified... {
-  
+
   // Load settings for all enabled filters in this search environment.
   $all_settings = faceted_search_load_filter_settings($search->get_env_id());
 
@@ -721,7 +713,7 @@ function faceted_search_ui_form($search) {
       unset($selection[$filter->get_key()][$filter->get_id()]);
     }
   }
-  
+
   // Gather keyword filters.
   $keyword_filters = array();
   foreach (module_implements('faceted_search_collect') as $module) {
@@ -735,7 +727,7 @@ function faceted_search_ui_form($search) {
   faceted_search_prepare_filters($keyword_filters, $all_settings);
 
   // TODO }
-  
+
   // Add the field selector.
   $options = array();
   if ($current_stage == 'select' || faceted_search_variable_get($search->get_env_id(), 'keyword_field_selector', FALSE)) {
@@ -783,7 +775,7 @@ function faceted_search_ui_form($search) {
       '#value' => 'and',
     );
   }
-  
+
   // Various search states.
   if ($search->get_text() != '') {
     $form['text'] = array(
@@ -846,50 +838,50 @@ function faceted_search_ui_form($search) {
 /**
  * Process a search form submission.
  */
-function faceted_search_ui_form_submit($form_id, $form_values) {
+function faceted_search_ui_form_submit($form, &$form_state) {
   $new_text = '';
-  switch ($form_values['operator']) {
+  switch ($form_state['values']['operator']) {
     // The following cases are based on node_search_validate().
     case 'and':
-      if (preg_match_all('/ ("[^"]+"|[^" ]+)/i', ' '. $form_values['keywords'], $matches)) {
+      if (preg_match_all('/ ("[^"]+"|[^" ]+)/i', ' '. $form_state['values']['keywords'], $matches)) {
         $new_text = implode(' ', $matches[1]);
       }
       break;
 
     case 'or':
-      if (preg_match_all('/ ("[^"]+"|[^" ]+)/i', ' '. $form_values['keywords'], $matches)) {
+      if (preg_match_all('/ ("[^"]+"|[^" ]+)/i', ' '. $form_state['values']['keywords'], $matches)) {
         $new_text = implode(' OR ', $matches[1]);
       }
       break;
 
     case 'not':
-      if (preg_match_all('/ ("[^"]+"|[^" ]+)/i', ' '. $form_values['keywords'], $matches)) {
+      if (preg_match_all('/ ("[^"]+"|[^" ]+)/i', ' '. $form_state['values']['keywords'], $matches)) {
         $new_text = '-'. implode(' -', $matches[1]);
       }
       break;
 
     case 'phrase':
-      $new_text .= ' "'. str_replace('"', ' ', $form_values['keywords']) .'"';
+      $new_text .= ' "'. str_replace('"', ' ', $form_state['values']['keywords']) .'"';
       break;
   }
 
-  if ($new_text != '' && $form_values['field'] != 'node') {
+  if ($new_text != '' && $form_state['values']['field'] != 'node') {
     $escape_char = variable_get('faceted_search_escape_char', '\\');
-    $new_text = $form_values['field'] .':"'. faceted_search_quoted_query_escape($new_text) .'"';
+    $new_text = $form_state['values']['field'] .':"'. faceted_search_quoted_query_escape($new_text) .'"';
   }
-  
-  if ($form_values['refine']) {
+
+  if ($form_state['values']['refine']) {
     // Combine pre-exiting text with new one
-    $text = trim($form_values['text'] .' '. $new_text);
+    $text = trim($form_state['values']['text'] .' '. $new_text);
   }
   else {
     // Search with new text.
     $text = $new_text;
   }
 
-  // Define resulting path. Note: $form_values has the same keys as the usual
+  // Define resulting path. Note: $form_state['values'] has the same keys as the usual
   // $ui_state argument.
-  return faceted_search_ui_build_path($form_values['env_id'], $form_values, $text);
+  return faceted_search_ui_build_path($form_state['values']['env_id'], $form_state['values'], $text);
 }
 
 /**
@@ -900,7 +892,7 @@ function faceted_search_ui_build_path($env_id, $ui_state, $text, $facets = array
   if (!$text && $facets) {
     $text = faceted_search_build_text($facets);
   }
-  
+
   if (!$text && $ui_state['stage'] == 'results') {
     // No search text, go to the start page.
     return faceted_search_variable_get($env_id, 'start_page', faceted_search_variable_get($env_id, 'base_path', ''));
@@ -912,7 +904,7 @@ function faceted_search_ui_build_path($env_id, $ui_state, $text, $facets = array
   else {
     $stage = '/'. $ui_state['stage'];
   }
-  
+
   $facet = '';
   $facet_sort = '';
   if (($ui_state['stage'] == 'facet' || $ui_state['stage'] == 'categories') && $ui_state['facet-key'] && $ui_state['facet-id']) {
@@ -944,7 +936,7 @@ function faceted_search_ui_build_path($env_id, $ui_state, $text, $facets = array
  */
 function faceted_search_ui_build_remover_path($env_id, $ui_state, $facets, $index) {
   // Remove current facet for remover.
-  unset($facets[$index]); 
+  unset($facets[$index]);
   // Switch to results stage.
   if ($ui_state['stage'] == 'select' || $ui_state['stage'] == 'facet') {
     $ui_state['stage'] = 'results';
@@ -977,7 +969,7 @@ function faceted_search_ui_build_breadcrumb($env_id, $ui_state, $facets, $index,
     // Replace the current facet with a clone for active category manipulations
     // (to avoid manipulating the original facet).
     $facets[$index] = drupal_clone($facet);
-    
+
     $path = array();
     foreach ($facet->get_active_path() as $category_index => $category) {
       $path[] = $category;
@@ -995,7 +987,7 @@ function faceted_search_ui_build_breadcrumb($env_id, $ui_state, $facets, $index,
       // The last category needs not be a link to itself since it is already in
       // the current search.
       // Note: get_label() is responsible for filtering its returned string.
-      $breadcrumb[count($breadcrumb) - 1] = $category->get_label(TRUE); 
+      $breadcrumb[count($breadcrumb) - 1] = $category->get_label(TRUE);
     }
   }
 
@@ -1020,7 +1012,7 @@ function faceted_search_ui_build_categories($search, $index, $from = NULL, $max_
   $facets = $search->get_filters();
   $facet = $facets[$index];
   $facet->set_sort($search->ui_state['facet-sort']);
-  
+
   // Load the categories. If a limit is used, we load one extra category in
   // order to determine whether a 'more' link needs to be displayed.
   $categories = $search->load_categories($facet, $from, (isset($max_count) ? $max_count + 1 : $max_count));
@@ -1053,7 +1045,7 @@ function faceted_search_ui_build_categories($search, $index, $from = NULL, $max_
   }
 
   $facets[$index] = $facet; // Restore the altered facet at $index.
-  
+
   // Add the 'more...' link.
   if ($search->ui_state['stage'] != 'facet' && isset($max_count) && count($categories) > $max_count) {
     if ($links) {
@@ -1065,7 +1057,7 @@ function faceted_search_ui_build_categories($search, $index, $from = NULL, $max_
     }
     $items[] = theme('faceted_search_ui_more', $path);
   }
-  
+
   return $items;
 }
 
@@ -1098,7 +1090,7 @@ function faceted_search_ui_add_robots_directive($search) {
       }
     }
   }
-}  
+}
 
 /**
  * Add scripts for tooltips.
@@ -1111,6 +1103,76 @@ function faceted_search_ui_add_tooltips($env_id) {
     drupal_add_js($path .'/jquery.faceted_search_ui.js');
   }
 }
+
+/**
+ * Implementation of hook_theme().
+ */
+function faceted_search_ui_theme() {
+  return array(
+    'faceted_search_ui_page' => array(
+      'arguments' => array('search' => NULL, 'content' => NULL),
+    ),
+    'faceted_search_ui_facet_wrapper' => array(
+      'arguments' => array('env_id' => 0, 'facet' => NULL, 'context' => NULL, 'content' => NULL),
+    ),
+    'faceted_search_ui_facet_heading' => array(
+      'arguments' => array('env_id' => 0, 'ui_state' => NULL, 'facets' => NULL, 'index' => NULL, 'context' => NULL, 'show_label' => NULL),
+    ),
+    'faceted_search_ui_categories' => array(
+      'arguments' => array('facet' => NULL, 'categories' => NULL, 'stage' => NULL),
+    ),
+    'faceted_search_ui_facet_label' => array(
+      'arguments' => array('facets' => NULL, 'index' => NULL, 'label' => NULL),
+    ),
+    'faceted_search_ui_category' => array(
+      'arguments' => array('category' => NULL, 'path' => NULL),
+    ),
+    'faceted_search_ui_more' => array(
+      'arguments' => array('path' => NULL),
+    ),
+    'faceted_search_ui_remover_link_guided_search' => array(
+      'arguments' => array('path' => NULL),
+    ),
+    'faceted_search_ui_remover_link_current_search' => array(
+      'arguments' => array('path' => NULL),
+    ),
+    'faceted_search_ui_breadcrumb' => array(
+      'arguments' => array('breadcrumb' => NULL),
+    ),
+    'faceted_search_ui_sort_options' => array(
+      'arguments' => array('options' => NULL),
+    ),
+    'faceted_search_ui_stage_results' => array(
+      'arguments' => array('results' => NULL, 'style' => NULL),
+    ),
+    'faceted_search_ui_stage_select' => array(
+      'arguments' => array('search' => NULL, 'keyword_block_content' => NULL, 'guided_block_content' => NULL),
+    ),
+    'faceted_search_ui_stage_facet' => array(
+      'arguments' => array('search' => NULL, 'index' => NULL, 'facet' => NULL, 'categories' => NULL),
+    ),
+    'faceted_search_ui_guided_search' => array(
+      'arguments' => array('search' => NULL, 'facets' => NULL),
+    ),
+    'faceted_search_ui_related_list_ungrouped' => array(
+      'arguments' => array('env_id' => 0, 'node' => NULL, 'groups' => NULL),
+    ),
+    'faceted_search_ui_related_list_grouped' => array(
+      'arguments' => array('env_id' => 0, 'node' => NULL, 'groups' => NULL),
+    ),
+    'faceted_search_ui_related_table' => array(
+      'arguments' => array('env_id' => 0, 'node' => NULL, 'groups' => NULL),
+    ),
+    'faceted_search_ui_search_page' => array(
+      'arguments' => array('results' => NULL, 'type' => NULL),
+    ),
+    'faceted_search_ui_search_item' => array(
+      'arguments' => array('item' => NULL, 'type' => NULL),
+    ),
+  );
+}
+
+
 
 /**
  * Render a faceted search page.
@@ -1169,7 +1231,7 @@ function theme_faceted_search_ui_facet_wrapper($env_id, $facet, $context, $conte
 function theme_faceted_search_ui_facet_heading($env_id, $ui_state, $facets, $index, $context, $show_label = TRUE) {
   $facet = $facets[$index];
   $remover_path = faceted_search_ui_build_remover_path($env_id, $ui_state, $facets, $index);
-  
+
   if ($context == 'current') {
     $output .= theme('faceted_search_ui_remover_link_current_search', $remover_path) .' ';
   }
@@ -1255,7 +1317,7 @@ function theme_faceted_search_ui_category($category, $path) {
   else {
     $label = $category->get_label(TRUE);
   }
-  
+
   // Note: Tooltips rely on class 'faceted-search-category'.
   return '<span class="faceted-search-category">'. $label .'<span class="faceted-search-count">&nbsp;('. $category->get_count() .')</span></span>';
 }
@@ -1275,7 +1337,11 @@ function theme_faceted_search_ui_remover_link_guided_search($path) {
 
 function theme_faceted_search_ui_remover_link_current_search($path) {
   // TODO: nice default icon instead of 'x'
-  return l('[&times;]', $path, array('title' => t('Remove this term')), NULL, NULL, FALSE, TRUE);
+  $options = array(
+    'html' => TRUE,
+    'attributes' => array('title' => t('Remove this term')),
+  );
+  return l('[&times;]', $path, $options);
 }
 
 function theme_faceted_search_ui_breadcrumb($breadcrumb) {
@@ -1293,7 +1359,7 @@ function theme_faceted_search_ui_stage_results($results, $style) {
     $from = $pager_page_array[0] * $limit + 1;
     $to = min(($pager_page_array[0] + 1) * $limit, $pager_total_items[0]);
     $total = $pager_total_items[0];
-    
+
     if ($total == 1) {
       $numbering = t('1 result');
     }
@@ -1306,7 +1372,7 @@ function theme_faceted_search_ui_stage_results($results, $style) {
     else {
       $numbering = t('Results @from - @to of @total', array('@from' => $from, '@to' => $to, '@total' => $total));
     }
-    
+
     $numbering = '<div class="faceted-search-numbering">'. $numbering .'</div>';
     return $numbering . theme('box', t('Results'), $results);
   }
@@ -1452,7 +1518,7 @@ function theme_faceted_search_ui_related_table($env_id, $node, $groups) {
           'data' => array(
             array( // 1st cell.
               'data' => $label,
-              'rowspan' => count($group)), 
+              'rowspan' => count($group)),
             $rendered_facet, // 2nd cell.
           ),
           'class' => 'faceted-search-first', // Mark the first row of a group.
@@ -1471,6 +1537,65 @@ function theme_faceted_search_ui_related_table($env_id, $node, $groups) {
     }
   }
   return theme('table', array(), $items, array('class' => 'faceted-search'));
+}
+
+/**
+ * Format a single result entry of a search query. This function is normally
+ * called by theme_search_page() or hook_search_page().
+ *
+ * @param $item
+ *   A single search result as returned by hook_search(). The result should be
+ *   an array with keys "link", "title", "type", "user", "date", and "snippet".
+ *   Optionally, "extra" can be an array of extra info to show along with the
+ *   result.
+ * @param $type
+ *   The type of item found, such as "user" or "node".
+ *
+ * @ingroup themeable
+ */
+function theme_faceted_search_ui_search_item($item, $type) {
+  $output = ' <dt class="title"><a href="'. check_url($item['link']) .'">'. check_plain($item['title']) .'</a></dt>';
+  $info = array();
+  if ($item['type']) {
+    $info[] = check_plain($item['type']);
+  }
+  if ($item['user']) {
+    $info[] = $item['user'];
+  }
+  if ($item['date']) {
+    $info[] = format_date($item['date'], 'small');
+  }
+  if (is_array($item['extra'])) {
+    $info = array_merge($info, $item['extra']);
+  }
+  $output .= ' <dd>'. ($item['snippet'] ? '<p>'. $item['snippet'] .'</p>' : '') .'<p class="search-info">'. implode(' - ', $info) .'</p></dd>';
+  return $output;
+}
+
+/**
+ * Format the result page of a search query.
+ *
+ * Modules may implement hook_search_page() in order to override this default
+ * function to display search results. In that case it is expected they provide
+ * their own themeable functions.
+ *
+ * @param $results
+ *   All search result as returned by hook_search().
+ * @param $type
+ *   The type of item found, such as "user" or "node".
+ *
+ * @ingroup themeable
+ */
+function theme_faceted_search_ui_search_page($results, $type) {
+  $output = '<dl class="search-results">';
+
+  foreach ($results as $entry) {
+    $output .= theme('faceted_search_ui_search_item', $entry, $type);
+  }
+  $output .= '</dl>';
+  $output .= theme('pager', NULL, 10, 0);
+
+  return $output;
 }
 
 /**

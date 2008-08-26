@@ -2,166 +2,113 @@
 // $Id$
 
 /**
+ * Implementation of hook_schema().
+ */
+function faceted_search_schema() {
+  $schema['faceted_search_variables'] = array(
+    'description' => t(''),
+    'fields' => array(
+      'env_id' => array(
+        'description' => t(''),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+        'disp-width' => '10'
+      ),
+      'name' => array(
+        'description' => t(''),
+        'type' => 'varchar',
+        'length' => '48',
+        'not null' => TRUE,
+        'default' => ''
+      ),
+      'value' => array(
+        'description' => t(''),
+        'type' => 'text',
+        'size' => 'big',
+        'not null' => TRUE,
+        'default' => ''
+      )
+    ),
+    'primary key' => array('env_id', 'name'),
+  );
+
+  $schema['faceted_search_filters'] = array(
+    'description' => t(''),
+    'fields' => array(
+      'env_id' => array(
+        'description' => t(''),
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+        'disp-width' => '10'
+      ),
+      'filter_key' => array(
+        'description' => t(''),
+        'type' => 'varchar',
+        'length' => '32',
+        'not null' => TRUE,
+        'default' => ''
+      ),
+      'filter_id' => array(
+        'description' => t(''),
+        'type' => 'varchar',
+        'length' => '32',
+        'not null' => TRUE,
+        'default' => ''
+      ),
+      'status' => array(
+        'description' => t(''),
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'disp-width' => '11'
+      ),
+      'weight' => array(
+        'description' => t(''),
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'disp-width' => '11'
+      ),
+      'sort' => array(
+        'description' => t(''),
+        'type' => 'varchar',
+        'length' => '32',
+        'not null' => TRUE,
+        'default' => ''
+      ),
+      'max_categories' => array(
+        'description' => t(''),
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'disp-width' => '11'
+      )
+    ),
+    'primary key' => array('env_id', 'filter_key', 'filter_id'),
+    'indexes' => array(
+      'status' => array('status')
+    ),
+  );
+
+  return $schema;
+}
+
+
+/**
  * Implementation of hook_install().
  */
 function faceted_search_install() {
-  switch ($GLOBALS['db_type']) {
-    case 'mysql':
-    case 'mysqli':
-      db_query("CREATE TABLE {faceted_search_filters} (
-        env_id int(10) unsigned NOT NULL default '0',
-        filter_key varchar(32) NOT NULL default '',
-        filter_id varchar(32) NOT NULL default '',
-        status int(11) NOT NULL default '0',
-        weight int(11) NOT NULL default '0',
-        sort varchar(32) NOT NULL default '',
-        max_categories int(11) NOT NULL default '0',
-        PRIMARY KEY (env_id, filter_key, filter_id),
-        KEY status (status)
-      ) /*!40100 DEFAULT CHARACTER SET UTF8 */ ");
-
-      db_query("CREATE TABLE {faceted_search_variables} (
-        env_id int(10) unsigned NOT NULL default '0',
-        name varchar(48) NOT NULL default '',
-        value longtext NOT NULL default '',
-        PRIMARY KEY (env_id, name)
-      ) /*!40100 DEFAULT CHARACTER SET UTF8 */ ");
-      break;
-
-    case 'pgsql':
-      db_query("CREATE TABLE {faceted_search_filters} (
-        env_id int_unsigned NOT NULL default '0',
-        filter_key varchar(32) NOT NULL default '',
-        filter_id varchar(32) NOT NULL default '',
-        status smallint NOT NULL default '0',
-        weight smallint NOT NULL default '0',
-        sort varchar(32) NOT NULL default '',
-        max_categories int NOT NULL default '0',
-        PRIMARY KEY (env_id, filter_key, filter_id)
-      )");
-      db_query("CREATE INDEX {faceted_search_filters}_status_idx ON {faceted_search_filters} (status)");
-
-      db_query("CREATE TABLE {faceted_search_variables} (
-        env_id int_unsigned NOT NULL default '0',
-        name varchar(48) NOT NULL default '',
-        value text NOT NULL default '',
-        PRIMARY KEY (env_id, name)
-      )");
-      break;
-  }
+  drupal_install_schema('faceted_search');
 }
 
 /**
  * Implementation of hook_uninstall().
  */
 function faceted_search_uninstall() {
-  db_query('DROP TABLE {faceted_search_filters}');
-  db_query('DROP TABLE {faceted_search_variables}');
+  drupal_uninstall_schema('faceted_search');
 }
 
-/**
- * Move settings to a faceted search environment.
- */
-function faceted_search_update_1() {
-  $ret = array();
-
-  // Create new tables
-  $ret[] = update_sql("CREATE TABLE IF NOT EXISTS {faceted_search_facets} (
-      env_id int(10) unsigned NOT NULL default '0',
-      facet_key varchar(32) NOT NULL default '',
-      facet_id varchar(32) NOT NULL default '',
-      status int(11) NOT NULL default '0',
-      weight int(11) NOT NULL default '0',
-      sort varchar(32) NOT NULL default '',
-      max_categories int(11) NOT NULL default '0',
-      PRIMARY KEY (env_id, facet_key, facet_id),
-      KEY status (status)
-    ) /*!40100 DEFAULT CHARACTER SET UTF8 */ ");
-  $ret[] = update_sql("CREATE TABLE IF NOT EXISTS {faceted_search_variables} (
-      env_id int(10) unsigned NOT NULL default '0',
-      name varchar(48) NOT NULL default '',
-      value longtext NOT NULL,
-      PRIMARY KEY (env_id, name)
-    ) /*!40100 DEFAULT CHARACTER SET UTF8 */ ");
-
-  // Move settings
-  $env_id = db_next_id('{faceted_search}_env_id'); // Adding new environment.
-  $display_settings = variable_get('faceted_search_display', array()); // Old settings.
-  foreach ($display_settings as $key => $settings) {
-    $matches = array();
-    if (preg_match('/^([a-z_]+)_facets?_(.+)$/', $key, $matches) != 0) {
-      if ($matches[1] == 'biblio') {
-        // Note: This is specific to Biblio Facets. Have to do this here since
-        // we don't control the order of execution each module's update.
-        $matches[1] = 'biblio_field';
-      }
-      $ret[] = update_sql("INSERT INTO {faceted_search_facets} (env_id, facet_key, facet_id, status, weight, sort, max_categories) VALUES ($env_id, '${matches[1]}', '${matches[2]}', 1, ${settings['weight']}, '${settings['sort']}', ${settings['max']})");
-    }
-  }
-  faceted_search_variable_set($env_id, 'name', 'faceted_search');
-  faceted_search_variable_set($env_id, 'title', t('Search'));
-  faceted_search_variable_set($env_id, 'excluded_types', variable_get('faceted_search_excluded_types', array()));
-  variable_del('faceted_search_display');
-  variable_del('faceted_search_excluded_types');
-  
-  return $ret;
-}
-
-/**
- * Inverted the logic for selecting content types used in search environments.
- */
-function faceted_search_update_2() {
-  $ret = array();
-  $results = db_query('SELECT DISTINCT env_id FROM {faceted_search_variables}');
-  while ($result = db_fetch_object($results)) {
-    $excluded_types = array_filter(faceted_search_variable_get($result->env_id, 'excluded_types', array()));
-    if (count($excluded_types) > 0) {
-      $types = array_keys(node_get_types('names'));
-      foreach ($types as $key => $type) {
-        if (isset($excluded_types[$type])) {
-          unset($types[$key]);
-        }
-      }
-      faceted_search_variable_set($result->env_id, 'types', $types);
-      faceted_search_variable_del($result->env_id, 'excluded_types');
-    }
-  }
-  return $ret;
-}
-
-/**
- * Renamed table.
- */
-function faceted_search_update_3() {
-  $ret = array();
-  switch ($GLOBALS['db_type']) {
-    case 'mysql':
-    case 'mysqli':
-      $ret[] = update_sql("ALTER TABLE {faceted_search_facets} RENAME TO {faceted_search_filters},
-        CHANGE COLUMN facet_key filter_key varchar(32) NOT NULL default '',
-        CHANGE COLUMN facet_id filter_id varchar(32) NOT NULL default '',
-        DROP PRIMARY KEY,
-        ADD PRIMARY KEY (env_id, filter_key, filter_id)");
-      break;
-  }
-  return $ret;
-}
-
-/**
- * Renamed default filter.
- */
-function faceted_search_update_4() {
-  $ret = array();
-  $ret[] = update_sql("UPDATE {faceted_search_filters} SET filter_id = 'node' WHERE filter_key = 'keyword' AND filter_id = 'and'");
-  $ret[] = update_sql("DELETE FROM {faceted_search_filters} WHERE filter_key = 'keyword' AND filter_id IN ('phrase', 'or', 'not')");
-  return $ret;
-}
-
-/**
- * Renamed filter key.
- */
-function faceted_search_update_5() {
-  $ret = array();
-  $ret[] = update_sql("UPDATE {faceted_search_filters} SET filter_key = 'node', filter_id = 'keyword' WHERE filter_key = 'keyword'");
-  return $ret;
-}

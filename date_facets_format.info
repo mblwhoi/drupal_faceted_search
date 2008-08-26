@@ -1,6 +1,7 @@
 ; $Id$
 name = Date Facets Format
 description = "Provides formatting options for date-based facets."
-dependencies = faceted_search
+dependencies[] = faceted_search
 package = Faceted Search
+core = 6.x
 

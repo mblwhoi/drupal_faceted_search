@@ -1,5 +1,6 @@
 ; $Id$
 name = Faceted Search
 description = "API for performing faceted searches."
-dependencies = search
+dependencies[] = search
 package = Faceted Search
+core = 6.x

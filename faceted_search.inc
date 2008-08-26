@@ -15,7 +15,7 @@
  * category.
  */
 class faceted_search_filter {
-  
+
   /**
    * The key identifying this class of filter. Keys are used in the form of
    * 'key:text' tokens in the search text.
@@ -26,7 +26,7 @@ class faceted_search_filter {
    * The status of this filter.
    */
   var $_status = FALSE;
-  
+
   /**
    * The weight of this filter, for sorting purposes.
    */
@@ -37,14 +37,14 @@ class faceted_search_filter {
    * of this facet. This path includes the active category itself.
    */
   var $_path = array();
-  
+
   /**
    * Constructor.
    *
    * @param $key
    *   Key corresponding to this class of filter. This should be the same string
    *   as used to construct the filter from the search text in the module's
-   *   implementation of hook_faceted_search_parse(). 
+   *   implementation of hook_faceted_search_parse().
    * @param $active_path
    *   Array representing the path leading to the active category, including the
    *   active category itself. Defaults to an empty array, meaning no active
@@ -61,7 +61,7 @@ class faceted_search_filter {
   function is_browsable() {
     return FALSE;
   }
-  
+
   /**
    * Assign settings to this filter.
    *
@@ -76,7 +76,7 @@ class faceted_search_filter {
       $this->_weight = $settings['weight'];
     }
   }
-  
+
   /**
    * Return the key for this class of filter.
    */
@@ -90,7 +90,7 @@ class faceted_search_filter {
   function get_help() {
     return '';
   }
-  
+
   /**
    * Return the status of this filter.
    *
@@ -110,7 +110,7 @@ class faceted_search_filter {
   function set_status($status) {
     $this->_status = $status;
   }
-  
+
   /**
    * Return the configured weight of this filter, for sorting purposes.
    */
@@ -207,7 +207,7 @@ class faceted_search_category {
 
   /**
    * Updates a query for retrieving the subcategories of this category and their
-   * associated nodes within the current search results. 
+   * associated nodes within the current search results.
    *
    * This only needs to be overridden for hierarchical facets.
    *
@@ -227,7 +227,7 @@ class faceted_search_category {
  * A facet is a filter with browsable categories.
  */
 class faceted_search_facet extends faceted_search_filter {
-  
+
   /**
    * The current sort criteria to use for this facet. This determines how to
    * sort the facet's categories.
@@ -245,7 +245,7 @@ class faceted_search_facet extends faceted_search_filter {
    * @param $key
    *   Key corresponding to this class of facet. This should be the same string
    *   as used to construct the facet from the search text in the module's
-   *   implementation of hook_faceted_search_parse(). 
+   *   implementation of hook_faceted_search_parse().
    */
   function faceted_search_facet($key, $active_path = array()) {
     parent::faceted_search_filter($key, $active_path);
@@ -260,7 +260,7 @@ class faceted_search_facet extends faceted_search_filter {
   function is_browsable() {
     return TRUE;
   }
-  
+
   /**
    * Assign settings to this facet.
    *
@@ -276,7 +276,7 @@ class faceted_search_facet extends faceted_search_filter {
       $this->_max_categories = $settings['max_categories'];
     }
   }
-  
+
   /**
    * Return the available sort options for this facet. Each option is a key =>
    * label pair.
@@ -294,7 +294,7 @@ class faceted_search_facet extends faceted_search_filter {
   function get_sort() {
     return $this->_sort;
   }
-  
+
   /**
    * Assigns the current sort criteria for this facet.
    */
@@ -311,7 +311,7 @@ class faceted_search_facet extends faceted_search_filter {
   function build_sort_query_count(&$query) {
     $query->add_orderby('count', 'DESC');
   }
-  
+
   /**
    * Applies the facet's current sort option to the given query.
    */
@@ -321,7 +321,7 @@ class faceted_search_facet extends faceted_search_filter {
       $this->$method($query);
     }
   }
-  
+
   /**
    * Return the configured maximum number of categories to show in this facet.
    *
@@ -341,7 +341,7 @@ class faceted_search_facet extends faceted_search_filter {
   function set_max_categories($max_categories) {
     $this->_max_categories = $max_categories;
   }
-  
+
   /**
    * Updates a query for retrieving the root categories of this filter and their
    * associated nodes within the current search results.
@@ -367,7 +367,7 @@ class faceted_search_facet extends faceted_search_filter {
   function build_categories($results) {
     return array();
   }
-  
+
   /**
    * Inject components into the query for selecting nodes matching this facet's
    * active category.
@@ -393,7 +393,7 @@ class faceted_search_facet extends faceted_search_filter {
  * The base class of keyword categories.
  */
 class faceted_search_keyword_category {
-  
+
   /**
    * Append keywords used by this category into the specified array.
    */
@@ -430,7 +430,7 @@ class faceted_search_keyword_category {
  */
 class faceted_search_keyword_and_category extends faceted_search_keyword_category {
   var $_word = '';
-  
+
   /**
    * Constructor.
    *
@@ -464,7 +464,7 @@ class faceted_search_keyword_and_category extends faceted_search_keyword_categor
   function get_keywords(&$keywords) {
     $keywords[] = $this->_word;
   }
-  
+
   /**
    * Return the weight of this category, for sorting purposes.
    */
@@ -549,7 +549,7 @@ class faceted_search_keyword_phrase_category extends faceted_search_keyword_cate
   function get_keywords(&$keywords) {
     $keywords[] = $this->_phrase;
   }
-  
+
   /**
    * Return the weight of this category, for sorting purposes.
    */
@@ -585,7 +585,7 @@ class faceted_search_keyword_phrase_category extends faceted_search_keyword_cate
         // Real phrase. We'll have to verify it against the dataset.
         $query->enable_part("{$type}_search_dataset");
       }
-        
+
       // Add phrase match conditions.
       $query->set_current_part("{$type}_search_dataset");
       $query->add_where("{$type}_search_dataset.data LIKE '%% %s %%'", $this->_phrase);
@@ -609,7 +609,7 @@ class faceted_search_keyword_or_category extends faceted_search_keyword_category
   function faceted_search_keyword_or_category($words) {
     $this->_words = $words;
   }
-  
+
   /**
    * Return the label for this category.
    *
@@ -633,7 +633,7 @@ class faceted_search_keyword_or_category extends faceted_search_keyword_category
   function get_keywords(&$keywords) {
     $keywords = array_merge($keywords, $this->_words);
   }
-  
+
   /**
    * Return the weight of this category, for sorting purposes.
    */
@@ -686,7 +686,7 @@ class faceted_search_keyword_or_category extends faceted_search_keyword_category
  */
 class faceted_search_keyword_not_category extends faceted_search_keyword_category {
   var $_word = '';
-  
+
   /**
    * Constructor.
    *
@@ -696,7 +696,7 @@ class faceted_search_keyword_not_category extends faceted_search_keyword_categor
   function faceted_search_keyword_not_category($word) {
     $this->_word = $word;
   }
-  
+
   /**
    * Return the label for this category.
    *
@@ -741,7 +741,7 @@ class faceted_search_keyword_not_category extends faceted_search_keyword_categor
       if (!isset($words[$type])) {
         $words[$type] = array();
       }
-        
+
       // Negative words are checked against the dataset.
       $query->enable_part("{$type}_search_dataset");
       $query->set_current_part("{$type}_search_dataset");
@@ -778,7 +778,7 @@ class faceted_search_keyword_filter extends faceted_search_filter {
   /**
    * Returns the id of this filter.
    */
-  function get_id() { 
+  function get_id() {
     return 'keyword';
   }
 
@@ -799,7 +799,7 @@ class faceted_search_keyword_filter extends faceted_search_filter {
   function get_label() {
     return check_plain($this->_label);
   }
-  
+
   /**
    * Append keywords used by this filter into the specified array.
    */
@@ -808,7 +808,7 @@ class faceted_search_keyword_filter extends faceted_search_filter {
       $category->get_keywords($keywords);
     }
   }
-  
+
   /**
    * Inject components into the query for selecting nodes matching this filter.
    *
@@ -838,7 +838,7 @@ class faceted_search {
    * interfaces. It is this id that allows to select the proper settings.
    */
   var $_env_id = 0;
-  
+
   /**
    * The full, unprocessed search text.
    */
@@ -865,7 +865,7 @@ class faceted_search {
    * Flag to indicate whether the search has been executed.
    */
   var $_ready = FALSE;
-  
+
   /**
    * Collection of filters currently used by this search.
    */
@@ -886,7 +886,7 @@ class faceted_search {
 
     // Load settings for all enabled filters in this search environment.
     $all_settings = faceted_search_load_filter_settings($env_id);
-    
+
     // Make a selection with all enabled filters.
     $selection = faceted_search_get_filter_selection($all_settings);
 
@@ -903,12 +903,12 @@ class faceted_search {
       foreach ($module_filters as $filter) {
         unset($selection[$filter->get_key()][$filter->get_id()]);
       }
-      
+
       // Collect any remaining allowed facets.
       if (!empty($selection)) {
         $hook($module_filters, 'facets', $env_id, $selection);
       }
-      
+
       // Merge the filters listed by the current module.
       $this->_filters = array_merge($this->_filters, $module_filters);
 
@@ -916,11 +916,11 @@ class faceted_search {
         break; // No more filters allowed.
       }
     }
-    
+
     // After filters have been collected, any remaining text is passed to the
     // node filters.
     faceted_search_collect_node_keyword_filters($this->_filters, 'text', $env_id, $text);
-    
+
     // Prepare filters for use, assigning them their settings are sorting them.
     faceted_search_prepare_filters($this->_filters, $all_settings);
 
@@ -936,7 +936,7 @@ class faceted_search {
   function get_env_id() {
     return $this->_env_id;
   }
-  
+
   /**
    * Return the original search text of this search (i.e. the text that was
    * passed to the constructor).
@@ -951,7 +951,7 @@ class faceted_search {
   function get_keywords() {
     return $this->_keywords;
   }
-  
+
   /**
    * Return the filters used by this search.
    */
@@ -966,7 +966,7 @@ class faceted_search {
     return $this->_filters[$index];
   }
 
-  /** 
+  /**
    * Return the index of a filter given its key and id.
    */
   function get_filter_by_id($key, $id) {
@@ -983,7 +983,7 @@ class faceted_search {
   function ready() {
     return $this->_ready;
   }
-  
+
   /**
    * Perform the search and store the results in a temporary table.
    *
@@ -1016,7 +1016,7 @@ class faceted_search {
     if (!empty($types)) {
       $query->add_where("n.type IN ('". implode("','", $types) ."')");
     }
-    
+
     // Inject keyword search conditions if applicable.
     $words = array(); // Positive words to include in the query.
     $matches = array();
@@ -1049,7 +1049,7 @@ class faceted_search {
       else {
         // Join the search index for the current index type.
         $query->add_table('search_index', 'sid', 'n', 'nid', "{$type}_search_index");
-        
+
         // Join the search dataset for the current index type, in case we're
         // dealing with a complex query.
         $query->set_current_part("{$type}_search_dataset");
@@ -1059,7 +1059,7 @@ class faceted_search {
         $words_where[] = '('. substr(str_repeat("{$type}_search_index.word = '%s' OR ", count($type_words)), 0, -4) .") AND {$type}_search_index.type = '%s'";
         $words_args = array_merge($words_args, array_values($type_words));
         $words_args[] = $type;
-      
+
         $query->add_table('search_total', 'word', "{$type}_search_index", 'word', "{$type}_search_total");
 
         $words_scores[] = "{$type}_search_index.score * {$type}_search_total.count";
@@ -1075,7 +1075,7 @@ class faceted_search {
       // Add word score expression to the query.
       $score = 'SUM('. implode(' + ', $words_scores) .')';
       $query->set_current_part('normalize');
-      $query->add_field(NULL, $score, 'score'); 
+      $query->add_field(NULL, $score, 'score');
       $query->set_current_part();
 
       // Perform the word score normalization query.
@@ -1084,7 +1084,7 @@ class faceted_search {
       $query->disable_part('normalize');
 
       if (!$normalize) {
-        $this->_ready = TRUE; 
+        $this->_ready = TRUE;
         return; // Return with no results.
       }
 
@@ -1093,7 +1093,7 @@ class faceted_search {
     }
 
     // Add field needed for results.
-    $query->add_field('n', 'nid', 'nid'); 
+    $query->add_field('n', 'nid', 'nid');
 
     // Add scoring expression to the query.
     $this->_add_scoring($query, $word_score_expr, $word_score_arg);
@@ -1111,7 +1111,7 @@ class faceted_search {
     // See http://drupal.org/node/109513 regarding the use of HEAP engine.
     db_query('CREATE TEMPORARY TABLE '. $this->_results_table .' (nid int unsigned NOT NULL, PRIMARY KEY (nid)) Engine=HEAP '. $query->query(), $query->args(), $this->_results_table);
     $this->_results_count = db_result(db_query('SELECT COUNT(*) FROM '. $this->_results_table));
-    $this->_ready = TRUE; 
+    $this->_ready = TRUE;
   }
 
   /**
@@ -1121,7 +1121,7 @@ class faceted_search {
    * execute() must have been called beforehand.
    *
    * @return
-   *   Array of objects with nid and score members. 
+   *   Array of objects with nid and score members.
    */
   function load_results($limit = 10) {
     $found_items = array();
@@ -1133,7 +1133,7 @@ class faceted_search {
     }
     return $found_items;
   }
-  
+
   /**
    * Return the number of results for this search.
    *
@@ -1149,7 +1149,7 @@ class faceted_search {
   function get_results_table() {
     return $this->_results_table;
   }
-  
+
   /**
    * Return the categories for the given facet and count matching nodes within
    * results.
@@ -1187,7 +1187,7 @@ class faceted_search {
     }
     else {
       // Current search yields no results, thus no categories are possible.
-      return array(); 
+      return array();
     }
 
     // Gather the query components that will retrieve the categories.
@@ -1200,16 +1200,16 @@ class faceted_search {
     if (!$has_categories) {
       return array();
     }
-    
+
     // Apply sort criteria.
     $facet->build_sort_query($query);
-    
+
     // Apply node type filter.
     $types = faceted_search_types($this->_env_id);
     if (!empty($types)) {
       $query->add_where("n.type IN ('". implode("','", $types) ."')");
     }
-    
+
     // Run the query and return the categories.
     if (isset($from) && isset($max_count)) {
       $results = db_query_range($query->query(), $query->args(), $from, $max_count);
@@ -1260,7 +1260,7 @@ class faceted_search {
       call_user_func_array(array(&$query, 'add_field'), $score_arguments);
 
       $query->add_orderby('score', 'DESC');
-    }      
+    }
   }
 }
 
@@ -1290,7 +1290,7 @@ class faceted_search_query {
   // Part to which query elements will be added to.
   var $current_part = 'default';
   // Parts enabled for use in the final assembled the query.
-  var $parts = array('default' => 'default'); 
+  var $parts = array('default' => 'default');
 
   /**
    * Constructor. Specifies the primary table and field for this query.
@@ -1338,9 +1338,9 @@ class faceted_search_query {
    *
    * The default part is always enabled.
    *
-   * @see query
-   * @see args
-   * @see disable_part
+   * @see query()
+   * @see args()
+   * @see disable_part()
    */
   function enable_part($part) {
     $this->parts[$part] = $part;
@@ -1351,21 +1351,21 @@ class faceted_search_query {
    *
    * The default part cannot be disabled.
    *
-   * @see enable_part
+   * @see enable_part()
    */
   function disable_part($part) {
     if ($part != 'default') {
       unset($this->parts[$part]);
     }
   }
-  
+
   /**
    * Indicate whether the specified part is enabled for use in query assembling.
    */
   function is_part_enabled($part) {
     return isset($this->parts[$part]);
   }
-  
+
   /**
    * Add a table to join.
    *
@@ -1484,7 +1484,7 @@ class faceted_search_query {
     $part = isset($part) ? $part : $this->current_part;
     return isset($this->fields[$part][$alias]);
   }
-  
+
   /**
    * Add a WHERE condition. When the query is later assembled, all WHERE
    * conditions are glued together with the AND operator.
@@ -1542,7 +1542,7 @@ class faceted_search_query {
       }
     }
   }
-  
+
   /**
    * Add a GROUP BY clause.
    *
@@ -1601,8 +1601,8 @@ class faceted_search_query {
    *
    * @return
    *   Array of argument values to pass to the query.
-   * @see query
-   * @see enable_part
+   * @see query()
+   * @see enable_part()
    */
   function args() {
     $field_args = array();
@@ -1631,8 +1631,8 @@ class faceted_search_query {
    * Return the assembled SQL query (with unsubstituted arguments, if
    * any). Only query elements associated to enabled parts are used.
    *
-   * @see args
-   * @see enable_part
+   * @see args()
+   * @see enable_part()
    */
   function query() {
     // Primary field.
@@ -1666,7 +1666,7 @@ class faceted_search_query {
           }
         }
       }
-      
+
       // Joins.
       if (isset($this->table_queue[$part])) {
         foreach ($this->table_queue[$part] as $table_alias) {
@@ -1696,7 +1696,7 @@ class faceted_search_query {
           $joins[] = "$table[join] JOIN $wrapper_begin". $table['table'] ."$wrapper_end AS $table_alias ON $join_condition";
         }
       }
-      
+
       // Where clauses.
       if (isset($this->where[$part])) {
         $where = array_merge($where, $this->where[$part]);
@@ -1711,7 +1711,7 @@ class faceted_search_query {
       if (isset($this->groupby[$part])) {
         $groupby = array_merge($groupby, $this->groupby[$part]);
       }
-        
+
       // Having clauses.
       if (isset($this->having[$part])) {
         $having = array_merge($having, $this->having[$part]);
@@ -1722,7 +1722,7 @@ class faceted_search_query {
         $orderby = array_merge($orderby, $this->orderby[$part]);
       }
     }
-    
+
     $fields = implode(', ', $fields);
     $joins = count($joins) ? ' '. implode(' ', $joins) : '';
     $where = count($where) ? ' WHERE (('. implode(') AND (', $where) .'))' : '';
@@ -1732,7 +1732,7 @@ class faceted_search_query {
     if (count($subqueries)) {
       $subqueries_tokens = (empty($where) ? ' WHERE ' : ' AND ') .'$SUBQUERY$'. implode(' AND $SUBQUERY$', array_keys($subqueries));
     }
-      
+
     // Group by clauses.
     $groupby = count($groupby) ? ' GROUP BY '. implode(', ', $groupby) : '';
 
@@ -1741,7 +1741,7 @@ class faceted_search_query {
 
     // Order by clauses.
     $orderby = count($orderby) ? ' ORDER BY '. implode(', ', $orderby) : '';
-    
+
     // Create the query string.
     $query = db_rewrite_sql("SELECT $fields FROM $primary$joins$where$subqueries_tokens$groupby$having$orderby");
     if (count($subqueries)) {
@@ -1752,7 +1752,7 @@ class faceted_search_query {
       // Replace subquery tokens.
       $query = str_replace($search, $replace, $query);
     }
-    
+
     return $query;
   }
 }

@@ -11,37 +11,35 @@ require_once('./'. drupal_get_path('module', 'faceted_search') .'/faceted_search
 /**
  * Implementation of hook_form_alter().
  */
-function content_type_facet_form_alter($form_id, &$form) {
-  if ($form_id == 'faceted_search_edit_form') {
-    $env_id = $form['env_id']['#value'];
-    
-    $form['content_type_facet'] = array(
-      '#type' => 'fieldset',
-      '#title' => t('Content Type Facet options'),
-      '#collapsible' => TRUE,
-      '#collapsed' => TRUE,
-      '#weight' => 10,
+function content_type_facet_form_faceted_search_edit_form_alter(&$form, &$form_state) {
+  $env_id = $form['env_id']['#value'];
+
+  $form['content_type_facet'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Content Type Facet options'),
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+    '#weight' => 10,
+  );
+
+  $types = array();
+  foreach (array_keys(node_get_types('names')) as $type) {
+    $types[$type] = $type;
+  }
+  if (count($types)) {
+    $form['content_type_facet']['content_type_facet_types'] = array(
+      '#type' => 'checkboxes',
+      '#title' => t('Content types to display in the Content type facet'),
+      '#description' => t('Only the checked types will appear in the Content type facet. If none is checked, all types allowed by the search environment may appear in the facet. Note that this setting is not a filter for search results; all content types allowed by the search environment will still be searchable through other facets or from text searches.'),
+      '#options' => node_get_types('names'),
+      '#default_value' => (isset($env_id) ? array_intersect($types, array_filter(faceted_search_variable_get($env_id, 'content_type_facet_types', array()))) : array()),
     );
-    
-    $types = array();
-    foreach (array_keys(node_get_types('names')) as $type) {
-      $types[$type] = $type;
-    }
-    if (count($types)) {
-      $form['content_type_facet']['content_type_facet_types'] = array(
-        '#type' => 'checkboxes',
-        '#title' => t('Content types to display in the Content type facet'),
-        '#description' => t('Only the checked types will appear in the Content type facet. If none is checked, all types allowed by the search environment may appear in the facet. Note that this setting is not a filter for search results; all content types allowed by the search environment will still be searchable through other facets or from text searches.'),
-        '#options' => node_get_types('names'),
-        '#default_value' => (isset($env_id) ? array_intersect($types, array_filter(faceted_search_variable_get($env_id, 'content_type_facet_types', array()))) : array()),
-      );
-    }
-    else {
-      $form['content_type_facet']['content_type_facet_help'] = array(
-        '#type' => 'markup',
-        '#value' => '<p>'. t('No content types are currently defined.') .'</p>',
-      );
-    }
+  }
+  else {
+    $form['content_type_facet']['content_type_facet_help'] = array(
+      '#type' => 'markup',
+      '#value' => '<p>'. t('No content types are currently defined.') .'</p>',
+    );
   }
 }
 
@@ -73,7 +71,7 @@ function content_type_facet_faceted_search_collect(&$facets, $domain, $env_id, $
         else {
           $allowed_types = array_intersect($types, $all_types);
         }
-        
+
         // Scan the search text for a 'content_type:type' token, and extract a
         // facet from it.
         if ($type = search_query_extract($arg, 'content_type')) {
@@ -128,12 +126,12 @@ function content_type_facet_get_types($env_id) {
 }
 
 /**
- * A node-type based facet. 
+ * A node-type based facet.
  */
 class content_type_facet extends faceted_search_facet {
 
   var $_types = array();
-  
+
   /**
    * Constructor. Optionally assigns the active type of the facet.
    *
@@ -197,7 +195,7 @@ class content_type_facet extends faceted_search_facet {
 
   /**
    * Updates a query for retrieving the root categories of this facet and their
-   * associated nodes within the current search results. 
+   * associated nodes within the current search results.
    *
    * @param $query
    *   The query object to update.
@@ -272,5 +270,5 @@ class content_type_facet_category extends faceted_search_category {
    */
   function build_results_query(&$query) {
     $query->add_where("n.type = '%s'", $this->_type);
-  }  
+  }
 }
