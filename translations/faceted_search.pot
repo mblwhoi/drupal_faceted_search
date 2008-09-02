@@ -29,7 +29,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
-"POT-Creation-Date: 2008-06-29 01:53-0400\n"
+"POT-Creation-Date: 2008-09-01 17:27-0400\n"
 "PO-Revision-Date: YYYY-mm-DD HH:MM+ZZZZ\n"
 "Last-Translator: NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <EMAIL@ADDRESS>\n"
@@ -37,10 +37,6 @@ msgstr ""
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
-
-#: faceted_search.inc:288
-msgid "Count"
-msgstr ""
 
 #: faceted_search_ui.inc:31
 msgid "Extracts"
@@ -59,19 +55,15 @@ msgid "Roles to exclude from the Author facet"
 msgstr ""
 
 #: author_facet.module:31
-msgid "Any user having one or more of the checked roles will not appear in the facet. Note that this setting is not a filter for search results; content from excluded users can still be searchable through other facets or from text searches."
+msgid ""
+"Any user having one or more of the checked roles will not appear in the "
+"facet. Note that this setting is not a filter for search results; content "
+"from excluded users can still be searchable through other facets or from "
+"text searches."
 msgstr ""
 
 #: author_facet.module:39
 msgid "No roles are currently available."
-msgstr ""
-
-#: author_facet.module:145
-msgid "Author"
-msgstr ""
-
-#: author_facet.module:153 faceted_search.module:227
-msgid "Name"
 msgstr ""
 
 #: author_facet.module:0
@@ -87,7 +79,12 @@ msgid "Content types to display in the Content type facet"
 msgstr ""
 
 #: content_type_facet.module:34
-msgid "Only the checked types will appear in the Content type facet. If none is checked, all types allowed by the search environment may appear in the facet. Note that this setting is not a filter for search results; all content types allowed by the search environment will still be searchable through other facets or from text searches."
+msgid ""
+"Only the checked types will appear in the Content type facet. If none is "
+"checked, all types allowed by the search environment may appear in the "
+"facet. Note that this setting is not a filter for search results; all "
+"content types allowed by the search environment will still be searchable "
+"through other facets or from text searches."
 msgstr ""
 
 #: content_type_facet.module:42
@@ -96,10 +93,6 @@ msgstr ""
 
 #: content_type_facet.module:160
 msgid "Content type"
-msgstr ""
-
-#: content_type_facet.module:168 faceted_search.module:747
-msgid "Type"
 msgstr ""
 
 #: content_type_facet.module:0
@@ -159,7 +152,11 @@ msgid "date_facets_format"
 msgstr ""
 
 #: faceted_search.module:22
-msgid "A faceted search interface allows users to browse content in such a way that they can rapidly get acquainted with the scope and nature of the content without ever feeling lost. Such system relies on metadata (such as !categories) usually built specifically for !classification."
+msgid ""
+"A faceted search interface allows users to browse content in such a way that "
+"they can rapidly get acquainted with the scope and nature of the content "
+"without ever feeling lost. Such system relies on metadata (such as !"
+"categories) usually built specifically for !classification."
 msgstr ""
 
 #: faceted_search.module:22
@@ -171,7 +168,9 @@ msgid "faceted classification"
 msgstr ""
 
 #: faceted_search.module:22
-msgid "Introductory information is provided in !article about when to use &mdash; and how to build &mdash; a faceted classification."
+msgid ""
+"Introductory information is provided in !article about when to use &mdash; "
+"and how to build &mdash; a faceted classification."
 msgstr ""
 
 #: faceted_search.module:22
@@ -184,10 +183,6 @@ msgstr ""
 
 #: faceted_search.module:37
 msgid "Administer faceted search environments."
-msgstr ""
-
-#: faceted_search.module:42
-msgid "List"
 msgstr ""
 
 #: faceted_search.module:50
@@ -206,24 +201,10 @@ msgstr ""
 msgid "Environment"
 msgstr ""
 
-#: faceted_search.module:139;245
-msgid "Description"
-msgstr ""
-
-#: faceted_search.module:139
-msgid "Operations"
-msgstr ""
-
-#: faceted_search.module:143
-msgid "Edit"
-msgstr ""
-
-#: faceted_search.module:144;183
-msgid "Delete"
-msgstr ""
-
 #: faceted_search.module:153
-msgid "This page shows all of the faceted search environments that are currently defined."
+msgid ""
+"This page shows all of the faceted search environments that are currently "
+"defined."
 msgstr ""
 
 #: faceted_search.module:157
@@ -238,14 +219,6 @@ msgstr ""
 msgid "Are you sure you want to delete %env?"
 msgstr ""
 
-#: faceted_search.module:182
-msgid "This action cannot be undone."
-msgstr ""
-
-#: faceted_search.module:184 faceted_search_ui.module:834
-msgid "Cancel"
-msgstr ""
-
 #: faceted_search.module:199
 msgid "Faceted search environment %env deleted."
 msgstr ""
@@ -255,15 +228,9 @@ msgid "Basic information"
 msgstr ""
 
 #: faceted_search.module:232
-msgid "A unique name to help site administrators identify the environment. Only alphanumeric and the underscore character are allowed here."
-msgstr ""
-
-#: faceted_search.module:236
-msgid "Title"
-msgstr ""
-
-#: faceted_search.module:240 faceted_search_ui.module:35;684;821 faceted_search.install:102
-msgid "Search"
+msgid ""
+"A unique name to help site administrators identify the environment. Only "
+"alphanumeric and the underscore character are allowed here."
 msgstr ""
 
 #: faceted_search.module:241
@@ -274,12 +241,10 @@ msgstr ""
 msgid "The description of the environment for site administrators."
 msgstr ""
 
-#: faceted_search.module:256
-msgid "Content types"
-msgstr ""
-
 #: faceted_search.module:259
-msgid "Only the checked types will appear in this search environment. If none is checked, all types will be allowed."
+msgid ""
+"Only the checked types will appear in this search environment. If none is "
+"checked, all types will be allowed."
 msgstr ""
 
 #: faceted_search.module:266
@@ -287,7 +252,15 @@ msgid "Facets"
 msgstr ""
 
 #: faceted_search.module:269
-msgid "<p>Facets provide categories for users to browse and refine their search.</p><p>Check the facets you wish to expose to users. In listings, the heavier facets will sink and the lighter facets will be positioned nearer the top.</p><p>The Sort criteria applies to categories listings only, and the Categories limit applies to category listings in the Guided search only. For performance reasons, it is advisable to select some limit (users will still be able to get the full listing of categories by following a <em>more</em> link).</p>"
+msgid ""
+"<p>Facets provide categories for users to browse and refine their search.</"
+"p><p>Check the facets you wish to expose to users. In listings, the heavier "
+"facets will sink and the lighter facets will be positioned nearer the top.</"
+"p><p>The Sort criteria applies to categories listings only, and the "
+"Categories limit applies to category listings in the Guided search only. For "
+"performance reasons, it is advisable to select some limit (users will still "
+"be able to get the full listing of categories by following a <em>more</em> "
+"link).</p>"
 msgstr ""
 
 #: faceted_search.module:293 faceted_search_ui.module:118;1322
@@ -299,7 +272,11 @@ msgid "Fields"
 msgstr ""
 
 #: faceted_search.module:302
-msgid "<p>Users may restrict keyword search by field. <em>Anywhere</em> lets them search for keywords in the full nodes.</p><p>Check the fields you wish to expose to users for keyword search. In listings, the heavier fields will sink and the lighter fields will be positioned nearer the top.</p>"
+msgid ""
+"<p>Users may restrict keyword search by field. <em>Anywhere</em> lets them "
+"search for keywords in the full nodes.</p><p>Check the fields you wish to "
+"expose to users for keyword search. In listings, the heavier fields will "
+"sink and the lighter fields will be positioned nearer the top.</p>"
 msgstr ""
 
 #: faceted_search.module:329;395
@@ -330,10 +307,6 @@ msgstr ""
 msgid "Facet"
 msgstr ""
 
-#: faceted_search.module:747;789;883
-msgid "Weight"
-msgstr ""
-
 #: faceted_search.module:747
 msgid "Sort criteria"
 msgstr ""
@@ -362,16 +335,8 @@ msgstr ""
 msgid "Disabled fields"
 msgstr ""
 
-#: faceted_search.module:870
-msgid "Enabled"
-msgstr ""
-
 #: faceted_search.module:911
 msgid "Sort criteria for categories"
-msgstr ""
-
-#: faceted_search.module:920
-msgid "n/a"
 msgstr ""
 
 #: faceted_search.module:926
@@ -459,7 +424,11 @@ msgid "Base path"
 msgstr ""
 
 #: faceted_search_ui.module:159
-msgid "The base path under which this faceted search environment will be accessed. All faceted search links will be derived from that base path. Do not begin or end the base path with a /. Be careful to assign each faceted search environment its own distinct path."
+msgid ""
+"The base path under which this faceted search environment will be accessed. "
+"All faceted search links will be derived from that base path. Do not begin "
+"or end the base path with a /. Be careful to assign each faceted search "
+"environment its own distinct path."
 msgstr ""
 
 #: faceted_search_ui.module:163
@@ -467,7 +436,12 @@ msgid "Start page"
 msgstr ""
 
 #: faceted_search_ui.module:166
-msgid "Path to go to when the current search is cleared. Popular options are the base path as entered above (shows a full search page), the base path followed by <code>/results</code> (shows all content using the same display style as search results), and <code>&lt;front&gt;</code> (goes to your site's front page). Do not begin or end the start page's path with a /."
+msgid ""
+"Path to go to when the current search is cleared. Popular options are the "
+"base path as entered above (shows a full search page), the base path "
+"followed by <code>/results</code> (shows all content using the same display "
+"style as search results), and <code>&lt;front&gt;</code> (goes to your "
+"site's front page). Do not begin or end the start page's path with a /."
 msgstr ""
 
 #: faceted_search_ui.module:172
@@ -479,7 +453,11 @@ msgid "Display style"
 msgstr ""
 
 #: faceted_search_ui.module:187
-msgid "When the <em>Extracts</em> option is selected, search results show extracts relevant to the search keywords. With the <em>Teasers</em> option, search results use standard teasers. Other modules may provide additional display styles."
+msgid ""
+"When the <em>Extracts</em> option is selected, search results show extracts "
+"relevant to the search keywords. With the <em>Teasers</em> option, search "
+"results use standard teasers. Other modules may provide additional display "
+"styles."
 msgstr ""
 
 #: faceted_search_ui.module:191
@@ -487,7 +465,10 @@ msgid "Use the <em>Extracts</em> display style selectively."
 msgstr ""
 
 #: faceted_search_ui.module:193
-msgid "If this is enabled, search results will be shown in the <em>Extracts</em> display style when the current search uses keywords, or use the above display style otherwise."
+msgid ""
+"If this is enabled, search results will be shown in the <em>Extracts</em> "
+"display style when the current search uses keywords, or use the above "
+"display style otherwise."
 msgstr ""
 
 #: faceted_search_ui.module:206
@@ -495,7 +476,10 @@ msgid "Provide Current search block"
 msgstr ""
 
 #: faceted_search_ui.module:208
-msgid "When enabled, this block appears when search terms have been entered. This block can only appear on Faceted Search pages. Block visibility settings may define additional conditions for this block to appear."
+msgid ""
+"When enabled, this block appears when search terms have been entered. This "
+"block can only appear on Faceted Search pages. Block visibility settings may "
+"define additional conditions for this block to appear."
 msgstr ""
 
 #: faceted_search_ui.module:215
@@ -503,7 +487,10 @@ msgid "Provide Keyword search block"
 msgstr ""
 
 #: faceted_search_ui.module:217
-msgid "When enabled, this block provides a form where a search text can be entered. Block visibility settings may define additional conditions for this block to appear."
+msgid ""
+"When enabled, this block provides a form where a search text can be entered. "
+"Block visibility settings may define additional conditions for this block to "
+"appear."
 msgstr ""
 
 #: faceted_search_ui.module:222
@@ -511,7 +498,10 @@ msgid "Default mode"
 msgstr ""
 
 #: faceted_search_ui.module:223
-msgid "Choose the mode to select by default in keyword search. <em>New search</em> might be more intuitive to users not familiar with Faceted Search's interface since it mimics most search engines."
+msgid ""
+"Choose the mode to select by default in keyword search. <em>New search</em> "
+"might be more intuitive to users not familiar with Faceted Search's "
+"interface since it mimics most search engines."
 msgstr ""
 
 #: faceted_search_ui.module:225
@@ -527,7 +517,10 @@ msgid "Provide field selector in the Keyword search block"
 msgstr ""
 
 #: faceted_search_ui.module:232
-msgid "When enabled, the field selector will appear in the Keyword search block if there is at least one field enabled for keyword search. Note that the field selector is always shown on the <em>More options</em> page."
+msgid ""
+"When enabled, the field selector will appear in the Keyword search block if "
+"there is at least one field enabled for keyword search. Note that the field "
+"selector is always shown on the <em>More options</em> page."
 msgstr ""
 
 #: faceted_search_ui.module:246
@@ -535,7 +528,10 @@ msgid "Provide Guided search block"
 msgstr ""
 
 #: faceted_search_ui.module:248
-msgid "When enabled, this block shows categories that may be selected to start or refine a search. Block visibility settings may define additional conditions for this block to appear."
+msgid ""
+"When enabled, this block shows categories that may be selected to start or "
+"refine a search. Block visibility settings may define additional conditions "
+"for this block to appear."
 msgstr ""
 
 #: faceted_search_ui.module:252
@@ -543,7 +539,11 @@ msgid "Provide Sort options block"
 msgstr ""
 
 #: faceted_search_ui.module:254
-msgid "When enabled, this block appears when navigating a full-page list of categories (after clicking the <em>More</em> link of a facet in the Guided search). Block visibility settings may define additional conditions for this block to appear."
+msgid ""
+"When enabled, this block appears when navigating a full-page list of "
+"categories (after clicking the <em>More</em> link of a facet in the Guided "
+"search). Block visibility settings may define additional conditions for this "
+"block to appear."
 msgstr ""
 
 #: faceted_search_ui.module:258
@@ -551,7 +551,11 @@ msgid "Show tooltips on categories"
 msgstr ""
 
 #: faceted_search_ui.module:259
-msgid "Check this option to have tooltips displayed with subcategories when hovering over a category in the Guided search. This feature works only with clients that have JavaScript enabled, but is unobtrusive to clients that lack JavaScript."
+msgid ""
+"Check this option to have tooltips displayed with subcategories when "
+"hovering over a category in the Guided search. This feature works only with "
+"clients that have JavaScript enabled, but is unobtrusive to clients that "
+"lack JavaScript."
 msgstr ""
 
 #: faceted_search_ui.module:273
@@ -559,7 +563,12 @@ msgid "Provide Related categories block"
 msgstr ""
 
 #: faceted_search_ui.module:275
-msgid "When enabled, this block appears on a node's full page, showing categories related to that node. Categories may be selected to start a search. This block only appears for node types allowed in the faceted search environment (see the <em>Basic information</em> section). Block visibility settings may define additional conditions for this block to appear."
+msgid ""
+"When enabled, this block appears on a node's full page, showing categories "
+"related to that node. Categories may be selected to start a search. This "
+"block only appears for node types allowed in the faceted search environment "
+"(see the <em>Basic information</em> section). Block visibility settings may "
+"define additional conditions for this block to appear."
 msgstr ""
 
 #: faceted_search_ui.module:281
@@ -575,15 +584,13 @@ msgid "Table - Grouped by facet"
 msgstr ""
 
 #: faceted_search_ui.module:286
-msgid "Related categories may be grouped by facet (useful when a node uses more than one category per facet), or ungrouped (flat list of categories)."
+msgid ""
+"Related categories may be grouped by facet (useful when a node uses more "
+"than one category per facet), or ungrouped (flat list of categories)."
 msgstr ""
 
 #: faceted_search_ui.module:330
 msgid "%text."
-msgstr ""
-
-#: faceted_search_ui.module:330
-msgid "results"
 msgstr ""
 
 #: faceted_search_ui.module:490
@@ -658,14 +665,6 @@ msgstr ""
 msgid "Results @from - @to of @total"
 msgstr ""
 
-#: faceted_search_ui.module:1311
-msgid "Results"
-msgstr ""
-
-#: faceted_search_ui.module:1314
-msgid "Your search yielded no results"
-msgstr ""
-
 #: faceted_search_ui.module:1341;1358
 msgid "Click a term to refine your current search."
 msgstr ""
@@ -687,7 +686,11 @@ msgid "Faceted Search: Environment ID"
 msgstr ""
 
 #: faceted_search_views.module:31
-msgid "Filter by the current results of a Faceted Search environment. The option field allows you to sort the results by relevance score. If a sort option is selected, it is applied before all other sort criteria of the view. The higher the score, the more relevant the item."
+msgid ""
+"Filter by the current results of a Faceted Search environment. The option "
+"field allows you to sort the results by relevance score. If a sort option is "
+"selected, it is applied before all other sort criteria of the view. The "
+"higher the score, the more relevant the item."
 msgstr ""
 
 #: faceted_search_views.module:36
@@ -723,11 +726,18 @@ msgid "Indexing"
 msgstr ""
 
 #: taxonomy_facets.module:234
-msgid "If you are getting inconsistent results when navigating taxonomy facets, try to <a href=\"@rebuild\">rebuild the Taxonomy Facets index</a>. However, inconsistencies might denote a bug; please report any bug to Faceted Search's <a href=\"http://drupal.org/project/issues/faceted_search\">issue queue</a>."
+msgid ""
+"If you are getting inconsistent results when navigating taxonomy facets, try "
+"to <a href=\"@rebuild\">rebuild the Taxonomy Facets index</a>. However, "
+"inconsistencies might denote a bug; please report any bug to Faceted "
+"Search's <a href=\"http://drupal.org/project/issues/faceted_search\">issue "
+"queue</a>."
 msgstr ""
 
 #: taxonomy_facets.module:240
-msgid "There are currently no vocabularies. Go to the !page first to create vocabularies."
+msgid ""
+"There are currently no vocabularies. Go to the !page first to create "
+"vocabularies."
 msgstr ""
 
 #: taxonomy_facets.module:240
@@ -735,15 +745,13 @@ msgid "Categories page"
 msgstr ""
 
 #: taxonomy_facets.module:296
-msgid "The newly enabled taxonomy facets will only become effective after their indexes have been built by <a href=\"@cron\">cron</a> runs."
+msgid ""
+"The newly enabled taxonomy facets will only become effective after their "
+"indexes have been built by <a href=\"@cron\">cron</a> runs."
 msgstr ""
 
 #: taxonomy_facets.module:306
 msgid "Indexing will start on the next <a href=\"@cron\">cron</a> run."
-msgstr ""
-
-#: taxonomy_facets.module:352
-msgid "Category"
 msgstr ""
 
 #: taxonomy_facets.module:0
@@ -758,7 +766,10 @@ msgstr ""
 msgid "Provides a facet for content authors."
 msgstr ""
 
-#: author_facet.info:0 content_type_facet.info:0 date_authored_facet.info:0 date_facets_format.info:0 faceted_search.info:0;0 faceted_search_ui.info:0 faceted_search_views.info:0 field_keyword_filter.info:0 taxonomy_facets.info:0
+#: author_facet.info:0 content_type_facet.info:0 date_authored_facet.info:0
+#: date_facets_format.info:0 faceted_search.info:0;0 faceted_search_ui.info:0
+#: faceted_search_views.info:0 field_keyword_filter.info:0
+#: taxonomy_facets.info:0
 msgid "Faceted Search"
 msgstr ""
 
@@ -821,4 +832,3 @@ msgstr ""
 #: taxonomy_facets.info:0
 msgid "Provides facets based on taxonomy."
 msgstr ""
-
