@@ -663,8 +663,8 @@ function faceted_search_ui_sort_block($search) {
  * Sets the page title.
  */
 function faceted_search_ui_set_title($search) {
+  $labels = array();
   if ($search->get_text()) {
-    $labels = array();
     foreach ($search->get_filters() as $filter) {
       if ($filter->is_active()) {
         $category = $filter->get_active_category();
@@ -674,7 +674,7 @@ function faceted_search_ui_set_title($search) {
     }
   }
   $title = faceted_search_variable_get($search->get_env_id(), 'title', t('Search'));
-  if ($labels) {
+  if (count($labels)) {
     drupal_set_title(t('@title: !terms', array('@title' => $title, '!terms' => implode(', ', $labels))));
   }
   else {
@@ -881,7 +881,7 @@ function faceted_search_ui_form_submit($form, &$form_state) {
 
   // Define resulting path. Note: $form_state['values'] has the same keys as the usual
   // $ui_state argument.
-  return faceted_search_ui_build_path($form_state['values']['env_id'], $form_state['values'], $text);
+  $form_state['redirect'] = faceted_search_ui_build_path($form_state['values']['env_id'], $form_state['values'], $text);
 }
 
 /**
@@ -1232,6 +1232,7 @@ function theme_faceted_search_ui_facet_heading($env_id, $ui_state, $facets, $ind
   $facet = $facets[$index];
   $remover_path = faceted_search_ui_build_remover_path($env_id, $ui_state, $facets, $index);
 
+  $output = '';
   if ($context == 'current') {
     $output .= theme('faceted_search_ui_remover_link_current_search', $remover_path) .' ';
   }
@@ -1377,7 +1378,7 @@ function theme_faceted_search_ui_stage_results($results, $style) {
     return $numbering . theme('box', t('Results'), $results);
   }
   else {
-    return theme('box', t('Your search yielded no results'), search_help('search#noresults'));
+    return theme('box', t('Your search yielded no results'), search_help('search#noresults', ''));
   }
 }
 
@@ -1420,6 +1421,7 @@ function theme_faceted_search_ui_stage_facet($search, $index, $facet, $categorie
  *   Array of individually rendered facets.
  */
 function theme_faceted_search_ui_guided_search($search, $facets) {
+  $output = '';
   if (count($facets)) {
     $output .= '<p>'. ($search->get_text() ? t('Click a term to refine your current search.') : t('Click a term to initiate a search.')) .'</p>';
     if ($search->ui_state['stage'] == 'select') {

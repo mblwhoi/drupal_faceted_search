@@ -1684,16 +1684,16 @@ class faceted_search_query {
             // There are multiple fields to use in the join condition.
             $join_condition = array();
             foreach ($table['left_field'] as $index => $table_left_field) {
-              $join_condition[] = "{$table[left_table_alias]}.{$table_left_field} = {$table_alias}.{$table[field][$index]}";
+              $join_condition[] = "{$table['left_table_alias']}.{$table_left_field} = {$table_alias}.{$table['field'][$index]}";
             }
             $join_condition = implode(' AND ', $join_condition);
           }
           else {
-            $join_condition = "{$table[left_table_alias]}.{$table[left_field]} = {$table_alias}.{$table[field]}";
+            $join_condition = "{$table['left_table_alias']}.{$table['left_field']} = {$table_alias}.{$table['field']}";
           }
 
           // Add the table join clause.
-          $joins[] = "$table[join] JOIN $wrapper_begin". $table['table'] ."$wrapper_end AS $table_alias ON $join_condition";
+          $joins[] = $table['join'] ." JOIN $wrapper_begin". $table['table'] ."$wrapper_end AS $table_alias ON $join_condition";
         }
       }
 
@@ -1729,6 +1729,7 @@ class faceted_search_query {
 
     // Where subqueries (added as $SUBQUERY$n tokens, which are replaced after the call
     // to db_rewrite_sql(). See related issue: http://drupal.org/node/151910).
+    $subqueries_tokens = '';
     if (count($subqueries)) {
       $subqueries_tokens = (empty($where) ? ' WHERE ' : ' AND ') .'$SUBQUERY$'. implode(' AND $SUBQUERY$', array_keys($subqueries));
     }
