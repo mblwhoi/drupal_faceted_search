@@ -23,6 +23,17 @@ function faceted_search_ui_perm() {
 }
 
 /**
+ * Implementation of hook_forms().
+ */
+function faceted_search_ui_forms() {
+  $forms = array();
+  foreach (faceted_search_get_env_ids() as $env_id) {
+    $forms['faceted_search_ui_form_'. $env_id]['callback'] = 'faceted_search_ui_form';
+  }
+  return $forms;
+}
+
+/**
  * Implementation of hook_menu().
  */
 function faceted_search_ui_menu() {
@@ -519,7 +530,7 @@ function faceted_search_ui_current_block($search) {
  * Display the keyword search form.
  */
 function faceted_search_ui_keyword_block($search) {
-  return drupal_get_form('faceted_search_ui_form', $search);
+  return drupal_get_form('faceted_search_ui_form_'. $search->get_env_id(), $search);
 }
 
 /**
@@ -683,7 +694,7 @@ function faceted_search_ui_set_title($search) {
 }
 
 /**
- * Render the search form.
+ * Render the base search form.
  */
 function faceted_search_ui_form($form_state, $search) {
   $ui_state = $search->ui_state;
@@ -831,7 +842,7 @@ function faceted_search_ui_form($form_state, $search) {
     $path = faceted_search_ui_build_path($search->get_env_id(), $ui_state, $search->get_text());
     $form['go-select']['#value'] = l(t('More options'), $path);
   }
-
+  $form['#submit'] = array('faceted_search_ui_form_submit');
   return $form;
 }
 
