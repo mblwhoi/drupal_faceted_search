@@ -32,12 +32,12 @@ function taxonomy_facets_menu() {
   $items['admin/settings/faceted_search/taxonomy_facets'] = array(
     'title' => 'Taxonomy index',
     'page callback' => 'taxonomy_facets_index_page',
-    'access arguments' => array('administer site configuration'),
+    'access arguments' => array('administer faceted search'),
     'type' => MENU_LOCAL_TASK,
   );
   $items['admin/settings/faceted_search/taxonomy_facets/rebuild'] = array(
     'page callback' => 'taxonomy_facets_rebuild',
-    'access arguments' => array('administer site configuration'),
+    'access arguments' => array('administer faceted search'),
     'type' => MENU_CALLBACK,
   );
 

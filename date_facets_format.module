@@ -15,7 +15,7 @@ function date_facets_format_menu() {
     'title' => 'Date formats',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('date_facets_format_admin_settings_form'),
-    'access arguments' => array('administer site configuration'),
+    'access arguments' => array('administer faceted search'),
     'type' => MENU_LOCAL_TASK,
   );
 
