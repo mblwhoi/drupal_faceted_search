@@ -8,8 +8,6 @@
 
 require_once('./'. drupal_get_path('module', 'faceted_search') .'/faceted_search.inc');
 
-// TODO: Provide indexing status page � la search.module
-
 /**
  * Implementation of hook_cron().
  */
@@ -34,11 +32,13 @@ function taxonomy_facets_menu() {
     'page callback' => 'taxonomy_facets_index_page',
     'access arguments' => array('administer faceted search'),
     'type' => MENU_LOCAL_TASK,
+    'file' => 'taxonomy_facets.admin.inc',
   );
   $items['admin/settings/faceted_search/taxonomy_facets/rebuild'] = array(
     'page callback' => 'taxonomy_facets_rebuild',
     'access arguments' => array('administer faceted search'),
     'type' => MENU_CALLBACK,
+    'file' => 'taxonomy_facets.admin.inc',
   );
 
   return $items;
@@ -217,27 +217,6 @@ function taxonomy_facets_faceted_search_collect(&$facets, $domain, $env_id, $sel
 }
 
 /**
- * Menu callback for the index page.
- */
-function taxonomy_facets_index_page() {
-  if (count(taxonomy_get_vocabularies())) {
-    $form['indexing'] = array(
-      '#type' => 'fieldset',
-      '#title' => t('Indexing'),
-    );
-    $form['indexing']['taxonomy_facets_rebuild'] = array(
-      '#type' => 'markup',
-      '#value' => t('If you are getting inconsistent results when navigating taxonomy facets, try to <a href="@rebuild">rebuild the Taxonomy Facets index</a>. However, inconsistencies might denote a bug; please report any bug to Faceted Search\'s <a href="http://drupal.org/project/issues/faceted_search">issue queue</a>.', array('@rebuild' => url('admin/settings/faceted_search/taxonomy_facets/rebuild'))),
-    );
-    // TODO: Redo as POST request.
-    return drupal_render($form);
-  }
-  else {
-    return '<p>'. t('There are currently no vocabularies. Go to the !page first to create vocabularies.', array('!page' => l(t('Categories page'), 'admin/content/taxonomy'))) .'</p>';
-  }
-}
-
-/**
  * Implementation of hook_form_alter().
  */
 function taxonomy_facets_form_faceted_search_edit_form_alter(&$form, $form_state) {
@@ -288,18 +267,6 @@ function taxonomy_facets_edit_form_submit($form, &$form_state) {
 
   if ($enabled) {
     drupal_set_message(t('The newly enabled taxonomy facets will only become effective after their indexes have been built by <a href="@cron">cron</a> runs.', array('@cron' => url('admin/reports/status/run-cron')))); // TODO: Add link to indexing status page.
-  }
-}
-
-/**
- * Menu callback for marking all term node associations as needing an update.
- */
-function taxonomy_facets_rebuild($goto_admin = TRUE) {
-  // Mark nodes with the current time, unless they're already marked.
-  db_query('UPDATE {taxonomy_facets_node} SET changed = %d WHERE changed = 0', time());
-  drupal_set_message(t('Indexing will start on the next <a href="@cron">cron</a> run.', array('@cron' => url('admin/reports/status/run-cron', array('query' => drupal_get_destination())))));
-  if ($goto_admin) {
-    drupal_goto('admin/settings/faceted_search/taxonomy_facets');
   }
 }
 
