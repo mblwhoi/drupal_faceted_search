@@ -11,7 +11,7 @@ require_once('./'. drupal_get_path('module', 'faceted_search') .'/faceted_search
 /**
  * Implementation of hook_faceted_search_collect().
  */
-function field_keyword_filter_faceted_search_collect(&$filters, $domain, $env_id, $selection, $arg = NULL) {
+function field_keyword_filter_faceted_search_collect(&$filters, $domain, $env, $selection, $arg = NULL) {
   switch ($domain) {
     case 'keyword filters':
       $fields = field_indexer_load_fields(TRUE);
