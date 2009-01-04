@@ -832,12 +832,15 @@ class faceted_search_keyword_filter extends faceted_search_filter {
  * This class stores and processes data related to a search.
  */
 class faceted_search {
+  // TODO: Remove the '_' prefix from data members. These are not so convenient
+  // for working with the schema.
+  
   /**
    * The environment id for this search. Each search environment has its own
    * settings which make it possible to use multiple distinct search
    * interfaces. It is this id that allows to select the proper settings.
    */
-  var $_env_id = 0;
+  var $env_id = 0;
 
   /**
    * The full, unprocessed search text.
@@ -872,71 +875,63 @@ class faceted_search {
   var $_filters = array();
 
   /**
-   * Constructor. Initialize the search data and parses the given search text.
+   * Constructor. Initialize the search environment.
    *
-   * @param $env_id
-   *   Id of the environment to use for this search.
-   * @param $text
-   *   Search text.
+   * @param $record
+   *   Optional for this environment, as fetched from the database. Defaults to
+   *   NULL (for new environment).
    */
-  function faceted_search($env_id, $text = '') {
-    $this->_env_id = $env_id;
-    $this->_text = $text;
-    $this->_results_table = 'temp_faceted_search_results_'. $env_id;
+  function faceted_search($record = NULL) {
+    // Assign default settings, ensuring that all "blanks" are properly filled.
+    $this->init();
 
-    // Load settings for all enabled filters in this search environment.
-    $all_settings = faceted_search_load_filter_settings($env_id);
-
-    // Make a selection with all enabled filters.
-    $selection = faceted_search_get_filter_selection($all_settings);
-
-    // Collect all filters relevant to this search.
-    foreach (module_implements('faceted_search_collect') as $module) {
-      $module_filters = array();
-      $hook = $module .'_faceted_search_collect';
-
-      // Parse the search text and obtain corresponding filters. Text is eaten as
-      // it gets parsed.
-      $text = $hook($module_filters, 'text', $env_id, $selection, $text);
-
-      // Disallow filters that already have been collected from the search text.
-      foreach ($module_filters as $filter) {
-        unset($selection[$filter->get_key()][$filter->get_id()]);
-      }
-
-      // Collect any remaining allowed facets.
-      if (!empty($selection)) {
-        $hook($module_filters, 'facets', $env_id, $selection);
-      }
-
-      // Merge the filters listed by the current module.
-      $this->_filters = array_merge($this->_filters, $module_filters);
-
-      if (empty($selection)) {
-        break; // No more filters allowed.
-      }
-    }
-
-    // After filters have been collected, any remaining text is passed to the
-    // node filters.
-    faceted_search_collect_node_keyword_filters($this->_filters, 'text', $env_id, $text);
-
-    // Prepare filters for use, assigning them their settings are sorting them.
-    faceted_search_prepare_filters($this->_filters, $all_settings);
-
-    // Assign the keywords found.
-    foreach ($this->_filters as $filter) {
-      $filter->get_keywords($this->_keywords);
+    if (isset($record)) {
+      $this->init_from_record($record);
     }
   }
 
   /**
-   * Return the environment id of this search.
+   * Initialize this search environment with default settings.
    */
-  function get_env_id() {
-    return $this->_env_id;
+  function init() {
+    $this->name = '';
+    $this->description = '';
+    $this->settings['title'] = t('Search');
+    $this->settings['ignore_status'] = FALSE;
+    $this->settings['types'] = array();
+
+    // Provide other modules an opportunity to add their own default settings.
+    module_invoke_all('faceted_search_init', $this);
   }
 
+  /**
+   * Assign this search environment's settings from a record fetched from the
+   * database. Existing settings will be overwritten only if they are present in
+   * the record.
+   *
+   * @param $record
+   *   Optional for this environment, as fetched from the database.
+   */
+  function init_from_record($record) {
+    if (isset($record->settings)) {
+      // The schema has this field serialized.
+      $settings = unserialize($record->settings);
+
+      if (is_array($settings)) {
+        // Load the settings from the record while preserving any default
+        // settings that are not present in the record.
+        $this->settings = $settings + $this->settings;
+      }
+        
+      unset($record->settings);
+    }
+      
+    // Load the remaining data from the record.
+    foreach ($record as $key => $value) {
+      $this->$key = $value;
+    }
+  }
+  
   /**
    * Return the original search text of this search (i.e. the text that was
    * passed to the constructor).
@@ -978,6 +973,71 @@ class faceted_search {
   }
 
   /**
+   * Prepare the complete search environment (with its filters), parsing the
+   * given search text. Requires that an env_id has been assigned previously.
+   *
+   * @param $text
+   *   Optional search text. Defaults to the empty string.
+   * @return
+   *   TRUE is the search environment could be successfully built.
+   */
+  function prepare($text = '') {
+    if (!$this->env_id) {
+      return FALSE;
+    }
+    
+    $this->_text = $text;
+    $this->_results_table = 'temp_faceted_search_results_'. $this->env_id;
+    
+    // Load settings for all enabled filters in this search environment.
+    $all_filter_settings = faceted_search_load_filter_settings($this);
+
+    // Make a selection with all enabled filters.
+    $selection = faceted_search_get_filter_selection($all_filter_settings);
+
+    // Collect all filters relevant to this search.
+    foreach (module_implements('faceted_search_collect') as $module) {
+      $module_filters = array();
+      $hook = $module .'_faceted_search_collect';
+
+      // Parse the search text and obtain corresponding filters. Text is eaten as
+      // it gets parsed.
+      $text = $hook($module_filters, 'text', $this, $selection, $text);
+
+      // Disallow filters that already have been collected from the search text.
+      foreach ($module_filters as $filter) {
+        unset($selection[$filter->get_key()][$filter->get_id()]);
+      }
+
+      // Collect any remaining allowed facets.
+      if (!empty($selection)) {
+        $hook($module_filters, 'facets', $this, $selection);
+      }
+
+      // Merge the filters listed by the current module.
+      $this->_filters = array_merge($this->_filters, $module_filters);
+
+      if (empty($selection)) {
+        break; // No more filters allowed.
+      }
+    }
+
+    // After filters have been collected, any remaining text is passed to the
+    // node filters.
+    faceted_search_collect_node_keyword_filters($this->_filters, 'text', $this, $text);
+
+    // Prepare filters for use, assigning them their settings are sorting them.
+    faceted_search_prepare_filters($this->_filters, $all_filter_settings);
+
+    // Assign the keywords found.
+    foreach ($this->_filters as $filter) {
+      $filter->get_keywords($this->_keywords);
+    }
+
+    return TRUE;
+  }
+
+  /**
    * Return TRUE when the search has been executed.
    */
   function ready() {
@@ -986,6 +1046,8 @@ class faceted_search {
 
   /**
    * Perform the search and store the results in a temporary table.
+   *
+   * The prepare() method must have been called previously.
    *
    * Results are retrieved in two logical "passes". However, the two passes are
    * joined together into a single query.  And in the case of most simple
@@ -1005,14 +1067,14 @@ class faceted_search {
     }
 
     $query = new faceted_search_query;
-    if (!faceted_search_variable_get($this->_env_id, 'ignore_status', FALSE) || !user_access('administer nodes')) {
+    if (!$this->settings['ignore_status'] || !user_access('administer nodes')) {
       // Restrict the search to published nodes only.
       $query->add_where('n.status = 1');
     }
     $query->add_groupby('n.nid');
 
     // Apply node type filter
-    $types = faceted_search_types($this->_env_id);
+    $types = faceted_search_types($this);
     if (!empty($types)) {
       $query->add_where("n.type IN ('". implode("','", $types) ."')");
     }
@@ -1171,7 +1233,7 @@ class faceted_search {
     $query->add_field(NULL, 'COUNT(DISTINCT(n.nid))', 'count');
     if (!$this->_ready) {
       // No temporary table available, search within all nodes.
-      if (!faceted_search_variable_get($this->_env_id, 'ignore_status', FALSE) || !user_access('administer nodes')) {
+      if (!$this->settings['ignore_status'] || !user_access('administer nodes')) {
         // Restrict the search to published nodes only.
         $query->add_where('n.status = 1');
       }
@@ -1205,7 +1267,7 @@ class faceted_search {
     $facet->build_sort_query($query);
 
     // Apply node type filter.
-    $types = faceted_search_types($this->_env_id);
+    $types = faceted_search_types($this);
     if (!empty($types)) {
       $query->add_where("n.type IN ('". implode("','", $types) ."')");
     }

@@ -12,7 +12,7 @@ require_once('./'. drupal_get_path('module', 'faceted_search') .'/faceted_search
  * Implementation of hook_form_alter().
  */
 function author_facet_form_faceted_search_edit_form_alter(&$form, $form_state) {
-  $env_id = $form['env_id']['#value'];
+  $env = $form['env']['#value'];
 
   $form['author_facet'] = array(
     '#type' => 'fieldset',
@@ -29,7 +29,7 @@ function author_facet_form_faceted_search_edit_form_alter(&$form, $form_state) {
       '#title' => t('Roles to exclude from the Author facet'),
       '#description' => t('Any user having one or more of the checked roles will not appear in the facet. Note that this setting is not a filter for search results; content from excluded users can still be searchable through other facets or from text searches.'),
       '#options' => $roles,
-      '#default_value' => isset($env_id) ? author_facet_excluded_roles($env_id) : array(),
+      '#default_value' => author_facet_excluded_roles($env),
     );
   }
   else {
@@ -43,12 +43,12 @@ function author_facet_form_faceted_search_edit_form_alter(&$form, $form_state) {
 /**
  * Implementation of hook_faceted_search_collect().
  */
-function author_facet_faceted_search_collect(&$facets, $domain, $env_id, $selection, $arg = NULL) {
+function author_facet_faceted_search_collect(&$facets, $domain, $env, $selection, $arg = NULL) {
   switch ($domain) {
     case 'facets':
       // If the author facet is allowed.
       if (!isset($selection) || isset($selection['author'][1])) {
-        $excluded_roles = author_facet_excluded_roles($env_id);
+        $excluded_roles = author_facet_excluded_roles($env);
         $facets[] = new author_facet($excluded_roles);
       }
       break;
@@ -60,9 +60,9 @@ function author_facet_faceted_search_collect(&$facets, $domain, $env_id, $select
         // facet from it.
         $uid = search_query_extract($arg, 'author');
         if (is_numeric($uid)) {
-          $excluded_roles = author_facet_excluded_roles($env_id);
+          $excluded_roles = author_facet_excluded_roles($env);
           
-          if ($name = author_facet_get_user_name($env_id, $uid, $excluded_roles)) {
+          if ($name = author_facet_get_user_name($env, $uid, $excluded_roles)) {
             // Create a facet with the user found in the search text as the
             // active category.
             $facets[] = new author_facet($excluded_roles, $uid, $name);
@@ -80,8 +80,8 @@ function author_facet_faceted_search_collect(&$facets, $domain, $env_id, $select
     case 'node':
       // If the author facet is allowed.
       if (is_numeric($arg->uid) && (!isset($selection) || isset($selection['author'][1]))) {
-        $excluded_roles = author_facet_excluded_roles($env_id);
-        if ($name = author_facet_get_user_name($env_id, $arg->uid, $excluded_roles)) {
+        $excluded_roles = author_facet_excluded_roles($env);
+        if ($name = author_facet_get_user_name($env, $arg->uid, $excluded_roles)) {
           // Create a facet with the node's author as the active category.
           $facets[] = new author_facet($excluded_roles, $arg->uid, $name);
         }
@@ -91,12 +91,19 @@ function author_facet_faceted_search_collect(&$facets, $domain, $env_id, $select
 }
 
 /**
+ * Implementation of hook_faceted_search_init().
+ */
+function author_facet_faceted_search_init(&$env) {
+  $env->settings['author_facet_excluded_roles'] = array();
+}
+
+/**
  * Return the name of a user.
  *
  * @return The user's name, or FALSE if not found or if the user's role is not
  * allowed in the facet.
  */
-function author_facet_get_user_name($env_id, $uid, $excluded_roles = array()) {
+function author_facet_get_user_name($env, $uid, $excluded_roles = array()) {
   if ($uid == 0) {
   	return t('Anonymous');
   }
@@ -111,9 +118,9 @@ function author_facet_get_user_name($env_id, $uid, $excluded_roles = array()) {
 /**
  * Returns an array with the roles that should not be used in faceted searches.
  */
-function author_facet_excluded_roles($env_id) {
+function author_facet_excluded_roles($env) {
   $roles = array_filter(user_roles(TRUE), '_author_facet_filter_role');
-  return array_intersect(faceted_search_variable_get($env_id, 'author_facet_excluded_roles', array()), array_keys($roles));
+  return array_intersect($env->settings['author_facet_excluded_roles'], array_keys($roles));
 }
 
 /**

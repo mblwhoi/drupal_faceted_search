@@ -13,7 +13,7 @@ require_once('./'. drupal_get_path('module', 'faceted_search') .'/faceted_search
 /**
  * Implementation of hook_faceted_search_collect().
  */
-function date_authored_facet_faceted_search_collect(&$facets, $domain, $env_id, $selection, $arg = NULL) {
+function date_authored_facet_faceted_search_collect(&$facets, $domain, $env, $selection, $arg = NULL) {
   switch ($domain) {
     case 'facets':
       // If the date authored facet is allowed.

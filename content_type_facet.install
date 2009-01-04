@@ -5,9 +5,6 @@
  * Implementation of hook_uninstall().
  */
 function content_type_facet_uninstall() {
-  if (db_table_exists('faceted_search_variables')) {
-    db_query("DELETE FROM {faceted_search_variables} WHERE name = 'content_type_facet_types'");
-  }
   if (db_table_exists('faceted_search_filters')) {
     db_query("DELETE FROM {faceted_search_filters} WHERE filter_key = 'content_type'");
   }

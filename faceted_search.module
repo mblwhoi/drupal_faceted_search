@@ -9,11 +9,6 @@
 require_once('./'. drupal_get_path('module', 'faceted_search') .'/faceted_search.inc');
 
 /**
- * Global.
- */
-$_faceted_search_variables = array();
-
-/**
  * Implementation of hook_help().
  */
 function faceted_search_help($path, $arg) {
@@ -51,13 +46,14 @@ function faceted_search_menu() {
   );
   $items['admin/settings/faceted_search/add'] = array(
     'title' => 'Add environment',
-    'page callback' => 'faceted_search_add_page',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('faceted_search_edit_form'),
     'access callback' => 'user_access',
     'access arguments' => array('administer faceted search'),
     'type' => MENU_LOCAL_TASK,
     'file' => 'faceted_search.admin.inc',
   );
-  $items['admin/settings/faceted_search/delete/%'] = array(
+  $items['admin/settings/faceted_search/delete/%faceted_search_env'] = array(
     'load arguments' => array(5),
     'page callback' => 'drupal_get_form',
     'page arguments' => array('faceted_search_delete_form', 4),
@@ -65,7 +61,7 @@ function faceted_search_menu() {
     'type' => MENU_CALLBACK,
     'file' => 'faceted_search.admin.inc',
   );
-  $items['admin/settings/faceted_search/%'] = array(
+  $items['admin/settings/faceted_search/%faceted_search_env'] = array(
     'load arguments' => array(4),
     'page callback' => 'drupal_get_form',
     'page arguments' => array('faceted_search_edit_form', 3),
@@ -91,13 +87,13 @@ function faceted_search_menu() {
  *   The domain where to look for filters. Possible values:
  *   - 'keyword filters': All possible keyword filters.
  *   - 'text': Filters specified in the specified search text.
- * @param $env_id
+ * @param $env
  *   Id of the environment for which filters are collected. This is NULL in the
  *   case of a new environment.
  * @param $text
  *   The search text. Only used when the domain is 'text'.
  */
-function faceted_search_collect_node_keyword_filters(&$filters, $domain, $env_id, $text = '') {
+function faceted_search_collect_node_keyword_filters(&$filters, $domain, $env, $text = '') {
   switch ($domain) {
     case 'keyword filters':
       $filter = new faceted_search_keyword_filter('node', t('Anywhere'));
@@ -139,12 +135,12 @@ function faceted_search_collect_node_keyword_filters(&$filters, $domain, $env_id
  * @return
  *   Array with type names. Empty when all types are allowed in the environment.
  */
-function faceted_search_types($env_id) {
+function faceted_search_types($env) {
   $all_types = array();
   foreach (array_keys(node_get_types('names')) as $type) {
     $all_types[$type] = $type;
   }
-  $types = array_filter(faceted_search_variable_get($env_id, 'types', array()));
+  $types = array_filter($env->settings['types']);
   if (!empty($types)) {
     // Only return types that still exist.
     $types = array_intersect($types, $all_types);
@@ -157,102 +153,24 @@ function faceted_search_types($env_id) {
 }
 
 /**
- * Load the persistent environment variables table.
+ * Load a search environment from the database, or from memory if its was
+ * already loaded.
  *
- * The variable table is composed of values that have been saved in the table
- * with faceted_search_variable_set().
+ * This function also acts as an argument loader for the menu system.
  */
-function _faceted_search_variables_init() {
-  global $_faceted_search_variables;
+function faceted_search_env_load($env_id) {
+  static $env = NULL;
 
-  $_faceted_search_variables = array();
-
-  $result = db_query('SELECT * FROM {faceted_search_variables}');
-  while ($variable = db_fetch_object($result)) {
-    $_faceted_search_variables[$variable->env_id][$variable->name] = unserialize($variable->value);
+  if (!is_numeric($env_id)) {
+    return FALSE;
   }
-}
-
-/**
- * Return a persistent environment variable.
- *
- * @param $env_id
- *   The environment to which the variable applies.
- * @param $name
- *   The name of the variable to return.
- * @param $default
- *   The default value to use if this variable has never been set.
- * @return
- *   The value of the variable.
- */
-function faceted_search_variable_get($env_id, $name, $default) {
-
-  global $_faceted_search_variables;
-
-  if (!isset($_faceted_search_variables)) {
-    _faceted_search_variables_init();
+  if (!isset($env[$env_id])) {
+    $results = db_query('SELECT * FROM {faceted_search_env} WHERE env_id = %d', $env_id);
+    if ($record = db_fetch_object($results)) {
+      $env[$env_id] = new faceted_search($record);
+    }
   }
-
-  return $_faceted_search_variables[$env_id][$name] ? $_faceted_search_variables[$env_id][$name] : $default ;
-}
-
-/**
- * Set a persistent environment variable.
- *
- * @param $env_id
- *   The environment to which the variable applies.
- * @param $name
- *   The name of the variable to set.
- * @param $value
- *   The value to set. This can be any PHP data type; these functions take care
- *   of serialization as necessary.
- */
-function faceted_search_variable_set($env_id, $name, $value) {
-  global $_faceted_search_variables;
-
-  if (!isset($_faceted_search_variables)) {
-    _faceted_search_variables_init();
-  }
-
-  db_lock_table('faceted_search_variables');
-  db_query("DELETE FROM {faceted_search_variables} WHERE env_id = %d AND name = '%s'", $env_id, $name);
-  db_query("INSERT INTO {faceted_search_variables} (env_id, name, value) VALUES (%d, '%s', '%s')", $env_id, $name, serialize($value));
-  db_unlock_tables();
-
-  $_faceted_search_variables[$env_id][$name] = $value;
-}
-
-/**
- * Unset a persistent environment variable.
- *
- * @param $env_id
- *   The environment to which the variable applies.
- * @param $name
- *   The name of the variable to undefine.
- */
-function faceted_search_variable_del($env_id, $name) {
-  global $_faceted_search_variables;
-
-  if (!isset($_faceted_search_variables)) {
-    _faceted_search_variables_init();
-  }
-
-  db_query("DELETE FROM {faceted_search_variables} WHERE env_id = %d AND name = '%s'", $env_id, $name);
-  unset($_faceted_search_variables[$env_id][$name]);
-}
-
-/**
- * Unset all persistent variables from a given environment.
- */
-function faceted_search_variable_del_all($env_id) {
-  global $_faceted_search_variables;
-
-  if (!isset($_faceted_search_variables)) {
-    _faceted_search_variables_init();
-  }
-
-  db_query('DELETE FROM {faceted_search_variables} WHERE env_id = %d', $env_id);
-  unset($_faceted_search_variables[$env_id]);
+  return isset($env[$env_id]) ? $env[$env_id] : FALSE;
 }
 
 /**
@@ -261,7 +179,7 @@ function faceted_search_variable_del_all($env_id) {
 function faceted_search_get_env_ids() {
   static $env_ids = array();
   if (!$env_ids) {
-    $results = db_query('SELECT DISTINCT(env_id) FROM {faceted_search_filters}');
+    $results = db_query('SELECT env_id FROM {faceted_search_env}');
     while ($result = db_fetch_object($results)) {
       $env_ids[$result->env_id] = $result->env_id;
     }
@@ -272,7 +190,7 @@ function faceted_search_get_env_ids() {
 /**
  * Load filter settings into an array.
  *
- * @param $env_id
+ * @param $env
  *   Environment whose filters should be loaded.
  * @param $include_disabled
  *   Optional. When FALSE, only retrieve the settings of filters that are enabled. When
@@ -283,14 +201,15 @@ function faceted_search_get_env_ids() {
  * @return
  *   Array of filters settings keyed by filter key and filter id.
  */
-function faceted_search_load_filter_settings($env_id, $include_disabled = FALSE, $filter_key = NULL) {
+function faceted_search_load_filter_settings($env, $include_disabled = FALSE, $filter_key = NULL) {
   $filter_settings = array();
-
-  $where_status = $include_disabled ? '' : 'AND status = 1';
-  $where_filter_key = isset($filter_key) ? "AND filter_key = '%s'" : '';
-  $results = db_query("SELECT * FROM {faceted_search_filters} WHERE env_id = %d $where_status $where_filter_key", $env_id, $filter_key);
-  while ($settings = db_fetch_array($results)) {
-    $filter_settings[$settings['filter_key']][$settings['filter_id']] = $settings;
+  if ($env->env_id) {
+    $where_status = $include_disabled ? '' : 'AND status = 1';
+    $where_filter_key = isset($filter_key) ? "AND filter_key = '%s'" : '';
+    $results = db_query("SELECT * FROM {faceted_search_filters} WHERE env_id = %d $where_status $where_filter_key", $env->env_id, $filter_key);
+    while ($settings = db_fetch_array($results)) {
+      $filter_settings[$settings['filter_key']][$settings['filter_id']] = $settings;
+    }
   }
   return $filter_settings;
 }
@@ -318,9 +237,9 @@ function faceted_search_save_filter_settings($env_id, $filter_settings) {
  *
  * The selection is an array keyed by filter key and filter id.
  */
-function faceted_search_get_filter_selection($all_settings) {
+function faceted_search_get_filter_selection($all_filter_settings) {
   $selection = array();
-  foreach ($all_settings as $filter_key_settings) {
+  foreach ($all_filter_settings as $filter_key_settings) {
     foreach ($filter_key_settings as $settings) {
       $selection[$settings['filter_key']][$settings['filter_id']] = TRUE;
     }
