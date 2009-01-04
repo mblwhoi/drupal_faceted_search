@@ -126,7 +126,7 @@ function taxonomy_facets_taxonomy($op, $type, $array = NULL) {
 /**
  * Implementation of hook_faceted_search_collect().
  */
-function taxonomy_facets_faceted_search_collect(&$facets, $domain, $env_id, $selection, $arg = NULL) {
+function taxonomy_facets_faceted_search_collect(&$facets, $domain, $env, $selection, $arg = NULL) {
   switch ($domain) {
     case 'facets':
       $vocabularies = taxonomy_get_vocabularies();
@@ -231,7 +231,7 @@ function taxonomy_facets_form_faceted_search_edit_form_alter(&$form, $form_state
  * associated nodes as needing an update.
  */
 function taxonomy_facets_edit_form_submit($form, &$form_state) {
-  $env_id = $form_state['values']['env_id'];
+  $env = $form_state['values']['env'];
 
   // Find what vocabularies were enabled before this form submission.
   $old_status = array();
@@ -253,7 +253,7 @@ function taxonomy_facets_edit_form_submit($form, &$form_state) {
     if (isset($form_state['values']['facets']['taxonomy_'. $vid]['status'])) {
       $new_status = $form_state['values']['facets']['taxonomy_'. $vid]['status'];
       if (($new_status && !isset($old_status[$vid])) ||
-        (!$new_status && isset($old_status[$vid]) && count($old_status[$vid]) == 1 && isset($old_status[$vid][$env_id]))) {
+        (!$new_status && isset($old_status[$vid]) && count($old_status[$vid]) == 1 && isset($old_status[$vid][$env->env_id]))) {
         // Vocabulary is now enabled and no environment was already using it
         // - OR -
         // Vocabulary is now disabled and this was the last environment needing it.
@@ -356,7 +356,7 @@ class taxonomy_facet extends faceted_search_facet {
       $query->add_where('term_hierarchy.parent = 0');
     }
     else {
-      $query->add_table('term_node', 'nid', 'n', 'nid');
+      $query->add_table('term_node', 'vid', 'n', 'vid');
     }
     $query->add_table('term_data', 'tid', 'term_node', 'tid');
     $query->add_field('term_data', 'tid');
@@ -509,7 +509,7 @@ function _taxonomy_facets_update($nid) {
   // that do not meet those conditions do not belong in the
   // taxonomy_facets_term_node table.
   $tids = array();
-  $results = db_query("SELECT tn.tid, t.vid FROM {term_node} tn INNER JOIN {term_data} t ON t.tid = tn.tid INNER JOIN {faceted_search_filters} f ON f.filter_id = t.vid INNER JOIN {vocabulary} v ON t.vid = v.vid WHERE tn.nid = %d AND f.filter_key = 'taxonomy' AND f.status = 1 AND v.hierarchy > 0", $nid);
+  $results = db_query("SELECT tn.tid, t.vid FROM {node} n INNER JOIN {term_node} tn ON n.vid = tn.vid INNER JOIN {term_data} t ON t.tid = tn.tid INNER JOIN {faceted_search_filters} f ON f.filter_id = t.vid INNER JOIN {vocabulary} v ON t.vid = v.vid WHERE n.nid = %d AND f.filter_key = 'taxonomy' AND f.status = 1 AND v.hierarchy > 0", $nid);
   while ($r = db_fetch_object($results)) {
     // Create associations between the node and all of the term's ancestors.
     $ancestors = taxonomy_get_parents_all($r->tid);
@@ -536,9 +536,7 @@ function _taxonomy_facets_update($nid) {
  */
 function _taxonomy_facets_touch($vid) {
   // Mark nodes with the current time, unless they're already marked.
-  // TODO: Under D6, the taxonomy_facets_node table should get replaced by the
-  // reindex column of the search_dataset table.
-  db_query('UPDATE {taxonomy_facets_node} SET changed = %d WHERE changed = 0 AND nid IN (SELECT tn.nid FROM {term_node} tn INNER JOIN {term_data} t ON t.tid = tn.tid WHERE t.vid = %d)', time(), $vid);
+  db_query('UPDATE {taxonomy_facets_node} SET changed = %d WHERE changed = 0 AND nid IN (SELECT n.nid FROM {node} n INNER JOIN {term_node} tn ON n.vid = tn.vid INNER JOIN {term_data} t ON t.tid = tn.tid WHERE t.vid = %d)', time(), $vid);
 }
 
 /**
@@ -547,8 +545,6 @@ function _taxonomy_facets_touch($vid) {
  */
 function _taxonomy_facets_touch_term($tid) {
   // Mark nodes with the current time, unless they're already marked.
-  // TODO: Under D6, the taxonomy_facets_node table should get replaced by the
-  // reindex column of the search_dataset table.
   db_query('UPDATE {taxonomy_facets_node} SET changed = %d WHERE changed = 0 AND nid IN (SELECT tn.nid FROM {taxonomy_facets_term_node} tn WHERE tn.tid = %d)', time(), $tid);
 }
 
