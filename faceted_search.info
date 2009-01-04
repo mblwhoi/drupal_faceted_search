@@ -4,3 +4,4 @@ description = "API for performing faceted searches."
 dependencies[] = search
 package = Faceted Search
 core = 6.x
+php = 5.1

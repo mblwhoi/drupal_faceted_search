@@ -101,6 +101,8 @@ Requirements
 
 - MySQL 4.1 (or later version). 
 
+- PHP 5.1 (or later version).
+
 
 Recommended modules
 *******************
