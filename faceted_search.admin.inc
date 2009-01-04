@@ -10,24 +10,23 @@
  * List all environments and provide links to operations on those.
  */
 function faceted_search_list_page() {
-  $env_ids = faceted_search_get_env_ids();
-  if (count($env_ids)) {
-    $headers = array(t('Environment'), t('Description'), t('Operations'));
-    $items = array();
-    foreach ($env_ids as $env_id) {
-      $links = array(
-        array('title' => t('Edit'), 'href' => 'admin/settings/faceted_search/'. $env_id),
-        array('title' => t('Delete'), 'href' => 'admin/settings/faceted_search/delete/'. $env_id),
-      );
-      $name = faceted_search_variable_get($env_id, 'name', $env_id);
-      $path = faceted_search_variable_get($env_id, 'base_path', NULL);
-      $env = isset($path) ? l($name, $path) : $name; // Validate the path, because it is a faceted_search_ui thing, normally unknown by faceted_search.
-      $description = faceted_search_variable_get($env_id, 'description', '');
-      $items[$name] = array($env, filter_xss_admin($description), theme('links', $links));
-    }
+  $items = array();
+  foreach (faceted_search_get_env_ids() as $env_id) {
+    $env = faceted_search_env_load($env_id);
+    $links = array(
+      array('title' => t('Edit'), 'href' => 'admin/settings/faceted_search/'. $env_id),
+      array('title' => t('Delete'), 'href' => 'admin/settings/faceted_search/delete/'. $env_id),
+    );
+    // Check that the base_path is a valid setting, because it is a
+    // faceted_search_ui thing that faceted_search, as the parent class,
+    // should normally not know about.
+    $display = isset($env->settings['base_path']) ? l($env->name, $env->settings['base_path']) : $name; 
+    $items[$env->name] = array($display, filter_xss_admin($env->description), theme('links', $links));
+  }
+  if (count($items)) {
     ksort($items); // Sort items by name.
     $output = '<p>'. t('This page shows all of the faceted search environments that are currently defined.') .'</p>';
-    $output .= theme('table', $headers, $items);
+    $output .= theme('table', array(t('Environment'), t('Description'), t('Operations')), $items);
   }
   else {
     $output = '<p>'. t('No faceted search environments have currently been defined.') .'</p>';
@@ -36,24 +35,16 @@ function faceted_search_list_page() {
 }
 
 /**
- * Add a new environment.
- */
-function faceted_search_add_page() {
-  drupal_set_title(t('Add a faceted search environment'));
-  return drupal_get_form('faceted_search_edit_form', NULL);
-}
-
-/**
  * Delete an environment.
  */
-function faceted_search_delete_form($form_state, $env_id) {
-  $form['env_id'] = array(
+function faceted_search_delete_form($form_state, $env) {
+  $form['env'] = array(
     '#type' => 'value',
-    '#value' => $env_id,
+    '#value' => $env,
   );
   $form = confirm_form(
     $form,
-    t('Are you sure you want to delete %env?', array('%env' => faceted_search_variable_get($env_id, 'name', $env_id))),
+    t('Are you sure you want to delete %env?', array('%env' => $env->name)),
     'admin/settings/faceted_search',
     t('This action cannot be undone.'),
     t('Delete'),
@@ -66,13 +57,13 @@ function faceted_search_delete_form($form_state, $env_id) {
  * Handle the submit button to delete an environment.
  */
 function faceted_search_delete_form_submit($form, &$form_state) {
-  $env = faceted_search_variable_get($form_state['values']['env_id'], 'name', $form_state['values']['env_id']);
+  $name = $form_state['values']['env']->name;
 
-  faceted_search_variable_del_all($form_state['values']['env_id']);
-  db_query('DELETE FROM {faceted_search_filters} WHERE env_id = %d', $form_state['values']['env_id']);
+  db_query('DELETE FROM {faceted_search_env} WHERE env_id = %d', $form_state['values']['env']->env_id);
+  db_query('DELETE FROM {faceted_search_filters} WHERE env_id = %d', $form_state['values']['env']->env_id);
   menu_rebuild();
 
-  drupal_set_message(t('Faceted search environment %env deleted.', array('%env' => $env)));
+  drupal_set_message(t('Faceted search environment %name deleted.', array('%name' => $name)));
 
   $form_state['redirect'] = 'admin/settings/faceted_search';
 }
@@ -80,17 +71,21 @@ function faceted_search_delete_form_submit($form, &$form_state) {
 /**
  * Form for editing an environment.
  *
- * @param $env_id
- *   The id of the environment to edit, or null if adding a new one.
+ * @param $env
+ *   The environment to edit, or NULL if adding a new one.
  */
-function faceted_search_edit_form($form_state, $env_id = NULL) {
-  drupal_set_title(t('Faceted search environment: @env', array('@env' => faceted_search_variable_get($env_id, 'name', $env_id))));
-  if (isset($env_id)) {
-    $form['env_id'] = array(
-      '#type' => 'value',
-      '#value' => $env_id,
-    );
+function faceted_search_edit_form($form_state, $env = NULL) {
+  if (isset($env)) {
+    drupal_set_title(t('Faceted search environment: @name', array('@name' => $env->name)));
   }
+  else {
+    drupal_set_title(t('Add a faceted search environment'));
+    $env = new faceted_search();
+  }
+  $form['env'] = array(
+    '#type' => 'value',
+    '#value' => $env,
+  );
 
   // Basic information section.
   $form['info'] = array(
@@ -105,7 +100,7 @@ function faceted_search_edit_form($form_state, $env_id = NULL) {
     '#maxlength' => 32,
     '#size' => 32,
     '#required' => TRUE,
-    '#default_value' => isset($env_id) ? faceted_search_variable_get($env_id, 'name', $env_id) : '',
+    '#default_value' => $env->name,
     '#description' => t('A unique name to help site administrators identify the environment. Only alphanumeric and the underscore character are allowed here.'),
   );
   $form['info']['title'] = array(
@@ -114,7 +109,7 @@ function faceted_search_edit_form($form_state, $env_id = NULL) {
     '#maxlength' => 128,
     '#size' => 32,
     '#required' => TRUE,
-    '#default_value' => isset($env_id) ? faceted_search_variable_get($env_id, 'title', $env_id) : t('Search'),
+    '#default_value' => $env->settings['title'],
     '#description' => t("The title shown to users on the environment's pages."),
   );
   $form['info']['description'] = array(
@@ -122,7 +117,7 @@ function faceted_search_edit_form($form_state, $env_id = NULL) {
     '#title' => t('Description'),
     '#maxlength' => 255,
     '#size' => 60,
-    '#default_value' => isset($env_id) ? faceted_search_variable_get($env_id, 'description', '') : '',
+    '#default_value' => $env->description,
     '#description' => t('The description of the environment for site administrators.'),
   );
   $types = array();
@@ -134,12 +129,12 @@ function faceted_search_edit_form($form_state, $env_id = NULL) {
     '#type' => 'checkboxes',
     '#options' => node_get_types('names'),
     '#description' => t('Only the checked types will appear in this search environment. If none is checked, all types will be allowed.'),
-    '#default_value' => array_intersect($types, array_filter(faceted_search_variable_get($env_id, 'types', array()))),
+    '#default_value' => array_intersect($types, array_filter($env->settings['types'])),
   );
   $form['info']['ignore_status'] = array(
     '#type' => 'checkbox',
     '#title' => t('Let unpublished nodes appear in search results'),
-    '#default_value' => isset($env_id) ? faceted_search_variable_get($env_id, 'ignore_status', FALSE) : FALSE,
+    '#default_value' => $env->settings['ignore_status'],
     '#description' => t("When this is enabled, unpublished nodes are allowed to appear in search results to users with the 'administer nodes' permission. Note that unpublished nodes are never indexed by Drupal core, so they will never appear in keyword search results although they <em>will</em> appear in guided search results."),
     '#weight' => 1,
   );
@@ -158,15 +153,15 @@ function faceted_search_edit_form($form_state, $env_id = NULL) {
   );
 
   // Gather every possible facet.
-  $all_settings = faceted_search_load_filter_settings($env_id, TRUE);
+  $all_filter_settings = faceted_search_load_filter_settings($env, TRUE);
   $facets = array();
   foreach (module_implements('faceted_search_collect') as $module) {
     $hook = $module .'_faceted_search_collect';
-    $hook($facets, 'facets', $env_id, NULL);
+    $hook($facets, 'facets', $env, NULL);
   }
 
   // Prepare facets for use, assigning them their settings and sorting them.
-  faceted_search_prepare_filters($facets, $all_settings);
+  faceted_search_prepare_filters($facets, $all_filter_settings);
 
   // Add the facets section's content to the form.
   _faceted_search_facet_settings_form($form['facets']['facets'], $facets);
@@ -194,14 +189,14 @@ function faceted_search_edit_form($form_state, $env_id = NULL) {
   $keyword_filters = array();
   foreach (module_implements('faceted_search_collect') as $module) {
     $hook = $module .'_faceted_search_collect';
-    $hook($keyword_filters, 'keyword filters', $env_id, NULL);
+    $hook($keyword_filters, 'keyword filters', $env, NULL);
   }
   // Gather the node keyword filter. This is the default, always-enabled keyword
   // filter that allows searching in the full node index.
-  faceted_search_collect_node_keyword_filters($keyword_filters, 'keyword filters', $env_id);
+  faceted_search_collect_node_keyword_filters($keyword_filters, 'keyword filters', $env);
 
   // Prepare facets for use, assigning them their settings and sorting them.
-  faceted_search_prepare_filters($keyword_filters, $all_settings);
+  faceted_search_prepare_filters($keyword_filters, $all_filter_settings);
 
   // Add the facets section's content to the form.
   _faceted_search_filter_settings_form($form['keyword']['fields']['keyword_filters'], $keyword_filters);
@@ -230,7 +225,7 @@ function faceted_search_edit_form_validate($form, &$form_state) {
   }
 
   // Name must be unique.
-  if (db_result(db_query("SELECT COUNT(*) FROM {faceted_search_variables} WHERE name = 'name' AND value = '%s' AND env_id <> %d", serialize($form_state['values']['name']), isset($form_state['values']['env_id']) ? $form_state['values']['env_id'] : 0)) > 0) {
+  if (db_result(db_query("SELECT COUNT(*) FROM {faceted_search_env} WHERE name = '%s' AND env_id <> %d", $form_state['values']['name'], isset($form_state['values']['env']->env_id) ? $form_state['values']['env']->env_id : 0)) > 0) {
     form_set_error('name', t('Name %name already in use.', array('%name' => $form_state['values']['name'])));
   }
 
@@ -253,41 +248,40 @@ function faceted_search_edit_form_validate($form, &$form_state) {
  * Form callback for saving environment data.
  */
 function faceted_search_edit_form_submit($form, &$form_state) {
-  if (isset($form_state['values']['env_id'])) {
-    $env_id = $form_state['values']['env_id'];
-  }
-  else {
-    $ids = faceted_search_get_env_ids();
-    sort($ids);
-    $env_id = $ids[0] + 1;
-    //$env_id = db_last_insert_id('faceted_search_filters','env_id'); // Adding new environment.
-  }
-
-  // Exclude elements that should not be saved as environment variables.
-  $exclude = array('save', 'save_and_edit', 'form_id', 'op', 'form_token', 'env_id', 'facets', 'keyword_filters');
-
-  // Save form values as environment variables (except those excluded).
+  $env = $form_state['values']['env'];
+  
+  // Save search environment.
+  $update = $env->env_id ? 'env_id' : NULL;
+  $env->name = $form_state['values']['name'];
+  $env->description = $form_state['values']['description'];
+  // Settings are only saved if they have a value in the original environment
+  // (we can rely on this since any setting always has at least a default
+  // value).
   foreach ($form_state['values'] as $key => $value) {
-    if (!in_array($key, $exclude)) {
-      faceted_search_variable_set($env_id, $key, $value);
+    if (isset($env->settings[$key])) {
+      $env->settings[$key] = $value;
     }
   }
 
+  // Save to database, obtaining a new env_id if not updating an existing
+  // environment.
+  drupal_write_record('faceted_search_env', $env, $update);
+  
   // Save filter settings.
   if ($form_state['values']['facets']) {
-    faceted_search_save_filter_settings($env_id, array_merge($form_state['values']['facets'], $form_state['values']['keyword_filters']));
+    faceted_search_save_filter_settings($env->env_id, array_merge($form_state['values']['facets'], $form_state['values']['keyword_filters']));
   }
 
   // Rebuild the menus, if only for updating titles.
   menu_rebuild();
 
-  drupal_set_message(t('The faceted search environment %env has been saved.', array('%env' => $form_state['values']['name'])));
+  drupal_set_message(t('The faceted search environment %name has been saved.', array('%name' => $form_state['values']['name'])));
 
   if ($form_state['values']['op'] == t('Save')) {
     $form_state['redirect'] = 'admin/settings/faceted_search';
   }
   else {
-    $form_state['redirect'] = 'admin/settings/faceted_search/'. $env_id;
+    $form_state['redirect'] = 'admin/settings/faceted_search/'. $env->env_id;
   }
 }
 
