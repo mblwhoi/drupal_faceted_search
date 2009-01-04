@@ -97,7 +97,7 @@ thousand nodes.
 Requirements
 ************
 
-- Drupal 5.x (http://drupal.org/project/drupal).
+- Drupal 6.x (http://drupal.org/project/drupal).
 
 - MySQL 4.1 (or later version). 
 
@@ -106,9 +106,6 @@ Requirements
 
 Recommended modules
 *******************
-
-- Biblio Facets (http://drupal.org/project/biblio_facets)
-  Exposes Biblio (http://drupal.org/project/biblio) types and fields as facets.
 
 - CCK Facets (http://drupal.org/project/cck_facets)
   Exposes Content Construction Kit (CCK) (http://drupal.org/project/cck) fields
