@@ -316,10 +316,7 @@ function faceted_search_ui_faceted_search_init(&$env) {
   $env->settings['related_style'] = 'list_ungrouped';
 
   // Default user interface state.
-  $env->ui_state['stage'] = 'results';
-  $env->ui_state['facet-key'] = '';
-  $env->ui_state['facet-id'] = '';
-  $env->ui_state['facet-sort'] = '';
+  $env->ui_state = _faceted_search_ui_default_ui_state();
 }
 
 /**
@@ -602,7 +599,7 @@ function faceted_search_ui_related_block($env, $node) {
   }
 
   // Load settings for all enabled facets in this search environment.
-  $all_filter_settings = faceted_search_load_filter_settings($env->env_id);
+  $all_filter_settings = faceted_search_load_filter_settings($env);
 
   // Make a selection with all enabled facets.
   $selection = faceted_search_get_filter_selection($all_filter_settings);
@@ -1210,6 +1207,18 @@ function faceted_search_ui_theme() {
 }
 
 /**
+ * Return a default UI state object.
+ */
+function _faceted_search_ui_default_ui_state() {
+  return array(
+    'stage' => 'results',
+    'facet-key' => '',
+    'facet-id' => '',
+    'facet-sort' => '',
+  );
+}
+
+/**
  * Render a faceted search page.
  *
  * @param $env
@@ -1496,7 +1505,7 @@ function theme_faceted_search_ui_related_list_ungrouped($env, $node, $groups) {
   $output = '';
   foreach ($groups as $group) {
     foreach ($group as $facet) {
-      $rendered_facet = theme('faceted_search_ui_facet_heading', $env, _faceted_search_ui_defaults(), array($facet), 0, 'related');
+      $rendered_facet = theme('faceted_search_ui_facet_heading', $env, _faceted_search_ui_default_ui_state(), array($facet), 0, 'related');
       $output .= theme('faceted_search_ui_facet_wrapper', $env, $facet, 'related', $rendered_facet);
     }
   }
@@ -1522,7 +1531,7 @@ function theme_faceted_search_ui_related_list_grouped($env, $node, $groups) {
         $rendered_facets = array(); // Start a new group.
         $label = theme('faceted_search_ui_facet_label', array($facet), 0, 'related');
       }
-      $rendered_facets[] = theme('faceted_search_ui_facet_heading', $env, _faceted_search_ui_defaults(), array($facet), 0, 'related', FALSE);
+      $rendered_facets[] = theme('faceted_search_ui_facet_heading', $env, _faceted_search_ui_default_ui_state(), array($facet), 0, 'related', FALSE);
       $first = FALSE;
     }
     $output .= theme('faceted_search_ui_facet_wrapper', $env, $facet, 'related', $label . theme('item_list', $rendered_facets));
@@ -1545,7 +1554,7 @@ function theme_faceted_search_ui_related_table($env, $node, $groups) {
   foreach ($groups as $group) {
     $first = TRUE;
     foreach ($group as $facet) {
-      $rendered_facet = theme('faceted_search_ui_facet_heading', $env, _faceted_search_ui_defaults(), array($facet), 0, 'related', FALSE);
+      $rendered_facet = theme('faceted_search_ui_facet_heading', $env, _faceted_search_ui_default_ui_state(), array($facet), 0, 'related', FALSE);
       $rendered_facet = theme('faceted_search_ui_facet_wrapper', $env, $facet, 'related', $rendered_facet);
       if ($first) {
         // Output a row with two cells: the label and the first facet of the group.
