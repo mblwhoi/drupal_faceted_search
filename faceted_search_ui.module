@@ -83,19 +83,34 @@ function faceted_search_ui_block($op = 'list', $delta = 0, $edit = array()) {
     foreach (faceted_search_get_env_ids() as $env_id) {
       $env = faceted_search_env_load($env_id);
       if ($env->settings['current_block']) {
-        $blocks[$env_id .'_current'] = array('info' => t('@env - Current search', array('@env' => $env->name)));
+        $blocks[$env_id .'_current'] = array(
+          'info' => t('@env - Current search', array('@env' => $env->name)),
+          'cache' => BLOCK_CACHE_PER_PAGE | BLOCK_CACHE_PER_USER,
+        );
       }
       if ($env->settings['keyword_block']) {
-        $blocks[$env_id .'_keyword'] = array('info' => t('@env - Keyword search', array('@env' => $env->name)));
+        $blocks[$env_id .'_keyword'] = array(
+          'info' => t('@env - Keyword search', array('@env' => $env->name)),
+          'cache' => BLOCK_CACHE_PER_PAGE | BLOCK_CACHE_PER_ROLE,
+        );
       }
       if ($env->settings['guided_block']) {
-        $blocks[$env_id .'_guided'] = array('info' => t('@env - Guided search', array('@env' => $env->name)));
+        $blocks[$env_id .'_guided'] = array(
+          'info' => t('@env - Guided search', array('@env' => $env->name)),
+          'cache' => BLOCK_CACHE_PER_PAGE | BLOCK_CACHE_PER_USER,
+        );
       }
       if ($env->settings['related_block']) {
-        $blocks[$env_id .'_related'] = array('info' => t('@env - Related categories', array('@env' => $env->name)));
+        $blocks[$env_id .'_related'] = array(
+          'info' => t('@env - Related categories', array('@env' => $env->name)),
+          'cache' => BLOCK_CACHE_PER_PAGE | BLOCK_CACHE_PER_USER,
+        );
       }
       if ($env->settings['sort_block']) {
-        $blocks[$env_id .'_sort'] = array('info' => t('@env - Sort options', array('@env' => $env->name)));
+        $blocks[$env_id .'_sort'] = array(
+          'info' => t('@env - Sort options', array('@env' => $env->name)),
+          'cache' => BLOCK_CACHE_PER_PAGE,
+        );
       }
     }
     return $blocks;
