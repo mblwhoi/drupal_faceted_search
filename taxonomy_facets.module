@@ -188,27 +188,29 @@ function taxonomy_facets_faceted_search_collect(&$facets, $domain, $env, $select
       return $arg;
 
     case 'node':
-      $vocabularies = taxonomy_get_vocabularies();
-      foreach ($arg->taxonomy as $term) {
-        $vid = $term->vid;
-        // If the vocabulary's corresponding facet is allowed.
-        if (isset($vocabularies[$vid]) && (!isset($selection) || isset($selection['taxonomy'][$vid]))) {
-          $path = array();
-          // Retrieve ancestor terms.
-          while ($term) {
-            if ($vocabularies[$vid]->hierarchy) {
-              $category = new taxonomy_facet_hierarchical_category($term->tid, $term->name);
+      if (is_array($arg->taxonomy)) {
+        $vocabularies = taxonomy_get_vocabularies();
+        foreach ($arg->taxonomy as $term) {
+          $vid = $term->vid;
+          // If the vocabulary's corresponding facet is allowed.
+          if (isset($vocabularies[$vid]) && (!isset($selection) || isset($selection['taxonomy'][$vid]))) {
+            $path = array();
+            // Retrieve ancestor terms.
+            while ($term) {
+              if ($vocabularies[$vid]->hierarchy) {
+                $category = new taxonomy_facet_hierarchical_category($term->tid, $term->name);
+              }
+              else {
+                $category = new taxonomy_facet_category($term->tid, $term->name);
+              }
+              array_unshift($path, $category);
+              $parents = taxonomy_get_parents($term->tid);
+              $term = reset($parents); // Keep only the first parent
             }
-            else {
-              $category = new taxonomy_facet_category($term->tid, $term->name);
+            if ($path) {
+              // Create a facet with the found term as the active category.
+              $facets[] = new taxonomy_facet($vocabularies[$vid], $path);
             }
-            array_unshift($path, $category);
-            $parents = taxonomy_get_parents($term->tid);
-            $term = reset($parents); // Keep only the first parent
-          }
-          if ($path) {
-            // Create a facet with the found term as the active category.
-            $facets[] = new taxonomy_facet($vocabularies[$vid], $path);
           }
         }
       }
