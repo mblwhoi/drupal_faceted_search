@@ -1015,7 +1015,7 @@ function faceted_search_ui_build_breadcrumb($env, $ui_state, $facets, $index, $b
       }
       $link = faceted_search_ui_build_path($env, $ui_state, '', $facets);
       // Note: get_label() is responsible for filtering its returned string.
-      $breadcrumb[] = l($category->get_label(TRUE), $link, array(), NULL, NULL, FALSE, TRUE);
+      $breadcrumb[] = l($category->get_label(TRUE), $link, array('html' => TRUE));
     }
     if ($category && $context != 'related') {
       // The last category needs not be a link to itself since it is already in
@@ -1357,7 +1357,7 @@ function theme_faceted_search_ui_facet_label($facets, $index, $label) {
 function theme_faceted_search_ui_category($category, $path) {
   // Note: get_label() is responsible for filtering its returned string.
   if ($path) {
-    $label = l($category->get_label(TRUE), $path, array(), NULL, NULL, NULL, TRUE);
+    $label = l($category->get_label(TRUE), $path, array('html' => TRUE));
   }
   else {
     $label = $category->get_label(TRUE);
