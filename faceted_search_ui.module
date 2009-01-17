@@ -878,7 +878,7 @@ function faceted_search_ui_form($form_state, $search) {
   else {
     $ui_state['stage'] = 'select';
     $path = faceted_search_ui_build_path($search, $ui_state, $search->get_text());
-    $form['go-select']['#value'] = l(t('More options'), $path);
+    $form['go-select']['#value'] = l(t('More options'), $path, array('attributes' => array('class' => 'faceted-search-more')));
   }
   $form['#submit'] = array('faceted_search_ui_form_submit');
   return $form;
