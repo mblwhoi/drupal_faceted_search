@@ -151,10 +151,40 @@ Known incompatibilities
 Installation
 ************
 
-1. Extract the 'faceted_search' module directory, including all its
+1. When using MySQL, in addition to the database permissions already required by
+   Drupal, you will also need to grant your database user the LOCK TABLES and
+   the CREATE TEMPORARY TABLES permissions. To grant those permissions, you need
+   to login to your database:
+
+     mysql -u username -p
+
+   You will be asked for the 'username' database password. Then, at the MySQL
+   prompt, enter the following command:
+
+    GRANT LOCK TABLES, CREATE TEMPORARY TABLES
+    ON databasename.*
+    TO 'username'@'localhost';
+
+   where
+
+     'databasename' is the name of your database
+     'username@localhost' is the username of your MySQL account
+
+   Note: Unless your database user has the privileges listed above, you will not
+   be able to have Faceted Search work properly.
+
+   If successful, MySQL will reply with:
+
+     Query OK, 0 rows affected
+
+   Then enter the following command:
+
+     quit;
+
+2. Extract the 'faceted_search' module directory, including all its
    subdirectories, into your Drupal modules directory.
 
-2. Go to the Administer > Site building > Modules page, and enable the following
+3. Go to the Administer > Site building > Modules page, and enable the following
    modules:
 
    - Faceted Search
@@ -170,17 +200,17 @@ Installation
    - Search (Drupal core module)
    - Taxonomy (Drupal core module -- only needed if you intend to use Taxonomy Facets)
 
-3. Go to the Administer > Site configuration > Faceted Search page, and click
+4. Go to the Administer > Site configuration > Faceted Search page, and click
    the Add Environment tab.
 
-4. Define a faceted search environment by filling the "Add a faceted search
+5. Define a faceted search environment by filling the "Add a faceted search
    environment" form. Hopefully it is self-explanatory enough, but don't be
    afraid to experiment. You can always change any of the settings later.
 
    Click Save to save the new environment. This takes you back to the 
    Administer > Site configuration > Faceted Search page.
 
-5. Go to the Administer > Site building > Blocks page, and enable the following
+6. Go to the Administer > Site building > Blocks page, and enable the following
    blocks (where my_search is the name of the faceted search environment you
    have just created):
 
@@ -210,7 +240,7 @@ Installation
    ... where "base_path" should be replaced with your search environment's
    actual base path.
 
-6. Go to the Administer > User management > Access control page, and grant the
+7. Go to the Administer > User management > Access control page, and grant the
    "use faceted search" permission to the roles you intend to give access to
    faceted search.
 
