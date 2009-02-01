@@ -91,7 +91,7 @@ Caution
 Faceted Search is database-intensive. If your server can barely keep up with
 your traffic, this package will make things worst. Make sure to benchmark
 performance before deploying this system on a busy site or on a site with many
-thousand nodes.
+thousand nodes (more info: http://drupal.org/node/347952).
 
 
 Requirements
