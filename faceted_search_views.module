@@ -15,69 +15,29 @@ require_once('./'. drupal_get_path('module', 'faceted_search') .'/faceted_search
  */
 function faceted_search_views_faceted_search_ui_style_info() {
   $styles = array();
-  $results = db_query("SELECT v.name FROM {view_view} v INNER JOIN {view_argument} a ON a.vid = v.vid WHERE a.type = 'faceted_search_results' ORDER BY v.name");
-  while ($view = db_fetch_object($results)) {
-    $styles[$view->name] = new faceted_search_views_style($view->name);
+  foreach (views_get_all_views() as $view) {
+    if ($view->base_table == 'node' && !$view->disabled && $view->display['default']->display_options['use_pager']) {
+      $styles[$view->name] = new faceted_search_views_style($view->name);
+    }
   }
   return $styles;
 }
-
+	
 /**
- * Implementation of hook_views_arguments().
+ * Implementation of hook_views_query_alter().
  */
-function faceted_search_views_views_arguments() {
-  $arguments['faceted_search_results'] = array(
-    'name' => t('Faceted Search: Environment ID'),
-    'help' => t("Filter by the current results of a Faceted Search environment. The option field allows you to sort the results by relevance score. If a sort option is selected, it is applied before all other sort criteria of the view. The higher the score, the more relevant the item."), 
-    'handler' => 'faceted_search_views_results_argument_handler',
-    'option' => array(
-      '#type' => 'select',
-      '#options' => array(
-        'none' => t('No sort'),
-        'ASC' => t('Sort by score - Ascending'),
-        'DESC' => t('Sort by score - Descending'),
-      ),
-      '#default_value' => 0,
-    ),
-    // Note: Sort options are provided here, because a sort handler would not
-    // have access to the environment id argument, and thus would not know the
-    // name of the results table to get its score field (unless ugly hacks were
-    // done).
-  );
-  return $arguments;
-}
-
-/**
- * An argument handler that updates the specified query to filter with a Faceted
- * Search environment's current results.
- */
-function faceted_search_views_results_argument_handler($op, &$query, $a1, $a2 = NULL) {
-  global $_faceted_search;
-  
-  if ($op == 'filter' && isset($_faceted_search[$a2])) {
-    if ($_faceted_search[$a2]->ready()) {
-      // Thanks to the above condition, this handler has no effect when there is
-      // no current search results. This avoids a race condition between Views
-      // and Faceted Search; Faceted Search may use this query in a subquery to
-      // build its results, and Views may call this handler afterwards to filter
-      // by Faceted Search's results.
-      
-      if ($_faceted_search[$a2]->get_results_count() > 0) {
-        // Join results table.
-        $join = array(
-          'type' => 'inner',
-          'left' => array('table' => 'node', 'field' => 'nid'),
-          'right' => array('field' => 'nid'),
-        );
-        $query->add_table($_faceted_search[$a2]->get_results_table(), FALSE, 1, $join);
-
-        // Apply sort option.
-        if ($a1['options'] != 'none') {
-          $query->add_orderby($_faceted_search[$a2]->get_results_table(), 'score', $a1['options']);
-        }
+function faceted_search_views_views_query_alter (&$view, &$query) {   
+  if (isset($view->args[0]['faceted_search'])) {    
+    $search = $view->args[0]['faceted_search'];
+	        
+    if ($search->ready()) {
+      if ($search->get_results_count() > 0) {
+        $join = new views_join();
+        $join->construct($search->get_results_table(), 'node', 'nid', 'nid', array(), 'INNER');
+        $query->add_table($search->get_results_table(), NULL, $join);        		
       }
       else {
-        $query->add_where('FALSE'); // Ensure the view shows no results.
+        $query->add_where(0, 'FALSE'); // Ensure the view shows no results.
       }
     }
   }
@@ -89,8 +49,6 @@ function faceted_search_views_results_argument_handler($op, &$query, $a1, $a2 = 
 class faceted_search_views_style extends faceted_search_ui_style {
   // Name of the view to use with this style.
   var $_name;
-  // View to use with this style (lazy loaded).
-  var $_view;
   
   /**
    * Constructor.
@@ -103,58 +61,53 @@ class faceted_search_views_style extends faceted_search_ui_style {
   }
 
   /**
-   * Return the view to use with this style.
-   */
-  function get_view() {
-    if (!isset($this->_view)) {
-      $this->_view = views_get_view($this->_name); 
-    }
-    return $this->_view;
-  }
-  
-  /**
    * Return the name of this style.
    */
   function get_label() {
-    $view = $this->get_view();
-    return t('Views: @view', array('@view' => $view->name));
+    return t('Views: @view', array('@view' => $this->_name));
   }
 
   /**
    * Return the number of nodes per page.
    */
   function get_limit() {
-    $view = $this->get_view();
-    if ($view->nodes_per_page > 0) {
-      return $view->nodes_per_page;
+    $view = views_get_view($this->_name);
+       
+    if ($view->display['default']->display_options['items_per_page'] > 0) {
+      return $view->display['default']->display_options['items_per_page'];
     }
     // The pager is mandatory for search results, thus a valid limit required.
     return variable_get('default_nodes_main', 10);
   }
 
   /**
-   * Apply the view's query as a subquery to filter the search results.
+   * Apply the view's count query as a subquery to filter the search results.
    *
-   * Note: We use the view's count query for this purpose because the sorting
-   * and field selection provided by its main query is not wanted here. The
-   * view's only purpose here is to filter the search results.
+   * Note: We use the view's count query for this purpose because we don't need
+   * the sorting and field selection provided by view's full query. The view's
+   * only purpose here is to filter the search results.
    */
   function query_alter(&$query, $search) {
-    $view = $this->get_view();
-    $queries = views_build_view('queries', $view, array($search->get_env_id()));
-    // Make sure the view's query selects node.id rather than a count. This
-    // assumes that the view is counting node.id.
-    $views_query = preg_replace('!count\(((DISTINCT\()?node.nid\)?)\)!', '$1', $queries['countquery']); 
-    $views_query = db_rewrite_sql($views_query, 'node');
-    $query->add_subquery('n.nid IN ('. $views_query .')');
+    $view = views_get_view($this->_name);
+    $view->set_display('default');
+    $view->set_arguments(array('faceted_search' => $search));
+    $view->build('default');
+    $views_query = db_rewrite_sql($view->build_info['count_query'], $view->base_table, $view->base_field, array('view' => &$view));
+    $views_args = $view->build_info['query_args'];
+    $views_replacements = module_invoke_all('views_query_substitutions', $view);
+    if (is_array($views_args)) {
+      foreach ($views_args as $id => $arg) {
+        $views_args[$id] = str_replace(array_keys($views_replacements), $views_replacements, $arg);
+      }
+    }
+    $query->add_subquery('n.nid IN ('. $views_query .')', $views_args);
   }
 
   /**
    * Format the search results according to this style's desire.
    */
   function format_results($search) {
-    $view = $this->get_view();
-    return views_build_view('embed', $view, array($search->get_env_id()), TRUE, $this->get_limit());
+    return views_embed_view($this->_name, 'default' , array('faceted_search' => $search));
   }
 }
 

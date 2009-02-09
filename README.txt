@@ -248,44 +248,32 @@ Installation
 Views integration
 *****************
 
-You may use the Views module to display search results through the Faceted
-Search Views module, which allows to display results in an embedded view.
+With the Faceted Search Views module, you may use the Views module to display
+and further filter search results.
 
-Results shown through a view might differ from those obtained from other display
-styles, because the view might provide additional filters. A view must use the
-"Faceted Search: Environment ID" argument to become available to Faceted Search
-as a display style.
+This system replaces the results page with an embedded view that gets passed the
+current search environment as an argument. That argument gets processed by
+Faceted Search Views itself through Views' hook_views_query_alter().
 
-Assuming that both Views and Faceted Search are already installed on your site,
-here are the step-by-step instructions to use a View to display search results:
+The main requirements for a view to be eligible for use with Faceted Search are:
 
-1. Go to Administer > Site building > Views, and click Add to create a new view.
+- Must be a Node view.
+- Must use a pager.
+- Must be enabled.
 
-2. Enter a name for the view.
+To use a view to display search results, go to Administer > Site configuration >
+Faceted search, edit your faceted search environment, then select the desired
+view in the "Display style" field of the "Results page" section.
 
-3. Choose to provide a Page view. Note that the "Title", "Use pager", "Empty
-   text" and "Nodes per Page" options are ignored when the view is embedded
-   within Faceted Search's results page.
-
-4. In the Arguments section, add the "Faceted Search: Environment ID" filter.
-   You may then select one of Faceted Search's sort options in the argument's
-   "Option" field.
-
-5. Save your new view.
-
-6. Go to Administer > Site configuration > Faceted search, choose to edit your
-   faceted search environment, and select your new view in the "Display style"
-   field of the "Results page" section.
 
 Known limitations:
 
-- When embedded, as is the case with the Faceted Search Views integration, a
-  view cannot use exposed filters or URL-based arguments.
+- The view cannot use exposed filters or arguments.
+- The view's "Title" and "Empty text" settings are ignored.
+- If the view is set to have an unlimited number of items per page, instead of
+  having no limit the system's default limit will be used (per Administer >
+  Content management > Post settings > Number of posts on main page).
 
-- A view's "Title", "Use pager", and "Empty text" options are ignored under
-  Faceted Search. However, the view's "Nodes per page" option will properly
-  determine how many search results are shown per page when it is greater than
-  zero.
 
 Known issues:
 
@@ -301,8 +289,8 @@ Known issues:
   You will need as many 'temp_faceted_search_results_[env_id]' entries as there
   are faceted search environments (env_id is the numeric identifier for the
   faceted search environment, to be specified without the brackets). You can
-  find out the env_id by editing an environment and looking at its URL path,
-  which has the form 'admin/settings/faceted_search/[env_id]'.
+  find out the env_id by editing an environment and looking at its administration
+  URL, which has a path in the form 'admin/settings/faceted_search/[env_id]'.
 
   Reference: http://drupal.org/node/227634#comment-864171.
 
