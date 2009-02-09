@@ -295,6 +295,20 @@ Known issues:
   Reference: http://drupal.org/node/227634#comment-864171.
 
 
+Upgrading from Drupal 5.x
+*************************
+
+Before upgrading your site and Faceted Search from Drupal 5 to Drupal 6, make
+sure that your site is using the latest version of Faceted Search for Drupal
+5.x. If this is not the case, then you will have to perform this update as a
+separate step *before* updating to Drupal 6.
+
+Note that Faceted Search Views for Drupal 6 no longer needs an argument (which
+was called "Faceted Search: Environment ID") to be added to your views. After
+the upgrade to Drupal 6, you will have to remove any remnants of that argument
+from your views.
+
+
 Support
 *******
 
