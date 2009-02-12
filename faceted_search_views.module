@@ -27,7 +27,7 @@ function faceted_search_views_faceted_search_ui_style_info() {
  * Implementation of hook_views_query_alter().
  */
 function faceted_search_views_views_query_alter (&$view, &$query) {   
-  if (isset($view->args[0]['faceted_search'])) {    
+  if (is_array($view->args[0]) && isset($view->args[0]['faceted_search'])) {    
     $search = $view->args[0]['faceted_search'];
 	        
     if ($search->ready()) {
