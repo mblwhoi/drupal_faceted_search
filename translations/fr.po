@@ -3,7 +3,7 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n!=1);\n"
 "Project-Id-Version: French translation for Drupal Faceted Search\n"
 "POT-Creation-Date: \n"
-"PO-Revision-Date: 2009-02-20 12:41-0500\n"
+"PO-Revision-Date: 2009-02-25 14:59-0500\n"
 "Last-Translator: Stéphane Bordage <sbordage@breek.fr>\n"
 "Language-Team: Stéphane Bordage, Breek <sbordage@breek.fr>\n"
 "MIME-Version: 1.0\n"
@@ -174,7 +174,7 @@ msgstr "Indexation"
 
 #: taxonomy_facets.admin.inc:22
 msgid "If you are getting inconsistent results when navigating taxonomy facets, try to <a href=\"@rebuild\">rebuild the Taxonomy Facets index</a>. However, inconsistencies might denote a bug; please report any bug to Faceted Search's <a href=\"http://drupal.org/project/issues/faceted_search\">issue queue</a>."
-msgstr "Si vous obtenez des résultats illogiques en navigant sur les facettes basées sur une taxinomie, essayez de <a href=\"@rebuild\">reconstruire l'index de lTaxonomy Facets</a>. Cependant, des résultats illogiques peuvent aussi être le signe d'une anomalie. Remontez toute anomalie de Faceted Search sur <a href=\"http://drupal.org/project/issues/faceted_search\">la liste de problèmes</a>."
+msgstr "Si vous obtenez des résultats illogiques en navigant sur les facettes basées sur une taxonomie, essayez de <a href=\"@rebuild\">reconstruire l'index de Taxonomy Facets</a>. Cependant, des résultats illogiques peuvent aussi être le signe d'une anomalie. Remontez toute anomalie de Faceted Search sur <a href=\"http://drupal.org/project/issues/faceted_search\">la liste de problèmes</a>."
 
 #: taxonomy_facets.admin.inc:28
 msgid "There are currently no vocabularies. Go to the !page first to create vocabularies."
@@ -712,7 +712,7 @@ msgstr "field_keyword_filter"
 
 #: taxonomy_facets.module:271
 msgid "The newly enabled taxonomy facets will only become effective after their indexes have been built by <a href=\"@cron\">cron</a> runs."
-msgstr "La nouvelle taxinomie de facettes ne sera utile qu'après que leurs indexes aient été créés lors de l'exécution du prochain <a href=\"@cron\">cron</a>."
+msgstr "La nouvelle taxonomie de facettes ne sera utile qu'après que leurs indexes aient été créés lors de l'exécution du prochain <a href=\"@cron\">cron</a>."
 
 #: taxonomy_facets.module:315
 msgid "Category"
@@ -720,7 +720,7 @@ msgstr "Catégorie"
 
 #: taxonomy_facets.module:31
 msgid "Taxonomy index"
-msgstr "Index de la taxinomie"
+msgstr "Index de la taxonomie"
 
 #: taxonomy_facets.module:0
 msgid "taxonomy_facets"
@@ -764,7 +764,7 @@ msgstr "L'horodatage UNIX de la modification la plus récente nécessitant une m
 
 #: taxonomy_facets.install:112
 msgid "Re-indexing for taxonomy facets is needed and will start on the next <a href=\"@cron\">cron</a> run."
-msgstr "La réindexation de la facette taxinomie est nécessaire. Elle débutera à la prochaine exécution des tâches <a href=\"@cron\">planifiées</a>."
+msgstr "La réindexation des facettes de taxonomie est nécessaire. Elle débutera à la prochaine exécution des tâches <a href=\"@cron\">planifiées</a>."
 
 #: author_facet.info:0
 msgid "Author Facet"
@@ -840,9 +840,9 @@ msgstr "Permet aux utilisateurs d'effectuer des recherches restreintes sur des c
 
 #: taxonomy_facets.info:0
 msgid "Taxonomy Facets"
-msgstr "Facette Taxinomie"
+msgstr "Facette Taxonomie"
 
 #: taxonomy_facets.info:0
 msgid "Provides facets based on taxonomy."
-msgstr "Fourni une recherche à facettes basée sur une taxinomie."
+msgstr "Fourni une recherche à facettes basée sur une taxonomie."
 
