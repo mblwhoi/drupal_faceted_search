@@ -3,7 +3,7 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n!=1);\n"
 "Project-Id-Version: French translation for Drupal Faceted Search\n"
 "POT-Creation-Date: \n"
-"PO-Revision-Date: 2009-02-25 14:59-0500\n"
+"PO-Revision-Date: 2009-02-25 15:02-0500\n"
 "Last-Translator: Stéphane Bordage <sbordage@breek.fr>\n"
 "Language-Team: Stéphane Bordage, Breek <sbordage@breek.fr>\n"
 "MIME-Version: 1.0\n"
@@ -844,5 +844,5 @@ msgstr "Facette Taxonomie"
 
 #: taxonomy_facets.info:0
 msgid "Provides facets based on taxonomy."
-msgstr "Fourni une recherche à facettes basée sur une taxonomie."
+msgstr "Fournit une recherche à facettes basée sur une taxonomie."
 

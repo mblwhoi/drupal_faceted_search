@@ -166,6 +166,7 @@ function taxonomy_facets_faceted_search_collect(&$facets, $domain, $env, $select
                 break; // Term is not a child of the previous term in path
               }
             }
+            _taxonomy_facets_localize_term($term);
             // Add category to current path.
             if ($vocabularies[$term->vid]->hierarchy) {
               // TODO: Fix potential problem if parents of the first tid have been omitted from $tids
@@ -197,6 +198,7 @@ function taxonomy_facets_faceted_search_collect(&$facets, $domain, $env, $select
             $path = array();
             // Retrieve ancestor terms.
             while ($term) {
+              _taxonomy_facets_localize_term($term);
               if ($vocabularies[$vid]->hierarchy) {
                 $category = new taxonomy_facet_hierarchical_category($term->tid, $term->name);
               }
@@ -361,10 +363,10 @@ class taxonomy_facet extends faceted_search_facet {
       $query->add_table('term_node', 'vid', 'n', 'vid');
     }
     $query->add_table('term_data', 'tid', 'term_node', 'tid');
-    $query->add_field('term_data', 'tid');
-    $query->add_field('term_data', 'name');
+    $query->add_field('term_data', 'tid', 'tid');
+    $query->add_field('term_data', 'name', 'name');
     $query->add_where('term_data.vid = %d', $this->_vocabulary->vid);
-    $query->add_groupby('term_data_tid'); // Needed for counting matching nodes.
+    $query->add_groupby('tid'); // Needed for counting matching nodes.
     return TRUE;
   }
 
@@ -381,11 +383,13 @@ class taxonomy_facet extends faceted_search_facet {
   function build_categories($results) {
     $categories = array();
     while ($result = db_fetch_object($results)) {
+      $result->vid = $this->_vocabulary->vid; // Fill missing term data.
+      _taxonomy_facets_localize_term($result);
       if ($this->_vocabulary->hierarchy) {
-        $categories[] = new taxonomy_facet_hierarchical_category($result->term_data_tid, $result->term_data_name, $result->count);
+        $categories[] = new taxonomy_facet_hierarchical_category($result->tid, $result->name, $result->count);
       }
       else {
-        $categories[] = new taxonomy_facet_category($result->term_data_tid, $result->term_data_name, $result->count);
+        $categories[] = new taxonomy_facet_category($result->tid, $result->name, $result->count);
       }
     }
     return $categories;
@@ -468,10 +472,10 @@ class taxonomy_facet_hierarchical_category extends taxonomy_facet_category {
     $query->add_table('taxonomy_facets_term_node', 'nid', 'n', 'nid', 'term_node');
     $query->add_table('term_data', 'tid', 'term_node', 'tid');
     $query->add_table('term_hierarchy', 'tid', 'term_node', 'tid');
-    $query->add_field('term_data', 'tid');
-    $query->add_field('term_data', 'name');
+    $query->add_field('term_data', 'tid', 'tid');
+    $query->add_field('term_data', 'name', 'name');
     $query->add_where('term_hierarchy.parent = %d', $this->_tid);
-    $query->add_groupby('term_data_tid'); // Needed for counting matching nodes.
+    $query->add_groupby('tid'); // Needed for counting matching nodes.
     return TRUE;
   }
 
@@ -550,3 +554,18 @@ function _taxonomy_facets_touch_term($tid) {
   db_query('UPDATE {taxonomy_facets_node} SET changed = %d WHERE changed = 0 AND nid IN (SELECT tn.nid FROM {taxonomy_facets_term_node} tn WHERE tn.tid = %d)', time(), $tid);
 }
 
+/**
+ * Localize a term by replacing its name attribute with its localized version
+ * for the current language.
+ *
+ * @param $term
+ *   The term to localize, with at least tid, vid, and name data members.
+ *
+ * This is based on i18ntaxonomy_localize_terms(), but with less overhead.
+ */
+function _taxonomy_facets_localize_term(&$term) {
+  // If this term's vocabulary supports localization.
+  if (module_exists('i18ntaxonomy') && i18ntaxonomy_vocabulary($term->vid) == I18N_TAXONOMY_LOCALIZE) {
+    $term->name = tt("taxonomy:term:$term->tid:name", $term->name);
+  }
+}

@@ -253,7 +253,8 @@ and further filter search results.
 
 This system replaces the results page with an embedded view that gets passed the
 current search environment as an argument. That argument gets processed by
-Faceted Search Views itself through Views' hook_views_query_alter().
+Faceted Search Views itself through Views' hook_views_query_alter(). You don't
+need to configure any particular arguments in your view.
 
 The main requirements for a view to be eligible for use with Faceted Search are:
 
@@ -295,6 +296,17 @@ Known issues:
   Reference: http://drupal.org/node/227634#comment-864171.
 
 
+Multilanguage support
+*********************
+
+Multilanguage support in Faceted Search relies on the Internationalization
+module (http://drupal.org/project/i18n).
+
+With Taxonomy Facets, if a vocabulary uses the 'Localize terms' translation
+mode, then the system will display the localized version of terms for the
+current language.
+
+
 Upgrading from Drupal 5.x
 *************************
 
@@ -328,8 +340,8 @@ Credits
 - Project initiated by David Lesieur (http://davidlesieur.com,
   http://drupal.org/user/17157).
 
-- Sponsored in part by Laboratoire NT2 (http://www.labo-nt2.uqam.ca) and Eyos BV
-  (http://www.eyos.nl).
+- Sponsored in part by Laboratoire NT2 (http://www.labo-nt2.uqam.ca), Eyos BV
+  (http://www.eyos.nl), and CAIS Institute (http://caisinstitute.org).
 
 - The superb Flamenco search interface (http://flamenco.berkeley.edu) has
   provided much inspiration for this project.
