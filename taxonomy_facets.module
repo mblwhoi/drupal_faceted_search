@@ -131,6 +131,7 @@ function taxonomy_facets_faceted_search_collect(&$facets, $domain, $env, $select
     case 'facets':
       $vocabularies = taxonomy_get_vocabularies();
       foreach ($vocabularies as $vocabulary) {
+        _taxonomy_facets_localize_vocabulary($vocabulary);
         // If the vocabulary's corresponding facet is allowed.
         if (!isset($selection) || isset($selection['taxonomy'][$vocabulary->vid])) {
           $facets[] = new taxonomy_facet($vocabulary);
@@ -179,6 +180,7 @@ function taxonomy_facets_faceted_search_collect(&$facets, $domain, $env, $select
           }
           // If found some categories in the current path of tids, build a facet
           if (count($path) > 0) {
+            _taxonomy_facets_localize_vocabulary($vocabularies[$term->vid]);
             $facets[] = new taxonomy_facet($vocabularies[$term->vid], $path);
           }
         }
@@ -210,6 +212,7 @@ function taxonomy_facets_faceted_search_collect(&$facets, $domain, $env, $select
               $term = reset($parents); // Keep only the first parent
             }
             if ($path) {
+              _taxonomy_facets_localize_vocabulary($vocabularies[$vid]);
               // Create a facet with the found term as the active category.
               $facets[] = new taxonomy_facet($vocabularies[$vid], $path);
             }
@@ -567,5 +570,16 @@ function _taxonomy_facets_localize_term(&$term) {
   // If this term's vocabulary supports localization.
   if (module_exists('i18ntaxonomy') && i18ntaxonomy_vocabulary($term->vid) == I18N_TAXONOMY_LOCALIZE) {
     $term->name = tt("taxonomy:term:$term->tid:name", $term->name);
+  }
+}
+
+/**
+ * Localize a vocabulary by replacing its name attribute with its localized
+ * version for the current language.
+ */
+function _taxonomy_facets_localize_vocabulary(&$vocabulary) {
+  // If this vocabulary supports localization.
+  if (module_exists('i18ntaxonomy') && i18ntaxonomy_vocabulary($vocabulary->vid) == I18N_TAXONOMY_LOCALIZE) {
+    $vocabulary->name = tt("taxonomy:vocabulary:$vocabulary->vid:name", $vocabulary->name);
   }
 }

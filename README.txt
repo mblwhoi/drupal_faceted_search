@@ -303,8 +303,8 @@ Multilanguage support in Faceted Search relies on the Internationalization
 module (http://drupal.org/project/i18n).
 
 With Taxonomy Facets, if a vocabulary uses the 'Localize terms' translation
-mode, then the system will display the localized version of terms for the
-current language.
+mode, then the system will display the localized version of the vocabulary's
+name and its term names for the current language.
 
 
 Upgrading from Drupal 5.x
