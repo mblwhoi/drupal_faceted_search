@@ -27,11 +27,13 @@ function content_type_facet_form_faceted_search_edit_form_alter(&$form, &$form_s
     $types[$type] = $type;
   }
   if (count($types)) {
+    $names = node_get_types('names');
+    faceted_search_localize_types($names);
     $form['content_type_facet']['content_type_facet_types'] = array(
       '#type' => 'checkboxes',
       '#title' => t('Content types to display in the Content type facet'),
       '#description' => t('Only the checked types will appear in the Content type facet. If none is checked, all types allowed by the search environment may appear in the facet. Note that this setting is not a filter for search results; all content types allowed by the search environment will still be searchable through other facets or from text searches.'),
-      '#options' => node_get_types('names'),
+      '#options' => $names,
       '#default_value' => array_intersect($types, array_filter($env->settings['content_type_facet_types'])),
     );
   }
@@ -254,6 +256,7 @@ class content_type_facet_category extends faceted_search_category {
     parent::faceted_search_category($count);
     $this->_type = $type;
     $this->_name = $name;
+    faceted_search_localize_type($this->_type, $this->_name);
   }
 
   /**
@@ -279,3 +282,4 @@ class content_type_facet_category extends faceted_search_category {
     $query->add_where("n.type = '%s'", $this->_type);
   }
 }
+

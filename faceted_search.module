@@ -153,6 +153,26 @@ function faceted_search_types($env) {
 }
 
 /**
+ * Localize the name of a node type.
+ */
+function faceted_search_localize_type($type, &$name) {
+  if (module_exists('i18ncontent')) {
+    $name = tt("nodetype:type:$type:name", $name);
+  }
+}
+
+/**
+ * Localize the names of all node types in a given array.
+ */
+function faceted_search_localize_types(&$types) {
+  if (module_exists('i18ncontent')) {
+    foreach ($types as $type => $name) {
+      $types[$type] = tt("nodetype:type:$type:name", $name);
+    }
+  }
+}
+
+/**
  * Load a search environment from the database, or from memory if its was
  * already loaded.
  *

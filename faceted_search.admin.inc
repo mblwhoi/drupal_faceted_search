@@ -126,10 +126,12 @@ function faceted_search_edit_form($form_state, $env = NULL) {
   foreach (array_keys(node_get_types('names')) as $type) {
     $types[$type] = $type;
   }
+  $names = node_get_types('names');
+  faceted_search_localize_types($names);
   $form['info']['types'] = array(
     '#title' => t('Content types'),
     '#type' => 'checkboxes',
-    '#options' => node_get_types('names'),
+    '#options' => $names,
     '#description' => t('Only the checked types will appear in this search environment. If none is checked, all types will be allowed.'),
     '#default_value' => array_intersect($types, array_filter($env->settings['types'])),
   );
