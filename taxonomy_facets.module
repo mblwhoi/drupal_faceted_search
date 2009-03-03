@@ -317,7 +317,7 @@ class taxonomy_facet extends faceted_search_facet {
    */
   function get_sort_options() {
     $options = parent::get_sort_options();
-    $options['term'] = t('Category'); // Term weight & name.
+    $options['term'] = t('Term'); // Term weight & name.
     return $options;
   }
 
