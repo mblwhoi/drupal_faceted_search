@@ -16,7 +16,7 @@ require_once('./'. drupal_get_path('module', 'faceted_search') .'/faceted_search
 function faceted_search_views_faceted_search_ui_style_info() {
   $styles = array();
   foreach (views_get_all_views() as $view) {
-    if ($view->base_table == 'node' && !$view->disabled && $view->display['default']->display_options['use_pager']) {
+    if ($view->base_table == 'node' && empty($view->disabled) && $view->display['default']->display_options['use_pager']) {
       $styles[$view->name] = new faceted_search_views_style($view->name);
     }
   }
