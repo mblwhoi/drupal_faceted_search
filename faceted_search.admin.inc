@@ -61,8 +61,10 @@ function faceted_search_delete_form_submit($form, &$form_state) {
 
   db_query('DELETE FROM {faceted_search_env} WHERE env_id = %d', $form_state['values']['env']->env_id);
   db_query('DELETE FROM {faceted_search_filters} WHERE env_id = %d', $form_state['values']['env']->env_id);
+  
+  _block_rehash();
   menu_rebuild();
-
+  
   drupal_set_message(t('Faceted search environment %name deleted.', array('%name' => $name)));
 
   $form_state['redirect'] = 'admin/settings/faceted_search';
