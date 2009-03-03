@@ -80,6 +80,7 @@ function faceted_search_ui_menu() {
  */
 function faceted_search_ui_block($op = 'list', $delta = 0, $edit = array()) {
   if ($op == 'list') {
+    $blocks = array();
     foreach (faceted_search_get_env_ids() as $env_id) {
       $env = faceted_search_env_load($env_id);
       if ($env->settings['current_block']) {
