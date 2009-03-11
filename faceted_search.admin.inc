@@ -58,12 +58,16 @@ function faceted_search_delete_form($form_state, $env) {
  */
 function faceted_search_delete_form_submit($form, &$form_state) {
   $name = $form_state['values']['env']->name;
+  $env_id = $form_state['values']['env']->env_id;
 
-  db_query('DELETE FROM {faceted_search_env} WHERE env_id = %d', $form_state['values']['env']->env_id);
-  db_query('DELETE FROM {faceted_search_filters} WHERE env_id = %d', $form_state['values']['env']->env_id);
+  db_query('DELETE FROM {faceted_search_env} WHERE env_id = %d', $env_id);
+  db_query('DELETE FROM {faceted_search_filters} WHERE env_id = %d', $env_id);
   
   _block_rehash();
   menu_rebuild();
+
+  // Delete the localized strings of this environment.
+  faceted_search_env_locale_delete($env_id);
   
   drupal_set_message(t('Faceted search environment %name deleted.', array('%name' => $name)));
 
@@ -258,6 +262,7 @@ function faceted_search_edit_form_submit($form, &$form_state) {
   $update = $env->env_id ? 'env_id' : NULL;
   $env->name = $form_state['values']['name'];
   $env->description = $form_state['values']['description'];
+
   // Settings are only saved if they have a value in the original environment
   // (we can rely on this since any setting always has at least a default
   // value).
@@ -279,6 +284,9 @@ function faceted_search_edit_form_submit($form, &$form_state) {
   // Rebuild the menus, if only for updating titles.
   menu_rebuild();
 
+  // Refresh localizable strings.
+  faceted_search_env_locale_refresh($env);
+  
   drupal_set_message(t('The faceted search environment %name has been saved.', array('%name' => $form_state['values']['name'])));
 
   if ($form_state['values']['op'] == t('Save')) {

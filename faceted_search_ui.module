@@ -43,7 +43,8 @@ function faceted_search_ui_menu() {
     $env = faceted_search_env_load($env_id);
     $base_path = $env->settings['base_path'];
     $items[$base_path] = array(
-      'title' => check_plain($env->settings['title']), // Needed for breadcrumb.
+      'title callback' => 'faceted_search_ui_menu_title',
+      'title arguments' => array((string)$env_id),
       'page callback' => 'faceted_search_ui_stage_select',
       'page arguments' => array((string)$env_id),
       'access arguments' => array('use faceted search'),
@@ -711,6 +712,18 @@ function faceted_search_ui_sort_block($search) {
 }
 
 /**
+ * Callback for the menu title.
+ */
+function faceted_search_ui_menu_title($env_id) {
+  $env = faceted_search_env_load($env_id);
+  $title = $env->settings['title'];
+  if (module_exists('i18nstrings')) {
+    $title = tt("faceted_search:$env_id:title", $title);
+  }
+  return check_plain($title);
+}
+
+/**
  * Sets the page title.
  */
 function faceted_search_ui_set_title($env) {
@@ -724,11 +737,15 @@ function faceted_search_ui_set_title($env) {
       }
     }
   }
+  $title = $env->settings['title'];
+  if (module_exists('i18nstrings')) {
+    $title = tt('faceted_search:'. $env->env_id .':title', $title);
+  }
   if (count($labels)) {
-    drupal_set_title(t('@title: !terms', array('@title' => $env->settings['title'], '!terms' => implode(', ', $labels))));
+    drupal_set_title(t('@title: !terms', array('@title' => $title, '!terms' => implode(', ', $labels))));
   }
   else {
-    drupal_set_title(check_plain($env->settings['title']));
+    drupal_set_title(check_plain($title));
   }
 }
 

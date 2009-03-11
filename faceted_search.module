@@ -153,6 +153,42 @@ function faceted_search_types($env) {
 }
 
 /**
+ * Implementation of hook_locale().
+ */
+function faceted_search_locale($op = 'groups', $group = NULL) {
+  switch ($op) {
+    case 'groups':
+      return array('faceted_search' => t('Faceted Search'));
+
+    case 'refresh':
+      if ($group == 'faceted_search') {
+        foreach (faceted_search_get_env_ids() as $env_id) {
+          $env = faceted_search_env_load($env_id);
+          faceted_search_env_locale_refresh($env);
+        }
+      }
+  }
+}
+
+/**
+ * Refresh the localized strings of an environment.
+ */
+function faceted_search_env_locale_refresh($env) {
+  if (module_exists('i18nstrings')) {
+    i18nstrings_update_string('faceted_search:'. $env->env_id .':title', $env->settings['title']);
+  }
+}
+
+/**
+ * Delete the localized strings of an environment.
+ */
+function faceted_search_env_locale_delete($env_id) {
+  if (module_exists('i18nstrings')) {
+    i18nstrings_remove_string('faceted_search:'. $env_id .':title');
+  }
+}
+
+/**
  * Localize the name of a node type.
  */
 function faceted_search_localize_type($type, &$name) {
