@@ -122,7 +122,7 @@ function faceted_search_ui_block($op = 'list', $delta = 0, $edit = array()) {
     list($env_id, $delta) = explode('_', $delta, 2);
 
     $env = faceted_search_env_load($env_id);
-    if ($env->ui_state['stage'] == 'select' || ($env->ui_state['stage'] == 'facet' && $delta != 'sort')) {
+    if (!$env || $env->ui_state['stage'] == 'select' || ($env->ui_state['stage'] == 'facet' && $delta != 'sort')) {
       // We don't show blocks in this context.
       return;
     }
