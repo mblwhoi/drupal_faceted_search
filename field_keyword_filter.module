@@ -32,7 +32,7 @@ function field_keyword_filter_faceted_search_collect(&$filters, $domain, $env, $
         if (!isset($selection) || isset($selection[$filter_key]['keyword'])) {
           // Scan the given search text for a '{key}:"{value}"' token, and create
           // filters from it.
-          if ($found_text = faceted_search_quoted_query_extract($arg, $filter_key)) {
+          if (!is_null($found_text = faceted_search_quoted_query_extract($arg, $filter_key))) {
             $keys = faceted_search_parse_keywords($found_text);
 
             // Create the filters.

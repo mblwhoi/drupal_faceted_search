@@ -357,7 +357,7 @@ function faceted_search_quoted_query_insert($keys, $option, $value = '') {
   if ($escape_char == '\\') {
     $escape_char .= '\\'; // Special case for regex.
   }
-  if (search_query_extract($keys, $option)) {
+  if (!is_null(search_query_extract($keys, $option))) {
     $keys = trim(preg_replace('/(^| )'. $option .':"(('. $escape_char .'.|[^"])*?)"( |$)/i', ' ', $keys));
   }
   if ($value != '') {

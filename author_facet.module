@@ -71,7 +71,7 @@ function author_facet_faceted_search_collect(&$facets, $domain, $env, $selection
         }
         // Remove the parsed token from the search text, based
         // upon search_query_insert().
-        if (search_query_extract($arg, 'author') !== FALSE) {
+        if (!is_null(search_query_extract($arg, 'author'))) {
           $arg = trim(preg_replace('/(^| )author:[^ ]*/i', '', $arg));
         }
       }
