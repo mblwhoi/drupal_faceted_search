@@ -277,8 +277,12 @@ function faceted_search_edit_form_submit($form, &$form_state) {
   drupal_write_record('faceted_search_env', $env, $update);
   
   // Save filter settings.
-  if ($form_state['values']['facets']) {
-    faceted_search_save_filter_settings($env->env_id, array_merge($form_state['values']['facets'], $form_state['values']['keyword_filters']));
+  if ($form_state['values']['facets'] || $form_state['values']['keyword_filters']) {
+    faceted_search_save_filter_settings(
+      $env->env_id,
+      array_merge(
+        is_null($form_state['values']['facets']) ? array() : $form_state['values']['facets'],
+        is_null($form_state['values']['keyword_filters']) ? array() : $form_state['values']['keyword_filters']));
   }
 
   // Rebuild the menus, if only for updating titles.
@@ -295,5 +299,196 @@ function faceted_search_edit_form_submit($form, &$form_state) {
   else {
     $form_state['redirect'] = 'admin/settings/faceted_search/'. $env->env_id;
   }
+}
+
+function theme_faceted_search_facets_settings($form) {
+  uasort($form, '_faceted_search_element_sort');
+
+  $output = '';
+  $header = array('', t('Facet'), t('Type'), t('Weight'), t('Sort criteria'), t('Categories limit'));
+  $rows_enabled = array(array('', '<em>'. t('Enabled facets') .'</em>', '', '', '', ''));
+  $rows_disabled = array(array('', '<em>'. t('Disabled facets') .'</em>', '', '', '', ''));
+  foreach (element_children($form) as $key) {
+    unset($form[$key]['status']['#title']);
+    unset($form[$key]['weight']['#title']);
+    unset($form[$key]['max_categories']['#title']);
+    unset($form[$key]['sort']['#title']);
+    $row = array(
+      drupal_render($form[$key]['status']),
+      $form[$key]['#title'] . ($form[$key]['help']['#value'] ? ' ('. check_plain($form[$key]['help']['#value']) .')' : ''),
+      drupal_render($form[$key]['type']),
+      drupal_render($form[$key]['weight']),
+      drupal_render($form[$key]['sort']),
+      drupal_render($form[$key]['max_categories']),
+    );
+    if ($form[$key]['status']['#value']) {
+      $rows_enabled[] = $row;
+    }
+    else {
+      $rows_disabled[] = $row;
+    }
+  }
+
+  if (count($rows_enabled) > 1 && count($rows_disabled) > 1) {
+    $rows = array_merge($rows_enabled, $rows_disabled);
+  }
+  elseif (count($rows_enabled) > 1) {
+    $rows = $rows_enabled;
+  }
+  elseif (count($rows_disabled) > 1) {
+    $rows = $rows_disabled;
+  }
+  else {
+    $rows = array(array('', '<em>'. t('No facets available.') .'</em>', '', '', '', ''));
+  }
+  $output .= theme('table', $header, $rows);
+  $output .= drupal_render($form);
+  return $output;
+}
+
+function theme_faceted_search_keyword_filters_settings($form) {
+  uasort($form, '_faceted_search_element_sort');
+
+  $output = '';
+  $header = array('', t('Field'), t('Weight'));
+  $rows_enabled = array(array('', '<em>'. t('Enabled fields') .'</em>', ''));
+  $rows_disabled = array(array('', '<em>'. t('Disabled fields') .'</em>', ''));
+  foreach (element_children($form) as $key) {
+    unset($form[$key]['status']['#title']);
+    unset($form[$key]['weight']['#title']);
+    unset($form[$key]['type']);
+    $row = array(
+      drupal_render($form[$key]['status']),
+      $form[$key]['#title'] . ($form[$key]['help']['#value'] ? ' ('. check_plain($form[$key]['help']['#value']) .')' : ''),
+      drupal_render($form[$key]['weight']),
+    );
+    if ($form[$key]['status']['#value']) {
+      $rows_enabled[] = $row;
+    }
+    else {
+      $rows_disabled[] = $row;
+    }
+  }
+
+  if (count($rows_enabled) > 1 && count($rows_disabled) > 1) {
+    $rows = array_merge($rows_enabled, $rows_disabled);
+  }
+  elseif (count($rows_enabled) > 1) {
+    $rows = $rows_enabled;
+  }
+  elseif (count($rows_disabled) > 1) {
+    $rows = $rows_disabled;
+  }
+  else {
+    $rows = array(array('', '<em>'. t('No keyword filters available.') .'</em>', '', '', '', ''));
+  }
+  $output .= theme('table', $header, $rows);
+  $output .= drupal_render($form);
+  return $output;
+}
+
+/**
+ * Build a form for a filter's settings.
+ *
+ * @param $form
+ *   The form to modify.
+ * @param $filters
+ *   The filters whose settings are to be added.
+ */
+function _faceted_search_filter_settings_form(&$form, $filters) {
+  foreach ($filters as $filter) {
+    $key = $filter->get_key() .'_'. $filter->get_id();
+    $form[$key] = array(
+      '#title' => $filter->get_label(),
+      '#weight' => $filter->get_weight(),
+    );
+    $form[$key]['filter_key'] = array(
+      '#type' => 'value',
+      '#value' => $filter->get_key(),
+    );
+    $form[$key]['filter_id'] = array(
+      '#type' => 'value',
+      '#value' => $filter->get_id(),
+    );
+    $form[$key]['help'] = array(
+      '#type' => 'value',
+      '#value' => $filter->get_help(),
+    );
+    $form[$key]['status'] = array(
+      '#title' => t('Enabled'),
+      '#type' => 'checkbox',
+      '#default_value' => $filter->get_status(),
+    );
+    if ($filter->get_key() == 'node') {
+      $form[$key]['status']['#value'] = TRUE;
+      $form[$key]['status']['#disabled'] = TRUE;
+    }
+    $form[$key]['type'] = array(
+      '#type' => 'markup',
+      '#value' => check_plain($filter->get_key()),
+    );
+    $form[$key]['weight'] = array(
+      '#title' => t('Weight'),
+      '#type' => 'textfield',
+      '#default_value' => $filter->get_weight(),
+      '#maxlength' => 4,
+      '#size' => 4,
+      '#required' => TRUE,
+    );
+  }
+  return $form;
+}
+
+/**
+ * Build a form for a facet's settings.
+ *
+ * @param $form
+ *   The form to modify.
+ * @param $filters
+ *   The filters whose settings are to be added.
+ */
+function _faceted_search_facet_settings_form(&$form, $filters) {
+  $form = _faceted_search_filter_settings_form($form, $filters);
+  foreach ($filters as $filter) {
+    $key = $filter->get_key() .'_'. $filter->get_id();
+
+    // Sort criteria.
+    $sort_options = $filter->get_sort_options();
+    if (count($sort_options)) {
+      $form[$key]['sort'] = array(
+        '#title' => t('Sort criteria for categories'),
+        '#type' => 'select',
+        '#default_value' => $filter->get_sort(),
+        '#options' => $sort_options,
+      );
+    }
+    else {
+      $form[$key]['sort'] = array(
+        '#type' => 'markup',
+        '#value' => t('n/a'),
+      );
+    }
+
+    // Number of categories to show.
+    $form[$key]['max_categories'] = array(
+      '#title' => t('Number of categories to show in guided search'),
+      '#type' => 'select',
+      '#options' => array(
+        0 => t('All categories'),
+        5 => t('Up to 5 categories'),
+        10 => t('Up to 10 categories'),
+        15 => t('Up to 15 categories'),
+        20 => t('Up to 20 categories'),
+        25 => t('Up to 25 categories'),
+        30 => t('Up to 30 categories'),
+        40 => t('Up to 40 categories'),
+        50 => t('Up to 50 categories'),
+        100 => t('Up to 100 categories'),
+      ),
+      '#default_value' => $filter->get_max_categories(),
+    );
+  }
+
+  return $form;
 }
 
