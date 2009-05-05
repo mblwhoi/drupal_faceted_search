@@ -95,6 +95,7 @@ class faceted_search_views_style extends faceted_search_ui_style {
     $views_query = db_rewrite_sql($view->build_info['count_query'], $view->base_table, $view->base_field, array('view' => &$view));
     $views_args = $view->build_info['query_args'];
     $views_replacements = module_invoke_all('views_query_substitutions', $view);
+    $views_query = str_replace(array_keys($views_replacements), $views_replacements, $views_query);
     if (is_array($views_args)) {
       foreach ($views_args as $id => $arg) {
         $views_args[$id] = str_replace(array_keys($views_replacements), $views_replacements, $arg);
