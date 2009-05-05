@@ -269,6 +269,7 @@ view in the "Display style" field of the "Results page" section.
 
 Known limitations:
 
+- Only a view's default display can be used (other displays are ignored).
 - The view cannot use exposed filters or arguments.
 - The view's "Title" and "Empty text" settings are ignored.
 - If the view is set to have an unlimited number of items per page, instead of
