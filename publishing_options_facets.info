@@ -1,0 +1,8 @@
+; $Id$
+name = Publishing Options Facets
+description = "Provides facets for publishing options."
+dependencies[] = faceted_search
+dependencies[] = search
+package = Faceted Search
+core = 6.x
+

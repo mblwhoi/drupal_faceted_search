@@ -76,10 +76,15 @@ Faceted Search is in fact a bundle of modules.
 - Taxonomy Facets: Allows users to search content through taxonomy. Any
   vocabulary can become a facet that can be used to refine the current search.
 
-- Date Facets Format: Provides formatting options for date-based facets.
-
 - Field Keyword Filter: Allows to perform keyword searches restricted by field
   (requires the Field Indexer module).
+
+- Publishing Options Facets: Allows users to refine the current search based on
+  content publishing options (sticky, published, promoted to front page,
+  moderated). This is mostly useful in search environments built specifically
+  for site editors.
+
+- Date Facets Format: Provides formatting options for date-based facets.
 
 Hopefully, many more facets will be developed. The API is meant to make it easy
 to implement new facets.
