@@ -48,11 +48,11 @@ function faceted_search_views_views_query_alter (&$view, &$query) {
  */
 function faceted_search_views_views_pre_execute(&$view) {
   if (is_array($view->args[0]) && isset($view->args[0]['faceted_search']) && $view->current_display == 'default') {    
-    if (empty($pager['items_per_page'])) {
+    if (empty($view->pager['items_per_page'])) {
       // Make sure a limit is set.
       $view->set_items_per_page(variable_get('default_nodes_main', 10));
     }
-    if (empty($pager['use_pager'])) {
+    if (empty($view->pager['use_pager'])) {
       $view->set_use_pager(TRUE);
     }
   }
