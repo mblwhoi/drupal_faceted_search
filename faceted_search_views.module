@@ -110,7 +110,18 @@ class faceted_search_views_style extends faceted_search_ui_style {
    * Format the search results according to this style's desire.
    */
   function format_results($search) {
-    return views_embed_view($this->_name, 'default' , array('faceted_search' => $search));
+    if ($view = views_get_view($this->_name)) {
+      if ($view->access('default')) {
+        $output = views_embed_view($this->_name, 'default' , array('faceted_search' => $search)); 
+        $view->destroy();
+      }
+      else {
+        $view->destroy();
+        drupal_access_denied();
+        exit();
+      }      
+    }         
+    return $output;
   }
 }
 
