@@ -304,7 +304,7 @@ msgstr "Diese Rollen von der Klassifikation nach Autoren ausschließen"
 
 #: author_facet.module:30
 msgid "Any user having one or more of the checked roles will not appear in the facet. Note that this setting is not a filter for search results; content from excluded users can still be searchable through other facets or from text searches."
-msgstr ""
+msgstr "Benutzer dieser Rollen erscheinen nicht in der Facettenklassifikation."
 
 #: author_facet.module:38
 msgid "No roles are currently available."
