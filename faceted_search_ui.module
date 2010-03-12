@@ -933,7 +933,6 @@ function faceted_search_ui_form_submit($form, &$form_state) {
   }
 
   if ($new_text != '' && $form_state['values']['field'] != 'node') {
-    $escape_char = variable_get('faceted_search_escape_char', '\\');
     $new_text = $form_state['values']['field'] .':"'. faceted_search_quoted_query_escape($new_text) .'"';
   }
 
