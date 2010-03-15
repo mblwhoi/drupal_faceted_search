@@ -803,7 +803,8 @@ function faceted_search_ui_form($form_state, $search) {
         $options[$filter->get_key()] = $filter->get_label();
       }
       else {
-        $options[$filter->get_key()] = t('in @field', array('@field' => $filter->get_label()));
+        // Note: get_label() is responsible for filtering its returned string.
+        $options[$filter->get_key()] = t('in !field', array('!field' => $filter->get_label()));
       }
     }
   }
@@ -1370,6 +1371,7 @@ function theme_faceted_search_ui_categories($facet, $categories, $stage) {
 }
 
 function theme_faceted_search_ui_facet_label($facets, $index, $label) {
+  // Note: get_label() is responsible for filtering its returned string.
   $label = $facets[$index]->get_label();
   if (!empty($label)) {
     return '<h3>'. $label .'</h3>';
