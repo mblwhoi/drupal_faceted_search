@@ -95,6 +95,6 @@ class field_keyword_filter extends faceted_search_keyword_filter {
    * adequate security filtering.
    */
   function get_label() {
-    return check_plain(t($this->_label)); // Note: Using t() with non-literal, as does CCK.
+    return filter_xss_admin(t($this->_label)); // Note: Using t() with non-literal, as does CCK.
   }
 }
