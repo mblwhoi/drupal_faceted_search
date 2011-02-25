@@ -1,4 +1,3 @@
-$Id$
 
 README file for the Faceted Search Drupal module.
 

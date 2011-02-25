@@ -1,4 +1,3 @@
-; $Id$
 name = Date Authored Facet
 description = "Provides a facet for searching content by date of creation."
 dependencies[] = faceted_search

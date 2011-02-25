@@ -1,4 +1,3 @@
-// $Id$
 
 /**
  * Provides tooltips with subcategories when hovering categories, through AJAX.

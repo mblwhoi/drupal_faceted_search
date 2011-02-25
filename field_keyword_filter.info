@@ -1,4 +1,3 @@
-; $Id$
 name = Field Keyword Filter
 description = "Allows users to perform keyword searches restricted by field."
 dependencies[] = faceted_search

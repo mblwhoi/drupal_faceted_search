@@ -1,4 +1,3 @@
-; $Id$
 name = Publishing Options Facets
 description = "Provides facets for publishing options."
 dependencies[] = faceted_search

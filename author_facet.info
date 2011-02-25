@@ -1,4 +1,3 @@
-; $Id$
 name = Author Facet
 description = "Provides a facet for content authors."
 dependencies[] = faceted_search

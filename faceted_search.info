@@ -1,4 +1,3 @@
-; $Id$
 name = Faceted Search
 description = "API for performing faceted searches."
 dependencies[] = search
