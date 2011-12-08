@@ -15,25 +15,25 @@ require_once('./'. drupal_get_path('module', 'faceted_search') .'/faceted_search
 function faceted_search_views_faceted_search_ui_style_info() {
   $styles = array();
   foreach (views_get_all_views() as $view) {
-    if ($view->base_table == 'node' && empty($view->disabled) && $view->display['default']->display_options['use_pager']) {
+    if ($view->base_table == 'node' && empty($view->disabled) && ! empty($view->display['default']->display_options['pager']['type']) ) {
       $styles[$view->name] = new faceted_search_views_style($view->name);
     }
   }
   return $styles;
 }
-	
+
 /**
  * Implementation of hook_views_query_alter().
  */
-function faceted_search_views_views_query_alter (&$view, &$query) {   
-  if (is_array($view->args[0]) && isset($view->args[0]['faceted_search'])) {    
+function faceted_search_views_views_query_alter (&$view, &$query) {
+  if (is_array($view->args[0]) && isset($view->args[0]['faceted_search'])) {
     $search = $view->args[0]['faceted_search'];
-	        
+
     if ($search->ready()) {
       if ($search->get_results_count() > 0) {
         $join = new views_join();
         $join->construct($search->get_results_table(), 'node', 'nid', 'nid', array(), 'INNER');
-        $query->add_table($search->get_results_table(), NULL, $join);        		
+        $query->add_table($search->get_results_table(), NULL, $join);
       }
       else {
         $query->add_where(0, 'FALSE'); // Ensure the view shows no results.
@@ -46,13 +46,10 @@ function faceted_search_views_views_query_alter (&$view, &$query) {
  * Implementation of hook_views_pre_execute().
  */
 function faceted_search_views_views_pre_execute(&$view) {
-  if (is_array($view->args[0]) && isset($view->args[0]['faceted_search']) && $view->current_display == 'default') {    
+  if (is_array($view->args[0]) && isset($view->args[0]['faceted_search']) && $view->current_display == 'default') {
     if (empty($view->pager['items_per_page'])) {
       // Make sure a limit is set.
       $view->set_items_per_page(variable_get('default_nodes_main', 10));
-    }
-    if (empty($view->pager['use_pager'])) {
-      $view->set_use_pager(TRUE);
     }
   }
 }
@@ -63,7 +60,7 @@ function faceted_search_views_views_pre_execute(&$view) {
 class faceted_search_views_style extends faceted_search_ui_style {
   // Name of the view to use with this style.
   var $_name;
-  
+
   /**
    * Constructor.
    *
@@ -97,12 +94,12 @@ class faceted_search_views_style extends faceted_search_ui_style {
     $views_args = $view->build_info['query_args'];
     $views_replacements = module_invoke_all('views_query_substitutions', $view);
     $views_query = str_replace(array_keys($views_replacements), $views_replacements, $views_query);
-    if (is_array($views_args)) {
+    if (is_array($views_args) && count($views_args) ) {
       foreach ($views_args as $id => $arg) {
         $views_args[$id] = str_replace(array_keys($views_replacements), $views_replacements, $arg);
       }
+      $query->add_subquery('n.nid IN ('. $views_query .')', $views_args);
     }
-    $query->add_subquery('n.nid IN ('. $views_query .')', $views_args);
   }
 
   /**
@@ -111,15 +108,15 @@ class faceted_search_views_style extends faceted_search_ui_style {
   function format_results($search) {
     if ($view = views_get_view($this->_name)) {
       if ($view->access('default')) {
-        $output = views_embed_view($this->_name, 'default' , array('faceted_search' => $search)); 
+        $output = views_embed_view($this->_name, 'default' , array('faceted_search' => $search));
         $view->destroy();
       }
       else {
         $view->destroy();
         drupal_access_denied();
         exit();
-      }      
-    }         
+      }
+    }
     return $output;
   }
 }

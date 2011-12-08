@@ -1545,6 +1545,13 @@ function theme_faceted_search_ui_stage_facet($search, $index, $facet, $categorie
 
   $content .= $facet_pager;
 
+  // Generate link back to faceted search home.
+  $ui_state['stage'] = 'select';
+  $facet_home_path = faceted_search_ui_build_path($search, $ui_state, $search->get_text());
+  $facet_home = sprintf("<div class=\"facet-home\">%s</div>", l('Return to search options', $facet_home_path));
+
+  $content .= $facet_home;
+
   return theme('faceted_search_ui_page', $search, $content);
 }
 
