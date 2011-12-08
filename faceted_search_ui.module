@@ -9,6 +9,11 @@ require_once('./'. drupal_get_path('module', 'faceted_search') .'/faceted_search
 require_once('./'. drupal_get_path('module', 'faceted_search') .'/faceted_search_ui.inc');
 
 /**
+ * Constants
+ */
+define(FACET_UI_CATEGORIES_PER_PAGE, 25);
+
+/**
  * Implementation of hook_perm().
  */
 function faceted_search_ui_perm() {
@@ -36,7 +41,7 @@ function faceted_search_ui_menu() {
   // first. This causes an error message. The real issue is the module
   // dependency tree being ignored when uninstalling
   // (http://drupal.org/node/151452).
-  
+
   $items = array();
   foreach (faceted_search_get_env_ids() as $env_id) {
     $env = faceted_search_env_load($env_id);
@@ -132,9 +137,9 @@ function faceted_search_ui_block($op = 'list', $delta = 0, $edit = array()) {
       $env->prepare();
       $env->execute();
     }
-    
+
     faceted_search_ui_add_css();
-    
+
     switch ($delta) {
       case 'current':
         $block['subject'] = t('Current search');
@@ -182,7 +187,7 @@ function faceted_search_ui_form_faceted_search_edit_form_alter(&$form, &$form_st
     '#title' => t('Base path'),
     '#default_value' => $env->settings['base_path'],
     '#required' => TRUE,
-    '#description' => t('The base path under which this faceted search environment will be accessed. All faceted search links will be derived from that base path. Do not begin or end the base path with a /. Be careful to assign each faceted search environment its own distinct path.'), 
+    '#description' => t('The base path under which this faceted search environment will be accessed. All faceted search links will be derived from that base path. Do not begin or end the base path with a /. Be careful to assign each faceted search environment its own distinct path.'),
   );
   $form['info']['start_page'] = array( // TODO: Proper validation of the path.
     '#type' => 'textfield',
@@ -365,7 +370,7 @@ function faceted_search_ui_stage_results($env_id, $text = '') {
   }
 
   $env = faceted_search_env_load($env_id);
-  
+
   // Initialize the current search.
   $env->prepare($text);
   $env->ui_state['stage'] = 'results';
@@ -412,7 +417,7 @@ function faceted_search_ui_stage_select($env_id, $text = '') {
   }
 
   $env = faceted_search_env_load($env_id);
-  
+
   // Initialize the current search.
   $env->prepare($text);
   $env->ui_state['stage'] = 'select';
@@ -435,20 +440,20 @@ function faceted_search_ui_stage_select($env_id, $text = '') {
 /**
  * Menu callback to display a facet's categories.
  */
-function faceted_search_ui_stage_facet($env_id, $facet_key_id = '', $facet_sort = '', $text = '') {
+function faceted_search_ui_stage_facet($env_id, $facet_key_id = '', $facet_sort = '', $facet_offset = 0, $text = '') {
   if (!$facet_key_id || !$facet_sort) {
     drupal_not_found();
     return;
   }
 
   // If the menu system has splitted the search text because of slashes, glue it back.
-  if (func_num_args() > 4) {
+  if (func_num_args() > 5) {
     $args = func_get_args();
-    $text .= '/'. implode('/', array_slice($args, 4));
+    $text .= '/'. implode('/', array_slice($args, 5));
   }
 
   $env = faceted_search_env_load($env_id);
-  
+
   // Initialize the current search.
   $env->prepare($text);
   $env->ui_state['stage'] = 'facet';
@@ -456,6 +461,7 @@ function faceted_search_ui_stage_facet($env_id, $facet_key_id = '', $facet_sort 
   $env->ui_state['facet-key'] = $facet_key;
   $env->ui_state['facet-id'] = $facet_id;
   $env->ui_state['facet-sort'] = $facet_sort;
+  $env->ui_sate['facet-offset'] = $facet_offset;
 
   faceted_search_ui_add_robots_directive($env);
   faceted_search_ui_add_css();
@@ -472,8 +478,17 @@ function faceted_search_ui_stage_facet($env_id, $facet_key_id = '', $facet_sort 
   }
 
   faceted_search_ui_set_title($env);
-  $categories = faceted_search_ui_build_categories($env, $index); // TODO: paging
-  return theme('faceted_search_ui_stage_facet', $env, $index, $facet, $categories);
+
+  // Get all the categories.
+  $categories = faceted_search_ui_build_categories($env, $index);
+
+  // Get total number of categories.
+  $total_categories = count($categories);
+
+  // Use just the categories for the current page.
+  $page_categories = array_slice($categories, $facet_offset, FACET_UI_CATEGORIES_PER_PAGE);
+
+  return theme('faceted_search_ui_stage_facet', $env, $index, $facet, $page_categories, $total_categories, $facet_offset, FACET_UI_CATEGORIES_PER_PAGE);
 }
 
 /**
@@ -492,7 +507,7 @@ function faceted_search_ui_stage_categories($env_id, $facet_key_id = '', $facet_
   }
 
   $env = faceted_search_env_load($env_id);
-  
+
   // Initialize the current search.
   $env->prepare($text);
   $env->ui_state['stage'] = 'categories';
@@ -982,10 +997,19 @@ function faceted_search_ui_build_path($env, $ui_state, $text, $facets = array())
     else {
       $facet_sort = '/-';
     }
+
+    // Current offset.
+    if ($ui_state['stage'] == 'facet' && isset($ui_state['facet-offset']) ) {
+      $facet_offset ="/${ui_state['facet-offset']}";
+    }
+    else{
+      $facet_offset = "/0";
+    }
+
   }
 
   $base_path = $env->settings['base_path'];
-  return "{$base_path}{$stage}{$facet}{$facet_sort}/{$text}";
+  return "{$base_path}{$stage}{$facet}{$facet_sort}{$facet_offset}/{$text}";
 }
 
 /**
@@ -1481,11 +1505,46 @@ function theme_faceted_search_ui_stage_select($search, $keyword_block_content, $
   return drupal_render($form);
 }
 
-function theme_faceted_search_ui_stage_facet($search, $index, $facet, $categories) {
+function theme_faceted_search_ui_stage_facet($search, $index, $facet, $categories, $total_categories, $offset, $per_page) {
   $content .= '<p>'. ($search->get_text() ? t('Click a term to refine your current search.') : t('Click a term to initiate a search.')) .'</p>';
   $content .= theme('faceted_search_ui_facet_heading', $search, $search->ui_state, $search->get_filters(), $index, 'guided');
   $content .= theme('faceted_search_ui_categories', $facet, $categories, $search->ui_state['stage']);
   $content = theme('faceted_search_ui_facet_wrapper', $search, $facet, 'guided', $content);
+
+  // Pager.
+
+  // Get ui state.
+  $ui_state = $search->ui_state;
+
+  // Generate current page position.
+  $page_end = min($offset + $per_page, $total_categories);
+  $current_page = sprintf("<span class=\"current-page\">%s - %s of %s items</span>", $offset, $page_end, $total_categories);
+
+  // Generate previous link.
+  $previous_page_link = "";
+  if ($offset >= $per_page){
+    // Build path with offset = offset - per_page.
+    $ui_state['facet-offset'] = $offset - $per_page; // temporarily change ui state.
+    $previous_page_path = faceted_search_ui_build_path($search, $ui_state, $search->get_text());
+    $ui_state['facet-offset'] = $offset; // reset ui state.
+    $previous_page_link = sprintf("<span>%s</span>", l('‹ previous', $previous_page_path, array('class' => 'previous')));
+  }
+
+  // Generate next page link.
+  $next_page_link = "";
+  if ($offset + $per_page < $total_categories){
+    // Build path with offset = offset - per_page.
+    $ui_state['facet-offset'] = $offset + $per_page; // temporarily change ui state.
+    $next_page_path = faceted_search_ui_build_path($search, $ui_state, $search->get_text());
+    $ui_state['facet-offset'] = $offset; // reset ui state.
+    $next_page_link = sprintf("<span>%s</span>", l('next ›', $next_page_path, array('class' => 'next')));
+  }
+
+  // Assemble pager.
+  $facet_pager = "<div class=\"facet-pager\"> $previous_page_link $current_page $next_page_link</div>";
+
+  $content .= $facet_pager;
+
   return theme('faceted_search_ui_page', $search, $content);
 }
 
