@@ -1548,9 +1548,21 @@ function theme_faceted_search_ui_stage_facet($search, $index, $facet, $categorie
   // Generate link back to faceted search home.
   $ui_state['stage'] = 'select';
   $facet_home_path = faceted_search_ui_build_path($search, $ui_state, $search->get_text());
-  $facet_home = sprintf("<div class=\"facet-home\">%s</div>", l('Return to search options', $facet_home_path));
+  $facet_home = sprintf("<div class=\"facet-home\">%s</div>", l('Go to search options', $facet_home_path));
 
   $content .= $facet_home;
+
+
+  // Link back to search results if search is active.
+  if ($search->get_text()){
+    $tmp_stage = $ui_state['stage'];
+    $ui_state['stage']= 'results';
+    $results_path = faceted_search_ui_build_path($search, $ui_state, $search->get_text());
+    $results_link = sprintf("<div class=\"back-to-result\">%s</div>",l(t('Back to results'), $results_path));
+    $ui_stage['stage'] = $tmp_stage;
+
+    $content .= $results_link;
+  }
 
   return theme('faceted_search_ui_page', $search, $content);
 }
